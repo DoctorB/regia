@@ -1,0 +1,30 @@
+{
+  "id": "aggiungi-test",
+  "name": "Aggiungi test",
+  "description": "Individua le parti scoperte, scrive i test mancanti senza toccare il codice di produzione, li esegue e chiede la tua approvazione.",
+  "goalHint": "Indica il modulo o la cartella da coprire e il framework di test usato, se lo conosci.",
+  "settings": { "runBudgetUsd": 2, "maxParallel": 1, "loadProjectSettings": true, "applyGeneralRules": true },
+  "nodes": [
+    { "id": "copertura", "position": { "x": 0, "y": 120 }, "data": {
+      "label": "Cosa manca", "kind": "analisi", "role": "Analista dei test: individua comportamenti non coperti.",
+      "instructions": "Confronta il codice indicato nell'obiettivo con i test esistenti. Elenca i comportamenti non coperti, in ordine di importanza, con i casi da testare (inclusi i casi limite). Indica framework e convenzioni dei test esistenti. Non modificare file.",
+      "model": "sonnet", "allowedTools": ["Read", "Glob", "Grep"], "maxTurns": 15, "maxBudgetUsd": 0.5, "contextMode": "sintesi", "reuseResult": true } },
+    { "id": "scrittura", "position": { "x": 300, "y": 120 }, "data": {
+      "label": "Scrittura dei test", "kind": "implementazione", "role": "Sviluppatore di test: scrive test chiari seguendo le convenzioni esistenti.",
+      "instructions": "Scrivi i test per i casi indicati, seguendo framework e convenzioni esistenti. Non modificare il codice di produzione: se un test rivela un bug, lascialo fallire e segnalalo nella sintesi. Esegui i nuovi test una volta.",
+      "model": "sonnet", "allowedTools": ["Read", "Glob", "Grep", "Edit", "Write", "Bash"], "maxTurns": 30, "maxBudgetUsd": 1, "contextMode": "completo", "reuseResult": false } },
+    { "id": "esecuzione", "position": { "x": 600, "y": 120 }, "data": {
+      "label": "Esecuzione suite", "kind": "test", "role": "Tester: esegue l'intera suite e riporta l'esito.",
+      "instructions": "Esegui l'intera suite di test. Riporta passati e falliti; per ogni fallimento indica se riguarda i test nuovi (possibile bug trovato) o quelli esistenti (regressione). Non modificare file.",
+      "model": "haiku", "allowedTools": ["Read", "Glob", "Bash"], "maxTurns": 8, "maxBudgetUsd": 0.3, "contextMode": "sintesi", "reuseResult": false } },
+    { "id": "approvazione", "position": { "x": 900, "y": 120 }, "data": {
+      "label": "Approvazione", "kind": "approvazione", "role": "",
+      "instructions": "Controlla i test aggiunti (git diff) e l'esito. Approva, oppure respingi indicando cosa cambiare.",
+      "model": "", "allowedTools": [], "contextMode": "sintesi", "reuseResult": false } }
+  ],
+  "edges": [
+    { "id": "e1", "source": "copertura", "target": "scrittura" },
+    { "id": "e2", "source": "scrittura", "target": "esecuzione" },
+    { "id": "e3", "source": "esecuzione", "target": "approvazione" }
+  ]
+}

@@ -1,0 +1,36 @@
+{
+  "id": "correggi-bug",
+  "name": "Correggi un bug",
+  "description": "Analisi della causa, correzione mirata, test e revisione in parallelo, approvazione finale.",
+  "goalHint": "Descrivi il bug: comportamento atteso, comportamento attuale, come riprodurlo, eventuali file sospetti.",
+  "settings": { "runBudgetUsd": 2, "maxParallel": 2, "loadProjectSettings": true, "applyGeneralRules": true },
+  "nodes": [
+    { "id": "analisi", "position": { "x": 0, "y": 120 }, "data": {
+      "label": "Analisi della causa", "kind": "analisi", "role": "Analista: individua la causa del problema senza modificare file.",
+      "instructions": "Individua la causa del bug descritto nell'obiettivo. Leggi solo i file necessari, partendo da quelli indicati. Indica file e righe da modificare e la correzione minima. Non modificare file.",
+      "model": "sonnet", "allowedTools": ["Read", "Glob", "Grep"], "maxTurns": 15, "maxBudgetUsd": 0.6, "contextMode": "sintesi", "reuseResult": false } },
+    { "id": "correzione", "position": { "x": 300, "y": 120 }, "data": {
+      "label": "Correzione", "kind": "implementazione", "role": "Sviluppatore: applica modifiche piccole e mirate, nello stile del progetto.",
+      "instructions": "Applica la correzione indicata dall'analisi, limitandoti ai file necessari. Non modificare i test esistenti salvo che siano sbagliati (in quel caso spiegalo). Se esiste una suite di test, eseguila una volta.",
+      "model": "sonnet", "allowedTools": ["Read", "Glob", "Grep", "Edit", "Bash"], "maxTurns": 25, "maxBudgetUsd": 1, "contextMode": "sintesi", "reuseResult": false } },
+    { "id": "test", "position": { "x": 600, "y": 40 }, "data": {
+      "label": "Test", "kind": "test", "role": "Tester: esegue i test e riporta l'esito senza modificare il codice.",
+      "instructions": "Esegui la suite di test del progetto (cerca il comando in package.json, Makefile, pyproject o README). Riporta quanti test passano e falliscono. Esito 'ko' se ne fallisce almeno uno. Non modificare file.",
+      "model": "haiku", "allowedTools": ["Read", "Glob", "Bash"], "maxTurns": 8, "maxBudgetUsd": 0.3, "contextMode": "nessuno", "reuseResult": false } },
+    { "id": "revisione", "position": { "x": 600, "y": 210 }, "data": {
+      "label": "Revisione", "kind": "revisione", "role": "Revisore: verifica che la correzione risolva il problema senza effetti collaterali.",
+      "instructions": "Rivedi i file modificati indicati dalla fase precedente. Segnala solo problemi concreti: casi non coperti, regressioni, codice non coerente col resto. Non modificare file.",
+      "model": "sonnet", "allowedTools": ["Read", "Glob", "Grep"], "maxTurns": 10, "maxBudgetUsd": 0.5, "contextMode": "sintesi", "reuseResult": false } },
+    { "id": "approvazione", "position": { "x": 900, "y": 120 }, "data": {
+      "label": "Approvazione", "kind": "approvazione", "role": "",
+      "instructions": "Controlla esito dei test, revisione e git diff. Approva, oppure respingi spiegando cosa correggere: la correzione riprenderà dal punto in cui era.",
+      "model": "", "allowedTools": [], "contextMode": "sintesi", "reuseResult": false } }
+  ],
+  "edges": [
+    { "id": "e1", "source": "analisi", "target": "correzione" },
+    { "id": "e2", "source": "correzione", "target": "test" },
+    { "id": "e3", "source": "correzione", "target": "revisione" },
+    { "id": "e4", "source": "test", "target": "approvazione" },
+    { "id": "e5", "source": "revisione", "target": "approvazione" }
+  ]
+}

@@ -1,0 +1,40 @@
+{
+  "id": "refactoring",
+  "name": "Refactoring sicuro",
+  "description": "Verifica dei test prima di toccare il codice, piano approvato da te, refactoring senza cambi di comportamento, nuova verifica.",
+  "goalHint": "Indica cosa riorganizzare e perché (es. 'dividi src/servizi/ordini.ts in moduli più piccoli'), e cosa non deve cambiare.",
+  "settings": { "runBudgetUsd": 3, "maxParallel": 1, "loadProjectSettings": true, "applyGeneralRules": true },
+  "nodes": [
+    { "id": "baseline", "position": { "x": 0, "y": 120 }, "data": {
+      "label": "Test iniziali", "kind": "test", "role": "Tester: stabilisce lo stato di partenza della suite.",
+      "instructions": "Esegui la suite di test prima di qualsiasi modifica e riporta l'esito. Se ci sono già test che falliscono, elencali: serviranno come riferimento. Non modificare file.",
+      "model": "haiku", "allowedTools": ["Read", "Glob", "Bash"], "maxTurns": 8, "maxBudgetUsd": 0.3, "contextMode": "nessuno", "reuseResult": false } },
+    { "id": "piano", "position": { "x": 260, "y": 120 }, "data": {
+      "label": "Piano", "kind": "analisi", "role": "Progettista: propone un refactoring a passi piccoli e verificabili.",
+      "instructions": "Studia il codice indicato nell'obiettivo e proponi un piano di refactoring a passi piccoli, senza cambiare il comportamento osservabile. Indica i rischi e quali test proteggono ciascun passo. Non modificare file.",
+      "model": "sonnet", "allowedTools": ["Read", "Glob", "Grep"], "maxTurns": 20, "maxBudgetUsd": 0.7, "contextMode": "sintesi", "reuseResult": false } },
+    { "id": "ok_piano", "position": { "x": 520, "y": 120 }, "data": {
+      "label": "Approva il piano", "kind": "approvazione", "role": "",
+      "instructions": "Leggi il piano. Approva, oppure respingi indicando cosa cambiare prima di toccare il codice.",
+      "model": "", "allowedTools": [], "contextMode": "sintesi", "reuseResult": false } },
+    { "id": "refactoring", "position": { "x": 780, "y": 120 }, "data": {
+      "label": "Refactoring", "kind": "implementazione", "role": "Sviluppatore: ristruttura il codice senza cambiarne il comportamento.",
+      "instructions": "Applica il piano approvato un passo alla volta. Non cambiare il comportamento osservabile né i test esistenti. Esegui la suite alla fine.",
+      "model": "sonnet", "allowedTools": ["Read", "Glob", "Grep", "Edit", "Write", "Bash"], "maxTurns": 40, "maxBudgetUsd": 1.5, "contextMode": "completo", "reuseResult": false } },
+    { "id": "verifica", "position": { "x": 1040, "y": 120 }, "data": {
+      "label": "Verifica", "kind": "test", "role": "Tester: confronta la suite con lo stato di partenza.",
+      "instructions": "Esegui la suite di test e confrontala con l'esito iniziale. Esito 'ko' se un test che prima passava ora fallisce. Non modificare file.",
+      "model": "haiku", "allowedTools": ["Read", "Glob", "Bash"], "maxTurns": 8, "maxBudgetUsd": 0.3, "contextMode": "sintesi", "reuseResult": false } },
+    { "id": "approvazione", "position": { "x": 1300, "y": 120 }, "data": {
+      "label": "Approvazione finale", "kind": "approvazione", "role": "",
+      "instructions": "Controlla verifica e git diff. Approva, oppure respingi spiegando cosa correggere.",
+      "model": "", "allowedTools": [], "contextMode": "sintesi", "reuseResult": false } }
+  ],
+  "edges": [
+    { "id": "e1", "source": "baseline", "target": "piano" },
+    { "id": "e2", "source": "piano", "target": "ok_piano" },
+    { "id": "e3", "source": "ok_piano", "target": "refactoring" },
+    { "id": "e4", "source": "refactoring", "target": "verifica" },
+    { "id": "e5", "source": "verifica", "target": "approvazione" }
+  ]
+}

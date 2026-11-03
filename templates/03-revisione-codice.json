@@ -1,0 +1,31 @@
+{
+  "id": "revisione-codice",
+  "name": "Revisione del codice (sola lettura)",
+  "description": "Nessun file viene modificato: panoramica, revisione di qualità e di sicurezza in parallelo, rapporto finale.",
+  "goalHint": "Indica cosa rivedere (cartelle, modulo, modifiche recenti come 'git diff main') e su cosa concentrarsi.",
+  "settings": { "runBudgetUsd": 2, "maxParallel": 2, "loadProjectSettings": true, "applyGeneralRules": true },
+  "nodes": [
+    { "id": "panoramica", "position": { "x": 0, "y": 120 }, "data": {
+      "label": "Panoramica", "kind": "analisi", "role": "Analista: ricostruisce struttura e responsabilità del codice da rivedere.",
+      "instructions": "Ricostruisci la struttura della parte di progetto indicata nell'obiettivo: moduli, responsabilità, dipendenze principali, punti di ingresso. Elenca i file più rilevanti per la revisione.",
+      "model": "sonnet", "allowedTools": ["Read", "Glob", "Grep"], "maxTurns": 15, "maxBudgetUsd": 0.5, "contextMode": "sintesi", "reuseResult": true } },
+    { "id": "qualita", "position": { "x": 300, "y": 40 }, "data": {
+      "label": "Qualità e correttezza", "kind": "revisione", "role": "Revisore: cerca bug, casi limite non gestiti e codice difficile da mantenere.",
+      "instructions": "Rivedi i file indicati dalla panoramica. Riporta solo problemi concreti con file e riga, gravità e correzione proposta: bug, casi limite, gestione errori, duplicazioni, nomi fuorvianti.",
+      "model": "sonnet", "allowedTools": ["Read", "Glob", "Grep"], "maxTurns": 20, "maxBudgetUsd": 0.7, "contextMode": "sintesi", "reuseResult": false } },
+    { "id": "sicurezza", "position": { "x": 300, "y": 210 }, "data": {
+      "label": "Sicurezza", "kind": "revisione", "role": "Revisore di sicurezza: cerca vulnerabilità sfruttabili, non stile.",
+      "instructions": "Rivedi i file indicati dalla panoramica cercando vulnerabilità: input non validati, injection, segreti nel codice, permessi, dipendenze a rischio. Per ognuna indica file e riga, scenario di sfruttamento e correzione.",
+      "model": "sonnet", "allowedTools": ["Read", "Glob", "Grep"], "maxTurns": 20, "maxBudgetUsd": 0.7, "contextMode": "sintesi", "reuseResult": false } },
+    { "id": "rapporto", "position": { "x": 600, "y": 120 }, "data": {
+      "label": "Rapporto", "kind": "personalizzata", "role": "Redattore: unisce i risultati in un rapporto ordinato per priorità.",
+      "instructions": "Unisci le segnalazioni delle revisioni in un unico rapporto: elimina i duplicati, ordina per gravità, e per ogni punto indica file, problema e correzione. Non leggere altri file se non per verificare un dubbio.",
+      "model": "haiku", "allowedTools": ["Read"], "maxTurns": 6, "maxBudgetUsd": 0.2, "contextMode": "completo", "reuseResult": false } }
+  ],
+  "edges": [
+    { "id": "e1", "source": "panoramica", "target": "qualita" },
+    { "id": "e2", "source": "panoramica", "target": "sicurezza" },
+    { "id": "e3", "source": "qualita", "target": "rapporto" },
+    { "id": "e4", "source": "sicurezza", "target": "rapporto" }
+  ]
+}
