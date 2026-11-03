@@ -4,37 +4,60 @@ import {
   Ban, CircleCheck, CircleDashed, CircleX, Eye, FlaskConical, Globe, Hand, Info, Loader2, OctagonPause, Recycle, Rocket, Search, Sparkles,
   TriangleAlert, Wrench, X, type LucideIcon,
 } from 'lucide-react';
-import type { NodeStatus, PhaseKind, RunStatus } from '../../shared/types.ts';
+import type { NodeStatus, PhaseKind, RunStatus, ServiceStatus } from '../../shared/types.ts';
+import { t, useI18n } from './i18n.tsx';
 
-export const KIND_META: Record<PhaseKind, { label: string; icon: LucideIcon; hint: string }> = {
-  analisi: { label: 'Analisi', icon: Search, hint: 'Legge il codice e individua cosa fare' },
-  implementazione: { label: 'Implementazione', icon: Wrench, hint: 'Modifica il codice' },
-  test: { label: 'Test', icon: FlaskConical, hint: 'Esegue i test e riporta l\'esito' },
-  revisione: { label: 'Revisione', icon: Eye, hint: 'Controlla le modifiche' },
-  approvazione: { label: 'Approvazione umana', icon: Hand, hint: 'Si ferma finché non decidi tu' },
-  server: { label: 'Server locale', icon: Globe, hint: 'Avvia l\'anteprima nel browser' },
-  personalizzata: { label: 'Personalizzata', icon: Sparkles, hint: 'Agente con istruzioni libere' },
-};
+// Etichette tradotte (chiavi in locales/<lingua>/app.json). Funzioni, non costanti: seguono la lingua corrente.
+export const kindLabel = (k: PhaseKind) => t(`kinds.${k}.label`);
+export const kindHint = (k: PhaseKind) => t(`kinds.${k}.hint`);
+export const statusLabel = (s: NodeStatus) => t(`status.${s}`);
+export const runStatusLabel = (s: RunStatus) => t(`runStatus.${s}`);
+export const serviceLabel = (s: ServiceStatus) => t(`service.${s}`);
 
-export const STATUS_META: Record<NodeStatus, { label: string; icon: LucideIcon; tone: string; spin?: boolean }> = {
-  in_attesa: { label: 'In attesa', icon: CircleDashed, tone: 'idle' },
-  attiva: { label: 'Attiva', icon: Loader2, tone: 'active', spin: true },
-  completata: { label: 'Completata', icon: CircleCheck, tone: 'good' },
-  fallita: { label: 'Fallita', icon: CircleX, tone: 'bad' },
-  bloccata: { label: 'Bloccata', icon: OctagonPause, tone: 'warn' },
-  attesa_intervento: { label: 'Attende te', icon: Hand, tone: 'warn' },
-  saltata: { label: 'Saltata', icon: Ban, tone: 'idle' },
-  riusata: { label: 'Ripresa', icon: Recycle, tone: 'reused' },
+// Le etichette restano leggibili come proprietà calcolate (deprecate) finché tutti i componenti usano le funzioni sopra.
+type Labeled<T> = T & {
+  /** @deprecated usare kindLabel / statusLabel / runStatusLabel */
+  readonly label: string;
+  /** @deprecated usare kindHint */
+  readonly hint: string;
 };
+function withLabels<K extends string, T extends object>(meta: Record<K, T>, label: (k: K) => string, hint?: (k: K) => string): Record<K, Labeled<T>> {
+  for (const k of Object.keys(meta) as K[]) {
+    Object.defineProperty(meta[k], 'label', { get: () => label(k), enumerable: true });
+    if (hint) Object.defineProperty(meta[k], 'hint', { get: () => hint(k), enumerable: true });
+  }
+  return meta as Record<K, Labeled<T>>;
+}
 
-export const RUN_STATUS_META: Record<RunStatus, { label: string; tone: string }> = {
-  in_corso: { label: 'In corso', tone: 'active' },
-  attesa_intervento: { label: 'Serve il tuo intervento', tone: 'warn' },
-  completata: { label: 'Completata', tone: 'good' },
-  fallita: { label: 'Fallita', tone: 'bad' },
-  annullata: { label: 'Annullata', tone: 'idle' },
-  interrotta: { label: 'Interrotta', tone: 'bad' },
-};
+export const KIND_META = withLabels<PhaseKind, { icon: LucideIcon }>({
+  analisi: { icon: Search },
+  implementazione: { icon: Wrench },
+  test: { icon: FlaskConical },
+  revisione: { icon: Eye },
+  approvazione: { icon: Hand },
+  server: { icon: Globe },
+  personalizzata: { icon: Sparkles },
+}, kindLabel, kindHint);
+
+export const STATUS_META = withLabels<NodeStatus, { icon: LucideIcon; tone: string; spin?: boolean }>({
+  in_attesa: { icon: CircleDashed, tone: 'idle' },
+  attiva: { icon: Loader2, tone: 'active', spin: true },
+  completata: { icon: CircleCheck, tone: 'good' },
+  fallita: { icon: CircleX, tone: 'bad' },
+  bloccata: { icon: OctagonPause, tone: 'warn' },
+  attesa_intervento: { icon: Hand, tone: 'warn' },
+  saltata: { icon: Ban, tone: 'idle' },
+  riusata: { icon: Recycle, tone: 'reused' },
+}, statusLabel);
+
+export const RUN_STATUS_META = withLabels<RunStatus, { tone: string }>({
+  in_corso: { tone: 'active' },
+  attesa_intervento: { tone: 'warn' },
+  completata: { tone: 'good' },
+  fallita: { tone: 'bad' },
+  annullata: { tone: 'idle' },
+  interrotta: { tone: 'bad' },
+}, runStatusLabel);
 
 export function KindTile({ kind, size = 'md' }: { kind: PhaseKind; size?: 'sm' | 'md' | 'lg' }) {
   const Icon = KIND_META[kind].icon;
@@ -42,11 +65,13 @@ export function KindTile({ kind, size = 'md' }: { kind: PhaseKind; size?: 'sm' |
 }
 
 export function StatusPill({ status, compact = false }: { status: NodeStatus; compact?: boolean }) {
+  useI18n();
   const m = STATUS_META[status];
   const Icon = m.icon;
+  const label = statusLabel(status);
   return (
-    <span className={`pill tone-${m.tone}`} title={m.label}>
-      <Icon className={m.spin ? 'spin' : ''} />{!compact && m.label}
+    <span className={`pill tone-${m.tone}`} title={label}>
+      <Icon className={m.spin ? 'spin' : ''} />{!compact && label}
     </span>
   );
 }
@@ -69,16 +94,17 @@ function dismiss(id: number) {
   listeners.forEach((l) => l(toasts));
 }
 export function Toasts() {
+  const { t } = useI18n();
   const [list, setList] = useState<Toast[]>(toasts);
   useEffect(() => { listeners.add(setList); return () => { listeners.delete(setList); }; }, []);
   return (
     <div className="toasts" role="status" aria-live="polite">
-      {list.map((t) => {
-        const Icon = t.tone === 'bad' ? TriangleAlert : t.tone === 'good' ? CircleCheck : Info;
+      {list.map((item) => {
+        const Icon = item.tone === 'bad' ? TriangleAlert : item.tone === 'good' ? CircleCheck : Info;
         return (
-          <div key={t.id} className={`toast tone-${t.tone}`}>
-            <Icon /><span>{t.text}</span>
-            <button className="icon-btn ghost" onClick={() => dismiss(t.id)} aria-label="Chiudi"><X /></button>
+          <div key={item.id} className={`toast tone-${item.tone}`}>
+            <Icon /><span>{item.text}</span>
+            <button className="icon-btn ghost" onClick={() => dismiss(item.id)} aria-label={t('common.close')}><X /></button>
           </div>
         );
       })}
@@ -88,6 +114,7 @@ export function Toasts() {
 
 // ---------- Componenti ----------
 export function Modal({ title, icon, onClose, children, footer, wide = false }: { title: string; icon?: ReactNode; onClose: () => void; children: ReactNode; footer?: ReactNode; wide?: boolean }) {
+  const { t } = useI18n();
   useEffect(() => {
     const k = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
     window.addEventListener('keydown', k);
@@ -98,7 +125,7 @@ export function Modal({ title, icon, onClose, children, footer, wide = false }: 
       <div className={`modal ${wide ? 'wide' : ''}`} onMouseDown={(e) => e.stopPropagation()} role="dialog" aria-label={title}>
         <header className="modal-head">
           {icon}<h2>{title}</h2>
-          <button className="icon-btn ghost" onClick={onClose} aria-label="Chiudi"><X /></button>
+          <button className="icon-btn ghost" onClick={onClose} aria-label={t('common.close')}><X /></button>
         </header>
         <div className="modal-body">{children}</div>
         {footer && <footer className="modal-foot">{footer}</footer>}

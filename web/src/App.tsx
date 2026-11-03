@@ -1,26 +1,28 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ReactFlowProvider } from '@xyflow/react';
 import {
-  Activity, ChevronDown, CircleAlert, CircleCheck, FilePlus2, FlaskConical, GitCompare, KeyRound, PenLine, Play, Rocket, Save, ScrollText, ShieldAlert,
+  Activity, Check, ChevronDown, CircleAlert, CircleCheck, FilePlus2, FlaskConical, GitCompare, KeyRound, Languages, PenLine, Play, Rocket, Save, ScrollText, ShieldAlert,
   Trash2, TriangleAlert, Workflow as WorkflowIcon,
 } from 'lucide-react';
 import {
-  PHASE_PRESETS, PHASE_SNIPPETS, WRITE_TOOLS, isAgentKind, type EnvInfo, type PhaseConfig, type PhaseKind, type Run, type RunSummary, type ValidationIssue, type Workflow,
+  WRITE_TOOLS, isAgentKind, type EnvInfo, type PhaseConfig, type PhaseKind, type Run, type RunSummary, type ValidationIssue, type Workflow,
 } from '../../shared/types.ts';
 import { NODE_H, looksHorizontal, withLayout } from '../../shared/layout.ts';
+import { phasePreset, phaseSnippets } from '../../shared/presets.ts';
 import { api, fmtTime, fmtUsd } from './api.ts';
+import { useI18n } from './i18n.tsx';
 import { Canvas } from './components/Canvas.tsx';
 import { Compare } from './components/Compare.tsx';
 import { PhaseInspector, WorkflowSettingsForm } from './components/Inspector.tsx';
 import { RunPanel } from './components/RunPanel.tsx';
 import { ContinueDialog, FolderStatus, NewWorkflowDialog, RulesDialog } from './components/Setup.tsx';
-import { KIND_META, KindTile, Modal, Toasts, toast } from './ui.tsx';
+import { KindTile, Modal, Toasts, kindHint, kindLabel, toast } from './ui.tsx';
 
 type View = 'editor' | 'run' | 'compare';
 
-const PALETTE: { title: string; kinds: PhaseKind[] }[] = [
-  { title: 'Agenti', kinds: ['analisi', 'implementazione', 'test', 'revisione', 'personalizzata'] },
-  { title: 'Controllo', kinds: ['approvazione', 'server'] },
+const PALETTE: { titleKey: string; kinds: PhaseKind[] }[] = [
+  { titleKey: 'palette.agents', kinds: ['analisi', 'implementazione', 'test', 'revisione', 'personalizzata'] },
+  { titleKey: 'palette.control', kinds: ['approvazione', 'server'] },
 ];
 
 /** Popover semplice che si chiude con un clic fuori o Esc. */
@@ -38,7 +40,33 @@ function usePopover() {
   return { open, setOpen, ref };
 }
 
+/** Scelta della lingua dell'interfaccia. */
+function LanguageSwitch() {
+  const { t, lang, languages, setLang } = useI18n();
+  const pop = usePopover();
+  if (languages.length < 2) return null;
+  return (
+    <div className="popover-wrap" ref={pop.ref}>
+      <button className="icon-btn" onClick={() => pop.setOpen(!pop.open)} aria-expanded={pop.open} aria-haspopup="menu" title={t('topbar.language')} aria-label={t('topbar.language')}>
+        <Languages />
+      </button>
+      {pop.open && (
+        <div className="popover menu lang-pop" role="menu">
+          <div className="menu-label">{t('topbar.language')}</div>
+          {languages.map((l) => (
+            <button key={l.code} role="menuitemradio" aria-checked={l.code === lang} lang={l.code} className={`menu-item ${l.code === lang ? 'on' : ''}`}
+              onClick={() => { pop.setOpen(false); if (l.code !== lang) setLang(l.code); }}>
+              <span className="menu-main">{l.name}</span>{l.code === lang && <Check />}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function App() {
+  const { t, tm } = useI18n();
   const [env, setEnv] = useState<EnvInfo | null>(null);
   const [workflows, setWorkflows] = useState<Workflow[]>([]);
   const [wf, setWf] = useState<Workflow | null>(null);
@@ -66,7 +94,7 @@ export function App() {
     // I diagrammi salvati da sinistra a destra vengono ridisposti dall'alto verso il basso (da salvare).
     if (w && looksHorizontal(w.nodes, w.edges)) {
       setWf({ ...w, nodes: withLayout(w.nodes, w.edges) });
-      toast('Diagramma ridisposto dall\'alto verso il basso: salva per mantenere la nuova disposizione.');
+      toast(t('toast.relayouted'));
     } else setWf(w);
     setSelected(null);
   }, []);
@@ -83,8 +111,8 @@ export function App() {
   useEffect(() => { setIssues([]); }, [wf?.id]);
   useEffect(() => {
     if (!wf) return;
-    const t = setTimeout(() => api.validate(wf, 'prova').then(setIssues).catch(() => undefined), 300);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => api.validate(wf, 'prova').then(setIssues).catch(() => undefined), 300);
+    return () => clearTimeout(timer);
   }, [wf]);
 
   useEffect(() => {
@@ -93,7 +121,7 @@ export function App() {
     return () => window.removeEventListener('keydown', onKey);
   });
 
-  const confirmDiscard = () => !dirty || confirm('Ci sono modifiche non salvate. Continuare e perderle?');
+  const confirmDiscard = () => !dirty || confirm(t('app.confirmDiscard'));
 
   async function save() {
     if (!wf || !dirty) return;
@@ -101,7 +129,7 @@ export function App() {
       const s = await api.saveWorkflow(wf);
       setWf(s); setSaved(JSON.stringify(s));
       setWorkflows((l) => l.map((x) => (x.id === s.id ? s : x)));
-      toast('Workflow salvato', 'good');
+      toast(t('toast.saved'), 'good');
     } catch (e) { toast((e as Error).message, 'bad'); }
   }
 
@@ -134,7 +162,7 @@ export function App() {
       const { id } = await api.startRun(wf.id, mode, mode === 'reale');
       setRealDialog(false);
       openRun(id);
-      toast(mode === 'prova' ? 'Esecuzione di prova avviata' : 'Esecuzione reale avviata', 'good');
+      toast(mode === 'prova' ? t('toast.testStarted') : t('toast.realStarted'), 'good');
     } catch (e) {
       const err = e as Error & { issues?: ValidationIssue[] };
       if (err.issues) setIssues(err.issues);
@@ -144,7 +172,7 @@ export function App() {
 
   function addPhase(kind: PhaseKind, data?: PhaseConfig, at?: { x: number; y: number }) {
     if (!wf) return;
-    const preset = data ?? PHASE_PRESETS[kind];
+    const preset = data ?? phasePreset(kind, t);
     const id = `${kind.slice(0, 4)}_${Math.random().toString(36).slice(2, 7)}`;
     const after = at ? undefined : wf.nodes.find((n) => n.id === selected);
     const lowest = wf.nodes.reduce<typeof wf.nodes[number] | undefined>((m, n) => (!m || n.position.y > m.position.y ? n : m), undefined);
@@ -161,7 +189,7 @@ export function App() {
   function onDropPhase(payload: string, at: { x: number; y: number }) {
     const [type, key] = payload.split(':');
     if (type === 'kind') addPhase(key as PhaseKind, undefined, at);
-    else { const s = PHASE_SNIPPETS.find((x) => x.id === key); if (s) addPhase(s.data.kind, s.data, at); }
+    else { const s = phaseSnippets(t).find((x) => x.id === key); if (s) addPhase(s.data.kind, s.data, at); }
   }
 
   async function onCreated(id: string) {
@@ -169,12 +197,12 @@ export function App() {
     setView('editor');
     setRun(null);
     await loadWorkflows(id);
-    toast('Workflow creato. Controlla le fasi, poi prova con "Prova".', 'good');
+    toast(t('toast.created'), 'good');
   }
 
   async function removeWorkflow() {
     wfMenu.setOpen(false);
-    if (!wf || !confirm(`Eliminare il workflow "${wf.name}"? Le esecuzioni salvate restano.`)) return;
+    if (!wf || !confirm(t('app.confirmDelete', { name: wf.name }))) return;
     await api.deleteWorkflow(wf.id);
     setRun(null);
     setView('editor');
@@ -194,14 +222,14 @@ export function App() {
   const sortedIssues = useMemo(() => [...issues].sort((a, b) => (a.level === b.level ? 0 : a.level === 'errore' ? -1 : 1)), [issues]);
   const liveRun = run && (run.status === 'in_corso' || run.status === 'attesa_intervento') && run.workflowId === wf?.id;
 
-  if (!loaded) return <div className="boot">{loadError ? `Errore: ${loadError}` : <span className="brand-mark"><WorkflowIcon /></span>}</div>;
+  if (!loaded) return <div className="boot">{loadError ? t('app.loadError', { message: loadError }) : <span className="brand-mark"><WorkflowIcon /></span>}</div>;
 
   const brand = <div className="brand"><span className="brand-mark" aria-hidden><WorkflowIcon /></span><span>Regia</span></div>;
 
   if (!wf || !shownWf) {
     return (
       <div className="app">
-        <header className="topbar simple">{brand}<span className="grow" /><button className="btn ghost" onClick={() => setRulesDialog(true)}><ScrollText />Regole</button></header>
+        <header className="topbar simple">{brand}<span className="grow" /><LanguageSwitch /><button className="btn ghost" onClick={() => setRulesDialog(true)}><ScrollText />{t('topbar.rules')}</button></header>
         <NewWorkflowDialog inline onCreated={onCreated} />
         {rulesDialog && <RulesDialog onClose={() => setRulesDialog(false)} />}
         <Toasts />
@@ -217,85 +245,86 @@ export function App() {
           <span className="tb-divider" />
           <div className="popover-wrap" ref={wfMenu.ref}>
             <button className="wf-switch" onClick={() => wfMenu.setOpen(!wfMenu.open)} aria-expanded={wfMenu.open} aria-haspopup="menu">
-              <span className="wf-name">{wf.name || 'Senza nome'}</span><ChevronDown />
+              <span className="wf-name">{wf.name || t('common.untitled')}</span><ChevronDown />
             </button>
             {wfMenu.open && (
               <div className="popover menu" role="menu">
-                <div className="menu-label">Workflow</div>
+                <div className="menu-label">{t('topbar.workflows')}</div>
                 {workflows.map((w) => (
                   <button key={w.id} role="menuitem" className={`menu-item ${w.id === wf.id ? 'on' : ''}`} onClick={() => switchWorkflow(w)}>
-                    <span className="menu-main">{w.name}</span><span className="menu-sub">{w.nodes.length} fasi · {fmtTime(w.updatedAt)}</span>
+                    <span className="menu-main">{w.name}</span><span className="menu-sub">{t('topbar.phases', { count: w.nodes.length })} · {fmtTime(w.updatedAt)}</span>
                   </button>
                 ))}
                 <div className="menu-sep" />
-                <button role="menuitem" className="menu-item" onClick={() => { wfMenu.setOpen(false); if (confirmDiscard()) setNewDialog(true); }}><FilePlus2 />Nuovo workflow…</button>
-                <button role="menuitem" className="menu-item danger" onClick={removeWorkflow}><Trash2 />Elimina questo workflow</button>
+                <button role="menuitem" className="menu-item" onClick={() => { wfMenu.setOpen(false); if (confirmDiscard()) setNewDialog(true); }}><FilePlus2 />{t('topbar.newWorkflow')}</button>
+                <button role="menuitem" className="menu-item danger" onClick={removeWorkflow}><Trash2 />{t('topbar.deleteWorkflow')}</button>
               </div>
             )}
           </div>
           {dirty
-            ? <button className="btn sm soft" onClick={save} title="Salva (Ctrl+S)"><Save />Salva</button>
-            : <span className="save-state"><CircleCheck />Salvato</span>}
+            ? <button className="btn sm soft" onClick={save} title={t('topbar.saveTitle')}><Save />{t('topbar.save')}</button>
+            : <span className="save-state"><CircleCheck />{t('topbar.saved')}</span>}
         </div>
 
-        <nav className="seg" aria-label="Vista">
-          <button className={view === 'editor' ? 'on' : ''} onClick={() => setView('editor')}><PenLine />Editor</button>
+        <nav className="seg" aria-label={t('topbar.view')}>
+          <button className={view === 'editor' ? 'on' : ''} onClick={() => setView('editor')}><PenLine />{t('topbar.editor')}</button>
           <button className={view === 'run' ? 'on' : ''} disabled={!run && runs.length === 0}
-            title={runs.length || run ? undefined : 'Nessuna esecuzione per questo workflow'}
+            title={runs.length || run ? undefined : t('topbar.noRuns')}
             onClick={() => (run && run.workflowId === wf.id ? setView('run') : runs[0] && openRun(runs[0].id))}>
-            <Activity />Esecuzione{liveRun && <span className="dot pulse live-dot" />}
+            <Activity />{t('topbar.run')}{liveRun && <span className="dot pulse live-dot" />}
           </button>
-          <button className={view === 'compare' ? 'on' : ''} disabled={runs.length < 2} title={runs.length < 2 ? 'Servono almeno due esecuzioni' : undefined} onClick={() => setView('compare')}><GitCompare />Confronta</button>
+          <button className={view === 'compare' ? 'on' : ''} disabled={runs.length < 2} title={runs.length < 2 ? t('topbar.needTwoRuns') : undefined} onClick={() => setView('compare')}><GitCompare />{t('topbar.compare')}</button>
         </nav>
 
         <div className="tb-right">
           <div className="popover-wrap" ref={issuesPop.ref}>
             <button className={`validity ${errCount ? 'tone-bad' : warnCount ? 'tone-warn' : 'tone-good'}`} onClick={() => issuesPop.setOpen(!issuesPop.open)} aria-expanded={issuesPop.open}>
               {errCount ? <CircleAlert /> : warnCount ? <TriangleAlert /> : <CircleCheck />}
-              {errCount ? `${errCount} ${errCount === 1 ? 'errore' : 'errori'}` : 'Valido'}{warnCount ? <span className="muted">· {warnCount} avvisi</span> : null}
+              {errCount ? t('topbar.errors', { count: errCount }) : t('topbar.valid')}{warnCount ? <span className="muted">· {t('topbar.warnings', { count: warnCount })}</span> : null}
             </button>
             {issuesPop.open && (
               <div className="popover issues-pop">
-                <div className="menu-label">Controllo del workflow</div>
-                {sortedIssues.length === 0 && <p className="muted small pad">Nessun problema: puoi avviare.</p>}
+                <div className="menu-label">{t('topbar.checkTitle')}</div>
+                {sortedIssues.length === 0 && <p className="muted small pad">{t('topbar.noIssues')}</p>}
                 {sortedIssues.map((i, k) => (
                   <button key={k} className={`issue-row tone-${i.level === 'errore' ? 'bad' : 'warn'}`} onClick={() => { if (i.nodeId) { setView('editor'); setSelected(i.nodeId); } issuesPop.setOpen(false); }}>
-                    {i.level === 'errore' ? <CircleAlert /> : <TriangleAlert />}<span>{i.message}</span>
+                    {i.level === 'errore' ? <CircleAlert /> : <TriangleAlert />}<span>{tm(i.msg, i.message)}</span>
                   </button>
                 ))}
               </div>
             )}
           </div>
-          <button className="icon-btn" onClick={() => setRulesDialog(true)} title="Regole generali" aria-label="Regole generali"><ScrollText /></button>
-          <button className="btn" disabled={busy || errCount > 0} onClick={() => start('prova')} title="Agenti simulati: nessuna chiamata, nessun costo"><FlaskConical />Prova</button>
-          <button className="btn primary" disabled={busy || errCount > 0 || !env?.realRunsEnabled} onClick={() => { api.env(true).then(setEnv); setRealDialog(true); }}><Rocket />Esegui</button>
+          <LanguageSwitch />
+          <button className="icon-btn" onClick={() => setRulesDialog(true)} title={t('topbar.rulesTitle')} aria-label={t('topbar.rulesTitle')}><ScrollText /></button>
+          <button className="btn" disabled={busy || errCount > 0} onClick={() => start('prova')} title={t('topbar.testTitle')}><FlaskConical />{t('topbar.test')}</button>
+          <button className="btn primary" disabled={busy || errCount > 0 || !env?.realRunsEnabled} onClick={() => { api.env(true).then(setEnv); setRealDialog(true); }}><Rocket />{t('topbar.runReal')}</button>
         </div>
       </header>
 
       <div className={`main view-${view}`}>
         {view === 'editor' && (
-          <aside className="palette" aria-label="Fasi disponibili">
+          <aside className="palette" aria-label={t('palette.label')}>
             {PALETTE.map((g) => (
-              <div key={g.title} className="pal-group">
-                <div className="pal-title">{g.title}</div>
+              <div key={g.titleKey} className="pal-group">
+                <div className="pal-title">{t(g.titleKey)}</div>
                 {g.kinds.map((k) => (
                   <button key={k} className="pal-item" draggable onDragStart={(e) => { e.dataTransfer.setData('application/regia-phase', `kind:${k}`); e.dataTransfer.effectAllowed = 'copy'; }}
-                    onClick={() => addPhase(k)} title="Trascina sul diagramma o fai clic per aggiungere">
-                    <KindTile kind={k} /><span className="pal-text"><span>{KIND_META[k].label}</span><small>{KIND_META[k].hint}</small></span>
+                    onClick={() => addPhase(k)} title={t('palette.itemTitle')}>
+                    <KindTile kind={k} /><span className="pal-text"><span>{kindLabel(k)}</span><small>{kindHint(k)}</small></span>
                   </button>
                 ))}
               </div>
             ))}
             <div className="pal-group">
-              <div className="pal-title">Pronte all'uso</div>
-              {PHASE_SNIPPETS.map((s) => (
+              <div className="pal-title">{t('palette.ready')}</div>
+              {phaseSnippets(t).map((s) => (
                 <button key={s.id} className="pal-item" draggable onDragStart={(e) => { e.dataTransfer.setData('application/regia-phase', `snippet:${s.id}`); e.dataTransfer.effectAllowed = 'copy'; }}
                   onClick={() => addPhase(s.data.kind, s.data)} title={s.hint}>
-                  <span className="kind-tile kind-publish" aria-hidden><Rocket /></span><span className="pal-text"><span>{s.label}</span><small>Commit, push e pubblicazioni</small></span>
+                  <span className="kind-tile kind-publish" aria-hidden><Rocket /></span><span className="pal-text"><span>{s.label}</span><small>{t('palette.publishSub')}</small></span>
                 </button>
               ))}
             </div>
-            <p className="pal-hint">Trascina una fase sul diagramma, oppure selezionane una e fai clic qui: la nuova viene collegata dopo.</p>
+            <p className="pal-hint">{t('palette.hint')}</p>
           </aside>
         )}
 
@@ -346,6 +375,7 @@ export function App() {
 
 function RealRunDialog({ env, wf, busy, onCancel, onConfirm }: { env: EnvInfo | null; wf: Workflow; busy: boolean; onCancel: () => void; onConfirm: () => void }) {
   const [ok, setOk] = useState(false);
+  const { t, tm } = useI18n();
   const [warn, setWarn] = useState<ValidationIssue[]>([]);
   useEffect(() => { api.validate(wf, 'reale').then((i) => setWarn(i)); }, [wf]);
   const a = env?.auth;
@@ -353,37 +383,37 @@ function RealRunDialog({ env, wf, busy, onCancel, onConfirm }: { env: EnvInfo | 
   const servers = wf.nodes.filter((n) => n.data.kind === 'server');
   const writers = agents.filter((n) => n.data.allowedTools.some((t) => WRITE_TOOLS.includes(t)));
   const subscription = a?.authMethod === 'claude.ai' && !a.apiKeyEnv;
-  const models = [...new Set(agents.map((n) => n.data.model || 'predefinito'))];
+  const models = [...new Set(agents.map((n) => n.data.model || t('common.defaultModel')))];
   const canStart = ok && !busy && a && (a.loggedIn || a.apiKeyEnv) && !warn.some((i) => i.level === 'errore');
   return (
-    <Modal title="Esecuzione reale" icon={<span className="kind-tile kind-publish"><Rocket /></span>} onClose={onCancel} wide
+    <Modal title={t('realRun.title')} icon={<span className="kind-tile kind-publish"><Rocket /></span>} onClose={onCancel} wide
       footer={<>
-        <label className="check grow"><input type="checkbox" checked={ok} onChange={(e) => setOk(e.target.checked)} />Ho letto il riepilogo e voglio avviare</label>
-        <button className="btn ghost" onClick={onCancel}>Annulla</button>
-        <button className="btn primary" disabled={!canStart} onClick={onConfirm}><Play />Avvia</button>
+        <label className="check grow"><input type="checkbox" checked={ok} onChange={(e) => setOk(e.target.checked)} />{t('realRun.confirm')}</label>
+        <button className="btn ghost" onClick={onCancel}>{t('common.cancel')}</button>
+        <button className="btn primary" disabled={!canStart} onClick={onConfirm}><Play />{t('common.start')}</button>
       </>}>
       <div className="summary-grid">
         <div className="summary-card">
-          <div className="summary-head"><KeyRound />Autenticazione</div>
-          {!env ? <p className="muted">Verifica…</p> : (
+          <div className="summary-head"><KeyRound />{t('realRun.auth')}</div>
+          {!env ? <p className="muted">{t('realRun.checking')}</p> : (
             <dl className="kv">
-              <dt>Accesso</dt><dd>{a?.apiKeyEnv ? 'Chiave API (ANTHROPIC_API_KEY)' : a?.loggedIn ? `Login ${a.authMethod}${a.subscriptionType ? `, piano ${a.subscriptionType}` : ''}` : <span className="tone-bad">nessuno</span>}</dd>
-              <dt>Claude Code</dt><dd>{env.claudeCodeVersion ?? 'eseguibile del SDK'}</dd>
+              <dt>{t('realRun.access')}</dt><dd>{a?.apiKeyEnv ? t('realRun.apiKey') : a?.loggedIn ? `${t('realRun.login', { method: a.authMethod })}${a.subscriptionType ? t('realRun.plan', { plan: a.subscriptionType }) : ''}` : <span className="tone-bad">{t('realRun.none')}</span>}</dd>
+              <dt>Claude Code</dt><dd>{env.claudeCodeVersion ?? t('realRun.sdkExecutable')}</dd>
               <dt>Agent SDK</dt><dd>{env.sdkVersion}</dd>
             </dl>
           )}
         </div>
         <div className="summary-card">
-          <div className="summary-head"><WorkflowIcon />Cosa succederà</div>
+          <div className="summary-head"><WorkflowIcon />{t('realRun.whatHappens')}</div>
           <dl className="kv">
-            <dt>Fasi con agenti</dt><dd>{agents.length} · {models.join(', ')}</dd>
-            <dt>Spesa massima</dt><dd>{wf.settings.runBudgetUsd ? fmtUsd(wf.settings.runBudgetUsd, 2) : <span className="tone-warn">nessun limite</span>}</dd>
-            <dt>Regole generali</dt><dd>{wf.settings.applyGeneralRules === false ? 'non applicate' : 'applicate a ogni fase'}</dd>
+            <dt>{t('realRun.agentPhases')}</dt><dd>{agents.length} · {models.join(', ')}</dd>
+            <dt>{t('realRun.maxSpend')}</dt><dd>{wf.settings.runBudgetUsd ? fmtUsd(wf.settings.runBudgetUsd, 2) : <span className="tone-warn">{t('realRun.noLimit')}</span>}</dd>
+            <dt>{t('realRun.generalRules')}</dt><dd>{wf.settings.applyGeneralRules === false ? t('realRun.rulesOff') : t('realRun.rulesOn')}</dd>
           </dl>
         </div>
       </div>
 
-      <div className="field-label">Cartella di lavoro</div>
+      <div className="field-label">{t('realRun.workdir')}</div>
       <code className="path">{wf.settings.projectDir}</code>
       <FolderStatus path={wf.settings.projectDir} />
 
@@ -391,19 +421,19 @@ function RealRunDialog({ env, wf, busy, onCancel, onConfirm }: { env: EnvInfo | 
         <div className="callout tone-warn">
           <ShieldAlert />
           <div>
-            {writers.length > 0 && <p><strong>Possono modificare file o eseguire comandi:</strong> {writers.map((n) => n.data.label).join(', ')}. Gli strumenti non concessi vengono negati.</p>}
-            {servers.length > 0 && <p><strong>Comandi locali avviati da Regia:</strong> {servers.map((n) => <code key={n.id}>{n.data.command}</code>)}</p>}
+            {writers.length > 0 && <p><strong>{t('realRun.writersTitle')}</strong> {t('realRun.writersText', { list: writers.map((n) => n.data.label).join(', ') })}</p>}
+            {servers.length > 0 && <p><strong>{t('realRun.serversTitle')}</strong> {servers.map((n) => <code key={n.id}>{n.data.command}</code>)}</p>}
           </div>
         </div>
       )}
       {subscription && (
         <div className="callout tone-info">
           <KeyRound />
-          <p>Il consumo rientra nei limiti del tuo piano {a?.subscriptionType} (e nei crediti extra solo se attivi): i dollari mostrati sono un equivalente a prezzi di listino calcolato dal SDK. La documentazione del SDK chiede ai prodotti di terze parti di usare chiavi API: per uso personale e locale il login funziona, ma verifica le regole della tua organizzazione.</p>
+          <p>{t('realRun.subscription', { plan: a?.subscriptionType })}</p>
         </div>
       )}
-      {a?.apiKeyEnv && <div className="callout tone-info"><KeyRound /><p>Con la chiave API il consumo è fatturato a token: il costo effettivo si verifica nella Console.</p></div>}
-      {warn.map((i, k) => <div key={k} className={`callout ${i.level === 'errore' ? 'tone-bad' : 'tone-warn'}`}>{i.level === 'errore' ? <CircleAlert /> : <TriangleAlert />}<span>{i.message}</span></div>)}
+      {a?.apiKeyEnv && <div className="callout tone-info"><KeyRound /><p>{t('realRun.apiKeyNote')}</p></div>}
+      {warn.map((i, k) => <div key={k} className={`callout ${i.level === 'errore' ? 'tone-bad' : 'tone-warn'}`}>{i.level === 'errore' ? <CircleAlert /> : <TriangleAlert />}<span>{tm(i.msg, i.message)}</span></div>)}
     </Modal>
   );
 }

@@ -1,0 +1,154 @@
+{
+  "validate": {
+    "noName": "The workflow has no name.",
+    "empty": "The diagram is empty: add at least one phase.",
+    "duplicateId": "Duplicate phase identifier: {id}",
+    "duplicateLabel": "Several phases are named \"{label}\": they will be hard to tell apart in the events panel.",
+    "edgeMissingNode": "Connection {id} points to a phase that does not exist.",
+    "selfLoop": "A phase is connected to itself.",
+    "duplicateEdge": "Duplicate connection between the same phases.",
+    "cycle": "The diagram contains a cycle: phases must form an acyclic graph.",
+    "noProjectDir": "Project folder not set (Workflow settings).",
+    "projectDirNotAbsolute": "The project folder must be an absolute path.",
+    "projectDirMissing": "The project folder does not exist: {dir}",
+    "runBudgetInvalid": "The spending limit per run must be greater than zero.",
+    "noRunBudget": "No spending limit per run: setting one before a real run is recommended.",
+    "maxParallelRange": "Parallel phases must be between 1 and 8.",
+    "phaseNoName": "Phase without a name.",
+    "notConnected": "Phase \"{name}\" is not connected to any other phase.",
+    "serverNoCommand": "Phase \"{name}\" has no command to start.",
+    "invalidUrl": "Invalid URL in \"{name}\" (e.g. http://localhost:5173).",
+    "subdirNotRelative": "The subfolder of \"{name}\" must be a relative path inside the project.",
+    "invalidNodeVersion": "Invalid Node version in \"{name}\" (e.g. 24, 22.23, >=22.23.4).",
+    "readyTimeoutRange": "The wait time of \"{name}\" must be between 5 and 900 seconds.",
+    "serverNoSuccessor": "Server \"{name}\" has no following phases: it will be stopped as soon as the run ends. Add an approval after it to have time to check it.",
+    "approvalNoPredecessor": "Approval \"{name}\" must have at least one previous phase to approve.",
+    "noInstructions": "Phase \"{name}\" has no instructions.",
+    "noTools": "Phase \"{name}\" has no tools: it can only reply with text.",
+    "unknownTool": "Unknown tool \"{tool}\" in \"{name}\".",
+    "readOnlyKindWrites": {
+      "analisi": "Phase \"{name}\" is an analysis phase but can modify files or run commands.",
+      "revisione": "Phase \"{name}\" is a review phase but can modify files or run commands."
+    },
+    "invalidMaxTurns": "Invalid maximum number of turns in \"{name}\".",
+    "noMaxTurns": "Phase \"{name}\" has no turn limit.",
+    "invalidBudget": "Invalid spending limit in \"{name}\".",
+    "invalidModel": "Invalid model name in \"{name}\"."
+  },
+  "insights": {
+    "corrections": {
+      "title": {
+        "one": "{count} correction round requested at approval",
+        "other": "{count} correction rounds requested at approval"
+      },
+      "evidence": "Estimated cost of the redone steps: {cost}. Phases involved: {phases}.",
+      "evidenceSim": "Estimated cost of the redone steps: {cost} (simulated data). Phases involved: {phases}.",
+      "evidenceShare": "Estimated cost of the redone steps: {cost} ({pct} of the total). Phases involved: {phases}.",
+      "evidenceShareSim": "Estimated cost of the redone steps: {cost} ({pct} of the total, simulated data). Phases involved: {phases}.",
+      "suggestion": "Add the criteria you used to reject the work to the instructions of the implementation phase, or add an automatic review focused on those criteria before the approval.",
+      "tradeoff": "Stricter criteria make the instructions longer (more input on every call), and an extra review costs money even when the work is already correct."
+    },
+    "top": {
+      "title": "\"{phase}\" accounts for {pct} of the estimated spend",
+      "evidence": "{cost} out of {total}; input+cache {context} tokens, output {output}.",
+      "evidenceSim": "{cost} out of {total} (simulated data); input+cache {context} tokens, output {output}.",
+      "suggestion": "This is the phase where a change has the most effect: see the specific suggestions for this phase below.",
+      "tradeoff": "None in itself: it is an indication of priority."
+    },
+    "model": {
+      "title": "\"{phase}\": try a cheaper model ({model})",
+      "evidence": {
+        "test": "Test phase, model {models}; {cost} ({pct} of the total).",
+        "testSim": "Test phase, model {models}; {cost} ({pct} of the total, simulated data).",
+        "testRo": "Test phase with no write tools, model {models}; {cost} ({pct} of the total).",
+        "testRoSim": "Test phase with no write tools, model {models}; {cost} ({pct} of the total, simulated data).",
+        "revisione": "Review phase, model {models}; {cost} ({pct} of the total).",
+        "revisioneSim": "Review phase, model {models}; {cost} ({pct} of the total, simulated data).",
+        "revisioneRo": "Review phase with no write tools, model {models}; {cost} ({pct} of the total).",
+        "revisioneRoSim": "Review phase with no write tools, model {models}; {cost} ({pct} of the total, simulated data).",
+        "analisi": "Analysis phase, model {models}; {cost} ({pct} of the total).",
+        "analisiSim": "Analysis phase, model {models}; {cost} ({pct} of the total, simulated data).",
+        "analisiRo": "Analysis phase with no write tools, model {models}; {cost} ({pct} of the total).",
+        "analisiRoSim": "Analysis phase with no write tools, model {models}; {cost} ({pct} of the total, simulated data)."
+      },
+      "suggestion": "Set the model \"{model}\" for this phase and compare the two runs (outcome, decisions, timing).",
+      "tradeoff": {
+        "test": "Running the tests and reporting the outcome takes little reasoning, but the diagnosis of why something failed may be less precise.",
+        "revisione": "A review with a smaller model may miss subtle problems (logic, edge cases). Keep the current model if this review is your main quality check.",
+        "analisi": "The analysis may be less thorough and point out fewer files or causes: check that the next phase does not have to redo the work."
+      }
+    },
+    "ctx": {
+      "title": {
+        "relHigh": "\"{phase}\": much more context than the other phases",
+        "fullCtx": "\"{phase}\": receives the full text of the previous phases"
+      },
+      "evidence": {
+        "base": "{context} input/cache tokens versus {output} output tokens.",
+        "baseSim": "{context} input/cache tokens versus {output} output tokens (simulated data).",
+        "ratio": "{context} input/cache tokens ({ratio}× the median of the phases) versus {output} output tokens.",
+        "ratioSim": "{context} input/cache tokens ({ratio}× the median of the phases) versus {output} output tokens (simulated data)."
+      },
+      "suggestion": {
+        "base": "Name the files or folders to look at in the instructions, so the agent reads less.",
+        "baseProjectSettings": "Name the files or folders to look at in the instructions, so the agent reads less. If the project's CLAUDE.md is long and not needed for this phase, consider not loading it.",
+        "full": "Pass the results of the previous phases in \"summary\" mode instead of \"full\". Name the files or folders to look at in the instructions, so the agent reads less.",
+        "fullProjectSettings": "Pass the results of the previous phases in \"summary\" mode instead of \"full\". Name the files or folders to look at in the instructions, so the agent reads less. If the project's CLAUDE.md is long and not needed for this phase, consider not loading it."
+      },
+      "tradeoff": "With less context the agent may miss useful information and make mistakes or need another pass: narrow it down gradually."
+    },
+    "rep": {
+      "title": "\"{phase}\": repeated identical calls",
+      "evidence": {
+        "one": "{calls} with the same parameters.",
+        "other": "{calls}, each with the same parameters."
+      },
+      "suggestion": "Ask in the instructions not to re-read files that have already been read unless they changed, and to summarize what is needed; set a suitable turn limit.",
+      "tradeoff": "Re-reading a file after a change can be legitimate (verification): do not forbid it entirely."
+    },
+    "turns": {
+      "title": "\"{phase}\": close to the turn limit",
+      "evidence": "Turns used: {used} out of a maximum of {max}.",
+      "suggestion": "Split the task into two smaller phases or make the instructions more specific, instead of just raising the limit.",
+      "tradeoff": "More phases mean more session starts and reloaded context: worth it only if the steps are truly separable."
+    },
+    "retry": {
+      "title": {
+        "one": "\"{phase}\": {count} extra attempt after errors or blocks",
+        "other": "\"{phase}\": {count} extra attempts after errors or blocks"
+      },
+      "evidence": "Estimated cost of the extra attempts: {cost}.",
+      "evidenceSim": "Estimated cost of the extra attempts: {cost} (simulated data).",
+      "evidenceCauses": "Estimated cost of the extra attempts: {cost}. Causes: {causes}.",
+      "evidenceCausesSim": "Estimated cost of the extra attempts: {cost} (simulated data). Causes: {causes}.",
+      "suggestion": "If the cause recurs (turn or spending limit, missing tool, missing information), fix the configuration instead of retrying; \"Resume the session\" reuses the context already built instead of starting over.",
+      "tradeoff": "Resuming a session also carries over any mistakes in the agent's approach; starting from scratch costs more but is cleaner."
+    },
+    "reuse": {
+      "title": "\"{phase}\": candidate for result reuse",
+      "evidence": "Read-only phase, {cost}.",
+      "evidenceSim": "Read-only phase, {cost} (simulated data).",
+      "suggestion": "Turn on \"Reuse the result if nothing changed\": in later runs, if the instructions, inputs and project files are identical, the previous result is reused without any calls.",
+      "tradeoff": "The file fingerprint is based on path, size and modification date: changes outside the project folder (dependencies, external services) are not detected."
+    },
+    "merge": {
+      "title": "\"{first}\" and \"{second}\" are two consecutive read-only phases",
+      "evidence": "Same model, no file changes between the two: the second one reloads the project context.",
+      "suggestion": "Consider merging them into a single phase with two-part instructions.",
+      "tradeoff": "A single phase is less readable in the diagram, and an error forces both parts to be redone."
+    },
+    "cache": {
+      "title": "The cache is written more than it is read back",
+      "evidence": "Cache written {written} tokens, read {read} tokens. Writing to the cache costs more than normal input.",
+      "evidenceSim": "Cache written {written} tokens, read {read} tokens (simulated data). Writing to the cache costs more than normal input.",
+      "suggestion": "This happens with many short phases, each with a fresh context. Fewer, larger phases, or phases that share the same model and the same system prompt, make better use of the cache.",
+      "tradeoff": "Merging phases reduces control granularity and the ability to use different models for different tasks."
+    },
+    "budget": {
+      "title": "No spending limit per run",
+      "evidence": "This run cost about {cost} (SDK estimate).",
+      "suggestion": "Set a limit in the workflow settings, for example {suggested} (1.5× the observed value), and per-phase limits on the most expensive phases.",
+      "tradeoff": "A limit that is too low stops a phase halfway: the partial work stays in the files but must be completed with a new attempt."
+    }
+  }
+}

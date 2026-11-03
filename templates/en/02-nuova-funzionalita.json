@@ -1,0 +1,41 @@
+{
+  "id": "nuova-funzionalita",
+  "name": "New feature",
+  "description": "A plan you approve before any code is written, then implementation, tests, review and final approval.",
+  "goalHint": "Describe the feature: what it must do, for whom, constraints (libraries, style, compatibility) and when you consider it done.",
+  "settings": { "runBudgetUsd": 4, "maxParallel": 2, "loadProjectSettings": true, "applyGeneralRules": true },
+  "nodes": [
+    { "id": "piano", "position": { "x": 0, "y": 120 }, "data": {
+      "label": "Plan", "kind": "analisi", "role": "Designer: studies the existing code and proposes an implementation plan.",
+      "instructions": "Study the parts of the project affected by the goal and propose a plan: files to create or modify, steps in order, tests to add, risks. Reuse existing components where possible. Do not modify files.",
+      "model": "sonnet", "allowedTools": ["Read", "Glob", "Grep"], "maxTurns": 20, "maxBudgetUsd": 0.8, "contextMode": "sintesi", "reuseResult": false } },
+    { "id": "ok_piano", "position": { "x": 280, "y": 120 }, "data": {
+      "label": "Approve the plan", "kind": "approvazione", "role": "",
+      "instructions": "Read the plan. Approve it if it is fine, or reject it saying what to change: the plan will be revised before any code is written.",
+      "model": "", "allowedTools": [], "contextMode": "sintesi", "reuseResult": false } },
+    { "id": "implementazione", "position": { "x": 560, "y": 120 }, "data": {
+      "label": "Implementation", "kind": "implementazione", "role": "Developer: implements following the approved plan and the project's style.",
+      "instructions": "Implement the feature following the approved plan. Add or update the tests foreseen by the plan. Run the test suite once at the end.",
+      "model": "sonnet", "allowedTools": ["Read", "Glob", "Grep", "Edit", "Write", "Bash"], "maxTurns": 40, "maxBudgetUsd": 2, "contextMode": "completo", "reuseResult": false } },
+    { "id": "test", "position": { "x": 860, "y": 40 }, "data": {
+      "label": "Test", "kind": "test", "role": "Tester: runs the tests and reports the outcome without modifying the code.",
+      "instructions": "Run the project's test suite and report the outcome. Outcome 'ko' if at least one test fails. Do not modify files.",
+      "model": "haiku", "allowedTools": ["Read", "Glob", "Bash"], "maxTurns": 8, "maxBudgetUsd": 0.3, "contextMode": "nessuno", "reuseResult": false } },
+    { "id": "revisione", "position": { "x": 860, "y": 210 }, "data": {
+      "label": "Review", "kind": "revisione", "role": "Reviewer: checks adherence to the plan, correctness and readability.",
+      "instructions": "Review the modified files reported by the previous phase against the approved plan. Report concrete problems: missing parts, bugs, duplicated code, missing tests. Do not modify files.",
+      "model": "sonnet", "allowedTools": ["Read", "Glob", "Grep"], "maxTurns": 12, "maxBudgetUsd": 0.6, "contextMode": "sintesi", "reuseResult": false } },
+    { "id": "approvazione", "position": { "x": 1160, "y": 120 }, "data": {
+      "label": "Final approval", "kind": "approvazione", "role": "",
+      "instructions": "Check the tests, the review and the git diff. Approve, or reject explaining what to fix.",
+      "model": "", "allowedTools": [], "contextMode": "sintesi", "reuseResult": false } }
+  ],
+  "edges": [
+    { "id": "e1", "source": "piano", "target": "ok_piano" },
+    { "id": "e2", "source": "ok_piano", "target": "implementazione" },
+    { "id": "e3", "source": "implementazione", "target": "test" },
+    { "id": "e4", "source": "implementazione", "target": "revisione" },
+    { "id": "e5", "source": "test", "target": "approvazione" },
+    { "id": "e6", "source": "revisione", "target": "approvazione" }
+  ]
+}

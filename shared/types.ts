@@ -1,4 +1,6 @@
 // Tipi condivisi tra server e interfaccia.
+import type { Msg } from './i18n.ts';
+export type { Msg } from './i18n.ts';
 
 export type PhaseKind = 'analisi' | 'implementazione' | 'test' | 'revisione' | 'approvazione' | 'server' | 'personalizzata';
 
@@ -74,6 +76,8 @@ export interface WorkflowSettings {
   loadProjectSettings: boolean;
   /** Aggiunge le regole generali (~/.claude/CLAUDE.md e regole di Regia) alle istruzioni di ogni agente. Assente = sì. */
   applyGeneralRules?: boolean;
+  /** Lingua delle istruzioni inviate agli agenti (protocollo di risposta, regole). Assente = it. */
+  language?: string;
 }
 
 export interface WorkflowTemplate {
@@ -124,7 +128,10 @@ export interface Workflow {
 
 export interface ValidationIssue {
   level: 'errore' | 'avviso';
+  /** Testo di riserva (lingua del server). */
   message: string;
+  /** Messaggio localizzabile. */
+  msg?: Msg;
   nodeId?: string;
 }
 
@@ -218,6 +225,8 @@ export interface NodeRunState {
   /** Azioni che la persona può compiere quando status = attesa_intervento. */
   pendingActions?: HumanAction[];
   pendingReason?: string;
+  /** Motivo dell'intervento, localizzabile (pendingReason resta come testo di riserva). */
+  pendingMsg?: Msg;
   feedbackRounds: number;
   /** Solo fase "server": processo gestito da Regia. */
   service?: ServiceState;
@@ -246,7 +255,10 @@ export interface RunEvent {
   nodeId?: string;
   attemptId?: string;
   kind: EventKind;
+  /** Testo di riserva, o testo prodotto da agenti e strumenti (non tradotto). */
   text: string;
+  /** Messaggio localizzabile generato da Regia. */
+  msg?: Msg;
   /** Per le decisioni: dichiarata dall'agente o dedotta da un evento osservabile. */
   source?: 'dichiarata' | 'osservata';
   subagent?: boolean;
@@ -288,10 +300,17 @@ export interface Insight {
   id: string;
   severity: 'alta' | 'media' | 'info';
   nodeId?: string;
-  title: string;
-  evidence: string;
-  suggestion: string;
-  tradeoff: string;
+  title: Msg;
+  evidence: Msg;
+  suggestion: Msg;
+  tradeoff: Msg;
+}
+
+/** Corpo di una risposta di errore dell'API. */
+export interface ApiErrorBody {
+  error: string;
+  msg?: Msg;
+  issues?: ValidationIssue[];
 }
 
 export interface EnvInfo {
@@ -320,60 +339,8 @@ export function emptyTotals(): UsageTotals {
   return { inputTokens: 0, outputTokens: 0, cacheCreationInputTokens: 0, cacheReadInputTokens: 0, costUsd: 0, byModel: {} };
 }
 
-export const PHASE_PRESETS: Record<PhaseKind, Omit<PhaseConfig, 'label'> & { label: string }> = {
-  analisi: {
-    label: 'Analisi', kind: 'analisi', role: 'Analista del codice: legge e riassume, non modifica file.',
-    instructions: 'Analizza il progetto e individua cosa va fatto per raggiungere l\'obiettivo. Indica i file coinvolti.',
-    model: 'sonnet', allowedTools: ['Read', 'Glob', 'Grep'], maxTurns: 15, contextMode: 'sintesi', reuseResult: false,
-  },
-  implementazione: {
-    label: 'Implementazione', kind: 'implementazione', role: 'Sviluppatore: applica modifiche piccole e mirate.',
-    instructions: 'Implementa le modifiche indicate dall\'analisi. Mantieni lo stile del progetto.',
-    model: 'sonnet', allowedTools: ['Read', 'Glob', 'Grep', 'Edit', 'Write', 'Bash'], maxTurns: 30, contextMode: 'sintesi', reuseResult: false,
-  },
-  test: {
-    label: 'Test', kind: 'test', role: 'Tester: esegue i test e riporta l\'esito senza modificare il codice.',
-    instructions: 'Esegui la suite di test del progetto e riporta l\'esito. Se fallisce, riassumi la causa.',
-    model: 'sonnet', allowedTools: ['Read', 'Glob', 'Grep', 'Bash'], maxTurns: 10, contextMode: 'sintesi', reuseResult: false,
-  },
-  revisione: {
-    label: 'Revisione', kind: 'revisione', role: 'Revisore: verifica correttezza e leggibilità delle modifiche.',
-    instructions: 'Rivedi le modifiche fatte e segnala problemi concreti. Non modificare file.',
-    model: 'sonnet', allowedTools: ['Read', 'Glob', 'Grep'], maxTurns: 15, contextMode: 'sintesi', reuseResult: false,
-  },
-  approvazione: {
-    label: 'Approvazione umana', kind: 'approvazione', role: '',
-    instructions: 'Controlla l\'esito delle fasi precedenti e approva o respingi con un commento.',
-    model: '', allowedTools: [], contextMode: 'sintesi', reuseResult: false,
-  },
-  server: {
-    label: 'Anteprima locale', kind: 'server', role: '',
-    instructions: 'Server avviato da Regia per la verifica nel browser.',
-    model: '', allowedTools: [], contextMode: 'nessuno', reuseResult: false,
-    command: 'npm run dev', url: '', subdir: '', readyTimeoutSec: 90,
-  },
-  personalizzata: {
-    label: 'Fase', kind: 'personalizzata', role: 'Assistente di sviluppo.',
-    instructions: '', model: 'sonnet', allowedTools: ['Read', 'Glob', 'Grep'], maxTurns: 15, contextMode: 'sintesi', reuseResult: false,
-  },
-};
-
 export interface ContinuationPlan {
   fromRunId: string;
   reused: { nodeId: string; label: string }[];
-  toRun: { nodeId: string; label: string; reason: string }[];
+  toRun: { nodeId: string; label: string; reason: string; reasonMsg?: Msg }[];
 }
-
-/** Fasi pronte all'uso, aggiungibili dalla palette. */
-export const PHASE_SNIPPETS: { id: string; label: string; hint: string; data: PhaseConfig }[] = [
-  {
-    id: 'pubblicazione',
-    label: 'Pubblicazione',
-    hint: 'Commit, push ed eventuali pubblicazioni o GitHub Actions. Da mettere dopo un\'approvazione.',
-    data: {
-      label: 'Pubblicazione', kind: 'personalizzata', role: 'Release manager: pubblica il lavoro approvato in modo verificabile.',
-      instructions: 'Questa fase è autorizzata a fare commit e push. 1) Controlla git status e git diff: includi solo i file legati all\'obiettivo, segnala e lascia fuori il resto. 2) Fai un commit con un messaggio descrittivo che segua lo stile del repository (guarda git log). 3) Fai push sul branch corrente; non fare mai force push e non cambiare branch. 4) Se il progetto prevede una pubblicazione o una GitHub Action da avviare (es. gh workflow run, npm publish) e l\'obiettivo lo richiede, eseguila e riporta esito e link. Nella sintesi indica hash del commit, branch, esito del push e delle azioni. Esito "ko" se un passo fallisce.',
-      model: 'sonnet', allowedTools: ['Read', 'Glob', 'Grep', 'Bash'], maxTurns: 15, maxBudgetUsd: 0.4, contextMode: 'sintesi', reuseResult: false,
-    },
-  },
-];

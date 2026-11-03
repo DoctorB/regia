@@ -6,6 +6,8 @@ import type {
   Attempt, ContinuationPlan, ServiceState, DeclaredOutcome, EventKind, HumanAction, NodeRunState, Run, RunEvent, RunMode, Workflow, WorkflowNode,
 } from '../shared/types.ts';
 import { emptyTotals } from '../shared/types.ts';
+import { msg, type Msg, type Params, type Translate } from '../shared/i18n.ts';
+import { serverT } from './i18n.ts';
 import { mockQuery } from './mockQuery.ts';
 import { clip, redact } from './redact.ts';
 import { rulesPrompt, snapshotRules } from './rules.ts';
@@ -24,6 +26,18 @@ export type Broadcast = (msg: unknown) => void;
 const active = new Map<string, RunEngine>();
 export const getEngine = (id: string) => active.get(id);
 
+/** Lingua delle istruzioni inviate agli agenti e dei testi di un'esecuzione (impostazione del workflow). */
+export const workflowLang = (wf: Workflow) => wf.settings.language ?? 'it';
+
+/** Errore con messaggio localizzabile: l'API lo restituisce come {error, msg}. */
+export class RegiaError extends Error {
+  constructor(public readonly msg: Msg, text: string) {
+    super(text);
+  }
+}
+
+const tx = (t: Translate, m: Msg) => t(m.key, m.params);
+
 /**
  * Quali fasi di un'esecuzione precedente si possono riprendere così come sono.
  * Una fase è ripresa se: esisteva già, è stata completata (o era già ripresa), la sua configurazione e le sue
@@ -34,18 +48,19 @@ export function planContinuation(wf: Workflow, from: Run): ContinuationPlan {
   const reused = new Set<string>();
   const plan: ContinuationPlan = { fromRunId: from.id, reused: [], toRun: [] };
   const predsOf = (w: Workflow, id: string) => w.edges.filter((e) => e.target === id).map((e) => e.source).sort().join(',');
+  const t = serverT(workflowLang(wf));
   for (const id of order) {
     const n = wf.nodes.find((x) => x.id === id)!;
     const old = from.snapshot.nodes.find((x) => x.id === id);
     const st = from.nodes[id];
-    let reason = '';
-    if (!old || !st) reason = 'fase nuova';
-    else if (JSON.stringify(old.data) !== JSON.stringify(n.data)) reason = 'configurazione modificata';
-    else if (predsOf(from.snapshot, id) !== predsOf(wf, id)) reason = 'collegamenti modificati';
-    else if (n.data.kind === 'server') reason = 'server locale: va riavviato';
-    else if (st.status !== 'completata' && st.status !== 'riusata') reason = `non completata nell'esecuzione precedente (${st.status.replace('_', ' ')})`;
-    else if (!wf.edges.filter((e) => e.target === id).every((e) => reused.has(e.source))) reason = 'una fase precedente verrà rieseguita';
-    if (reason) plan.toRun.push({ nodeId: id, label: n.data.label, reason });
+    let reason: Msg | undefined;
+    if (!old || !st) reason = msg('continuation.newPhase');
+    else if (JSON.stringify(old.data) !== JSON.stringify(n.data)) reason = msg('continuation.configChanged');
+    else if (predsOf(from.snapshot, id) !== predsOf(wf, id)) reason = msg('continuation.linksChanged');
+    else if (n.data.kind === 'server') reason = msg('continuation.serverRestart');
+    else if (st.status !== 'completata' && st.status !== 'riusata') reason = msg('continuation.notCompleted', { status: st.status.replace('_', ' ') });
+    else if (!wf.edges.filter((e) => e.target === id).every((e) => reused.has(e.source))) reason = msg('continuation.upstreamRerun');
+    if (reason) plan.toRun.push({ nodeId: id, label: n.data.label, reason: tx(t, reason), reasonMsg: reason });
     else { reused.add(id); plan.reused.push({ nodeId: id, label: n.data.label }); }
   }
   return plan;
@@ -108,9 +123,14 @@ export class RunEngine {
   private afterCorrection = new Set<string>();
   private saveTimer: NodeJS.Timeout | null = null;
   private wf: Workflow;
+  /** Lingua dell'esecuzione: istruzioni agli agenti e testi di riserva dei messaggi. */
+  private lang: string;
+  private t: Translate;
 
   constructor(public run: Run) {
     this.wf = run.snapshot;
+    this.lang = workflowLang(run.snapshot);
+    this.t = serverT(this.lang);
     for (const n of Object.values(run.nodes)) for (const a of n.attempts) if (a.sessionId && a.sessionCumulative) this.sessions.set(a.sessionId, a.sessionCumulative);
   }
 
@@ -142,6 +162,31 @@ export class RunEngine {
     this.persist();
   }
 
+  /** Testo di un messaggio nella lingua dell'esecuzione. */
+  private tx(m: Msg): string {
+    return this.t(m.key, m.params);
+  }
+
+  /** Evento generato da Regia: messaggio localizzabile più il testo nella lingua dell'esecuzione. */
+  private say(kind: EventKind, m: Msg, extra: Partial<RunEvent> = {}) {
+    const params: Params | undefined = m.params
+      ? Object.fromEntries(Object.entries(m.params).map(([k, v]) => [k, typeof v === 'string' ? redact(v) : v]))
+      : undefined;
+    const safe: Msg = { key: m.key, params };
+    this.event(kind, this.tx(safe), { ...extra, msg: safe });
+  }
+
+  /** Motivo dell'intervento: messaggio localizzabile e testo di riserva. */
+  private setPending(st: NodeRunState, m: Msg | undefined, text?: string) {
+    st.pendingMsg = m;
+    st.pendingReason = text ?? (m ? this.tx(m) : undefined);
+  }
+
+  /** Errore con messaggio localizzabile nella lingua dell'esecuzione. */
+  private fail(m: Msg): RegiaError {
+    return new RegiaError(m, this.tx(m));
+  }
+
   private nodeChanged(nodeId: string) {
     this.send({ t: 'node', node: this.run.nodes[nodeId] });
     this.persist();
@@ -152,7 +197,7 @@ export class RunEngine {
     const s = sumTotals(all);
     const { unknownCost, ...totals } = s;
     this.run.totals = totals;
-    const note = 'Alcune fasi si sono interrotte senza un risultato finale: il loro costo non è noto e non è incluso nel totale.';
+    const note = this.t('notes.unknownCost');
     if (unknownCost && !this.run.notes.includes(note)) this.run.notes.push(note);
     this.send({ t: 'run', run: { status: this.run.status, totals: this.run.totals, notes: this.run.notes, rateLimit: this.run.rateLimit, endedAt: this.run.endedAt } });
     this.persist();
@@ -167,20 +212,25 @@ export class RunEngine {
   }
 
   start() {
-    this.event('run', `Esecuzione avviata in modalità ${this.run.mode === 'prova' ? 'di prova (nessuna chiamata a pagamento)' : 'reale'}.`);
+    this.say('run', this.run.mode === 'prova' ? msg('events.runStarted.test') : msg('events.runStarted.real'));
     if (this.run.continuedFrom) {
       const reused = Object.values(this.run.nodes).filter((n) => n.status === 'riusata');
-      this.event('run', `Continua dall'esecuzione ${this.run.continuedFrom}: ${reused.length} fasi riprese senza chiamate (${reused.map((n) => this.node(n.nodeId).data.label).join(', ') || 'nessuna'}).`);
+      const phases = reused.map((n) => this.node(n.nodeId).data.label).join(', ');
+      this.say('run', phases
+        ? msg('events.continued', { from: this.run.continuedFrom, count: reused.length, phases })
+        : msg('events.continuedNone', { from: this.run.continuedFrom }));
     }
-    if (this.run.budgetUsd) this.event('limite', `Limite di spesa stimata per l'esecuzione: ${this.run.budgetUsd.toFixed(2)} USD.`);
+    if (this.run.budgetUsd) this.say('limite', msg('events.budget', { amount: this.run.budgetUsd.toFixed(2) }));
     const r = this.run.rules;
     if (r?.applied) {
-      const src = [r.global ? `regole personali (${r.globalPath})` : null, r.regia ? 'regole di Regia' : null].filter(Boolean).join(' e ');
-      this.event('run', src ? `Regole generali applicate a ogni fase: ${src}.` : 'Regole generali attive, ma nessun testo di regole trovato.');
+      if (r.global && r.regia) this.say('run', msg('events.rules.both', { path: r.globalPath }));
+      else if (r.global) this.say('run', msg('events.rules.global', { path: r.globalPath }));
+      else if (r.regia) this.say('run', msg('events.rules.regia'));
+      else this.say('run', msg('events.rules.empty'));
     } else {
-      this.event('run', 'Regole generali non applicate (disattivate nelle impostazioni del workflow).');
+      this.say('run', msg('events.rules.off'));
     }
-    if (r?.projectPath) this.event('run', `CLAUDE.md del progetto caricato dalla CLI: ${r.projectPath}.`);
+    if (r?.projectPath) this.say('run', msg('events.rules.project', { path: r.projectPath }));
     this.persist(true);
     this.schedule();
   }
@@ -218,12 +268,12 @@ export class RunEngine {
     if (next !== this.run.status) {
       this.run.status = next;
       if (next === 'completata') {
-        this.stopAllServices('esecuzione completata');
+        this.stopAllServices('completed');
         this.run.endedAt = new Date().toISOString();
-        this.event('run', 'Esecuzione completata.');
+        this.say('run', msg('events.runCompleted'));
         active.delete(this.run.id);
       } else if (next === 'attesa_intervento') {
-        this.event('intervento', 'L\'esecuzione è in pausa: serve un tuo intervento.');
+        this.say('intervento', msg('events.runPaused'));
       }
     }
     this.runChanged();
@@ -237,21 +287,21 @@ export class RunEngine {
     for (const p of this.preds(n.id)) {
       const st = this.run.nodes[p];
       const pn = this.node(p);
-      if (st.status === 'saltata') { parts.push(`## ${pn.data.label}\n(fase saltata)`); continue; }
+      if (st.status === 'saltata') { parts.push(`## ${pn.data.label}\n${this.t('agent.skippedPhase')}`); continue; }
       const last = st.attempts.at(-1);
       const body = mode === 'completo' ? clip(last?.resultText ?? st.output ?? '', 12000) : st.output ?? '';
       parts.push(`## ${pn.data.label}\n${body}`);
     }
-    return parts.length ? `# Risultati delle fasi precedenti\n${parts.join('\n\n')}` : '';
+    return parts.length ? this.t('agent.previousResults', { results: parts.join('\n\n') }) : '';
   }
 
   private buildPrompt(n: WorkflowNode): string {
     const ctx = this.upstreamContext(n);
     return [
-      this.wf.settings.goal ? `# Obiettivo del workflow\n${this.wf.settings.goal}` : '',
-      `# Il tuo compito: ${n.data.label}\n${n.data.instructions}`,
+      this.wf.settings.goal ? this.t('agent.goal', { goal: this.wf.settings.goal }) : '',
+      this.t('agent.task', { label: n.data.label, instructions: n.data.instructions }),
       ctx,
-      PROTOCOL,
+      agentProtocol(this.lang),
     ].filter(Boolean).join('\n\n');
   }
 
@@ -284,9 +334,9 @@ export class RunEngine {
       const remaining = this.run.budgetUsd - this.spent();
       if (remaining <= 0) {
         st.status = 'fallita';
-        st.pendingReason = 'Limite di spesa dell\'esecuzione raggiunto prima di avviare la fase.';
+        this.setPending(st, msg('interventions.budgetReached'));
         st.pendingActions = ['salta', 'annulla'];
-        this.event('limite', `${d.label}: non avviata, limite di spesa dell'esecuzione raggiunto.`, { nodeId: n.id });
+        this.say('limite', msg('events.notStartedBudget', { label: d.label }), { nodeId: n.id });
         this.nodeChanged(n.id);
         this.updateRunStatus();
         return;
@@ -296,7 +346,7 @@ export class RunEngine {
     }
 
     const prompt = resume
-      ? `Feedback della persona che supervisiona il workflow:\n${resume.feedback}\n\nTieni conto di questo feedback e completa di nuovo il compito "${d.label}".\n\n${PROTOCOL}`
+      ? this.t('agent.feedback', { feedback: resume.feedback, label: d.label, protocol: agentProtocol(this.lang) })
       : this.buildPrompt(n);
 
     let key: string | undefined;
@@ -314,7 +364,7 @@ export class RunEngine {
         st.output = hit.output;
         st.status = 'riusata';
         st.activity = undefined;
-        this.event('fase', `${d.label}: risultato riusato dall'esecuzione ${hit.runId} (configurazione, input e file del progetto invariati). Nessuna chiamata effettuata.`, { nodeId: n.id, attemptId: a.id });
+        this.say('fase', msg('events.reused', { label: d.label, run: hit.runId }), { nodeId: n.id, attemptId: a.id });
         this.nodeChanged(n.id);
         this.runChanged();
         this.schedule();
@@ -326,14 +376,19 @@ export class RunEngine {
     if (resume) a.resumedSessionId = resume.sessionId;
     st.status = 'attiva';
     st.pendingActions = undefined;
-    st.pendingReason = undefined;
-    st.activity = 'Avvio…';
+    this.setPending(st, undefined);
+    st.activity = this.t('events.activity.starting');
     this.running.add(n.id);
     const ctrl = new AbortController();
     this.controllers.set(n.id, ctrl);
     const baseline = resume ? this.sessions.get(resume.sessionId) : undefined;
     const acc = new AttemptAccounting(a, baseline, this.run.mode === 'prova' ? 'simulato' : undefined);
-    this.event('fase', `${d.label}: avviata${resume ? ' (ripresa della sessione con feedback)' : reason === 'riprova' ? ' (nuovo tentativo)' : ''}. Modello: ${d.model || 'predefinito'}; strumenti: ${d.allowedTools.join(', ') || 'nessuno'}${nodeBudget !== undefined ? `; limite ${nodeBudget.toFixed(3)} USD` : ''}.`, { nodeId: n.id, attemptId: a.id });
+    const startParams = {
+      label: d.label, model: d.model || this.t('events.defaultModel'), tools: d.allowedTools.join(', ') || this.t('events.noTools'),
+      limit: nodeBudget !== undefined ? nodeBudget.toFixed(3) : undefined,
+    };
+    const how = resume ? 'resumed' : reason === 'riprova' ? 'retry' : 'initial';
+    this.say('fase', msg(`events.phaseStarted.${how}${nodeBudget !== undefined ? 'Limit' : ''}`, startParams), { nodeId: n.id, attemptId: a.id });
     this.nodeChanged(n.id);
     this.updateRunStatus();
 
@@ -341,9 +396,11 @@ export class RunEngine {
     const toolNames = new Map<string, string>();
     let gotResult = false;
     let lastLive = 0;
+    /** Messaggio localizzabile dell'errore, quando la causa è riconosciuta da Regia. */
+    let errorMsg: Msg | undefined;
     try {
       const stream = this.run.mode === 'prova'
-        ? mockQuery({ phase: d, attemptIndex: a.index, resume: resume?.sessionId, maxBudgetUsd: nodeBudget, signal: ctrl.signal })
+        ? mockQuery({ phase: d, attemptIndex: a.index, resume: resume?.sessionId, maxBudgetUsd: nodeBudget, signal: ctrl.signal, lang: this.lang })
         : query({
           prompt,
           options: {
@@ -352,7 +409,7 @@ export class RunEngine {
             tools: d.allowedTools,
             allowedTools: d.allowedTools,
             permissionMode: 'dontAsk',
-            systemPrompt: { type: 'preset', preset: 'claude_code', append: `${d.role ? `\nRuolo in questo workflow: ${d.role}` : ''}${rulesPrompt(this.run.rules)}` || undefined },
+            systemPrompt: { type: 'preset', preset: 'claude_code', append: `${d.role ? `\n${this.t('agent.role', { role: d.role })}` : ''}${rulesPrompt(this.run.rules, this.lang)}` || undefined },
             maxTurns: d.maxTurns,
             maxBudgetUsd: nodeBudget,
             abortController: ctrl,
@@ -363,29 +420,29 @@ export class RunEngine {
         });
 
       for await (const raw of stream as AsyncIterable<Record<string, any>>) {
-        const msg = raw;
-        if (msg.type === 'system' && msg.subtype === 'init') {
-          a.sessionId = msg.session_id;
-          a.apiKeySource = msg.apiKeySource;
-          if (msg.model && !a.models.includes(msg.model)) a.models.push(msg.model);
-          this.event('fase', `${d.label}: sessione pronta (modello ${msg.model}).`, { nodeId: n.id, attemptId: a.id });
-        } else if (msg.type === 'assistant') {
-          acc.onAssistant(msg);
-          const sub = Boolean(msg.parent_tool_use_id);
-          for (const block of msg.message?.content ?? []) {
+        const sm = raw;
+        if (sm.type === 'system' && sm.subtype === 'init') {
+          a.sessionId = sm.session_id;
+          a.apiKeySource = sm.apiKeySource;
+          if (sm.model && !a.models.includes(sm.model)) a.models.push(sm.model);
+          this.say('fase', msg('events.sessionReady', { label: d.label, model: sm.model }), { nodeId: n.id, attemptId: a.id });
+        } else if (sm.type === 'assistant') {
+          acc.onAssistant(sm);
+          const sub = Boolean(sm.parent_tool_use_id);
+          for (const block of sm.message?.content ?? []) {
             if (block.type === 'text' && block.text?.trim()) {
               const text: string = block.text;
               for (const line of text.split('\n')) {
-                const m = line.match(/^\s*\**DECISIONE\**\s*:\s*(.+)$/i);
-                if (m) this.decision(n.id, a.id, m[1].trim(), 'dichiarata', sub);
+                const dec = parseDecisionLine(line);
+                if (dec) this.decision(n.id, a.id, dec, 'dichiarata', sub);
               }
               const visible = text.replace(/```regia[\s\S]*?```/g, '').trim();
               if (visible) this.event('testo', visible, { nodeId: n.id, attemptId: a.id, subagent: sub });
             } else if (block.type === 'tool_use') {
               toolNames.set(block.id, block.name);
-              const summary = summarizeTool(block.name, block.input ?? {});
+              const summary = summarizeTool(block.name, block.input ?? {}, this.t);
               a.toolCalls.push({ name: block.name, key: createHash('sha1').update(block.name + JSON.stringify(block.input ?? {})).digest('hex').slice(0, 12) });
-              st.activity = `${sub ? 'Subagente · ' : ''}${summary}`;
+              st.activity = sub ? this.t('events.activity.subagent', { summary }) : summary;
               this.event('strumento', summary, { nodeId: n.id, attemptId: a.id, subagent: sub });
               const obs = observedDecision(block.name, block.input ?? {});
               if (obs && !sub) this.decision(n.id, a.id, obs, 'osservata', sub);
@@ -394,53 +451,65 @@ export class RunEngine {
           }
           const now = Date.now();
           if (now - lastLive > 300) { lastLive = now; this.nodeChanged(n.id); }
-        } else if (msg.type === 'user') {
-          for (const block of Array.isArray(msg.message?.content) ? msg.message.content : []) {
+        } else if (sm.type === 'user') {
+          for (const block of Array.isArray(sm.message?.content) ? sm.message.content : []) {
             if (block.type !== 'tool_result') continue;
-            const name = toolNames.get(block.tool_use_id) ?? 'strumento';
+            const name = toolNames.get(block.tool_use_id) ?? this.t('events.toolFallbackName');
             const content = typeof block.content === 'string' ? block.content : JSON.stringify(block.content ?? '');
-            if (block.is_error) this.event('errore', `${name} ha restituito un errore: ${clip(content, 400)}`, { nodeId: n.id, attemptId: a.id, subagent: Boolean(msg.parent_tool_use_id) });
-            else this.event('esito_strumento', `${name}: ${clip(content.trim(), 300) || '(nessun output)'}`, { nodeId: n.id, attemptId: a.id, subagent: Boolean(msg.parent_tool_use_id) });
+            const where = { nodeId: n.id, attemptId: a.id, subagent: Boolean(sm.parent_tool_use_id) };
+            const out = clip(content.trim(), 300);
+            // L'output degli strumenti resta testo; solo le cornici scritte da Regia sono localizzabili.
+            if (block.is_error) this.say('errore', msg('events.toolError', { name, content: clip(content, 400) }), where);
+            else if (out) this.event('esito_strumento', `${name}: ${out}`, where);
+            else this.say('esito_strumento', msg('events.toolNoOutput', { name }), where);
           }
-        } else if (msg.type === 'system' && msg.subtype === 'task_started') {
+        } else if (sm.type === 'system' && sm.subtype === 'task_started') {
           a.subagents++;
-          this.event('subagente', `Subagente avviato: ${msg.description ?? ''}`, { nodeId: n.id, attemptId: a.id, subagent: true });
-          this.decision(n.id, a.id, `Ha delegato a un subagente: ${msg.description ?? ''}`, 'osservata', false);
-        } else if (msg.type === 'system' && msg.subtype === 'task_notification') {
-          const tok = msg.usage?.total_tokens ? ` (${msg.usage.total_tokens.toLocaleString('it-IT')} token riportati dal subagente, già inclusi nei totali della fase)` : '';
-          this.event('subagente', `Subagente ${msg.status === 'completed' ? 'completato' : msg.status}: ${msg.summary ?? ''}${tok}`, { nodeId: n.id, attemptId: a.id, subagent: true });
-        } else if (msg.type === 'rate_limit_event') {
-          const r = msg.rate_limit_info ?? {};
+          this.say('subagente', msg('events.subagentStarted', { description: sm.description ?? '' }), { nodeId: n.id, attemptId: a.id, subagent: true });
+          this.decision(n.id, a.id, msg('events.decisions.delegated', { description: sm.description ?? '' }), 'osservata', false);
+        } else if (sm.type === 'system' && sm.subtype === 'task_notification') {
+          const tokens: number | undefined = sm.usage?.total_tokens || undefined;
+          const status = sm.status === 'completed' ? 'completed' : 'other';
+          const p = { status: sm.status, summary: sm.summary ?? '', count: tokens };
+          this.say('subagente', msg(`events.subagentEnded.${status}${tokens ? 'Tokens' : ''}`, p), { nodeId: n.id, attemptId: a.id, subagent: true });
+        } else if (sm.type === 'rate_limit_event') {
+          const r = sm.rate_limit_info ?? {};
           this.run.rateLimit = { status: r.status, type: r.rateLimitType, utilization: r.utilization, resetsAt: r.resetsAt };
-          if (r.status !== 'allowed') this.event('limite', `Limite di utilizzo dell'abbonamento: ${r.status}${r.rateLimitType ? ` (${r.rateLimitType})` : ''}.`, { nodeId: n.id });
-        } else if (msg.type === 'system' && msg.subtype === 'api_retry') {
-          this.event('errore', `Nuovo tentativo di chiamata API in corso${msg.error ? `: ${msg.error}` : ''}.`, { nodeId: n.id, attemptId: a.id });
-        } else if (msg.type === 'result') {
+          if (r.status !== 'allowed') {
+            this.say('limite', r.rateLimitType
+              ? msg('events.rateLimitType', { status: r.status, type: r.rateLimitType })
+              : msg('events.rateLimit', { status: r.status }), { nodeId: n.id });
+          }
+        } else if (sm.type === 'system' && sm.subtype === 'api_retry') {
+          this.say('errore', sm.error ? msg('events.apiRetryError', { error: String(sm.error) }) : msg('events.apiRetry'), { nodeId: n.id, attemptId: a.id });
+        } else if (sm.type === 'result') {
           gotResult = true;
-          const snap = acc.onResult(msg);
+          const snap = acc.onResult(sm);
           if (snap) a.sessionCumulative = snap;
           if (snap && a.sessionId) this.sessions.set(a.sessionId, snap);
-          if (snap && msg.session_id) this.sessions.set(msg.session_id, snap);
-          a.sessionId = a.sessionId ?? msg.session_id;
-          if (typeof msg.result === 'string') a.resultText = redact(msg.result);
-          a.declared = parseDeclared(msg.result);
-          for (const den of msg.permission_denials ?? []) {
-            this.decision(n.id, a.id, `Strumento negato dalla configurazione: ${den.tool_name}`, 'osservata', false);
+          if (snap && sm.session_id) this.sessions.set(sm.session_id, snap);
+          a.sessionId = a.sessionId ?? sm.session_id;
+          if (typeof sm.result === 'string') a.resultText = redact(sm.result);
+          a.declared = parseDeclared(sm.result);
+          for (const den of sm.permission_denials ?? []) {
+            this.decision(n.id, a.id, msg('events.decisions.denied', { tool: den.tool_name }), 'osservata', false);
           }
-          if (msg.subtype !== 'success' || msg.is_error) {
-            const why = msg.subtype === 'error_max_budget_usd' ? 'limite di spesa della fase raggiunto'
-              : msg.subtype === 'error_max_turns' ? 'numero massimo di turni raggiunto'
-              : (msg.errors?.join('; ') || msg.result || msg.subtype);
+          if (sm.subtype !== 'success' || sm.is_error) {
+            errorMsg = sm.subtype === 'error_max_budget_usd' ? msg('interventions.error.phaseBudget')
+              : sm.subtype === 'error_max_turns' ? msg('interventions.error.maxTurns')
+              : undefined;
+            const why = errorMsg ? this.tx(errorMsg) : (sm.errors?.join('; ') || sm.result || sm.subtype);
             a.error = redact(String(why));
           }
-          this.event('consumi', usageLine(a), { nodeId: n.id, attemptId: a.id });
+          this.say('consumi', usageMsg(a), { nodeId: n.id, attemptId: a.id });
         }
       }
       if (!gotResult) acc.applyPartial();
     } catch (err) {
       if (!gotResult) acc.applyPartial();
       const aborted = ctrl.signal.aborted;
-      a.error = aborted ? 'Annullata' : redact(`${(err as Error).message}${stderrTail.length ? `\n${stderrTail.join('').slice(-800)}` : ''}`);
+      errorMsg = aborted ? msg('interventions.error.cancelled') : undefined;
+      a.error = aborted ? this.tx(errorMsg!) : redact(`${(err as Error).message}${stderrTail.length ? `\n${stderrTail.join('').slice(-800)}` : ''}`);
       if (aborted) a.status = 'annullata';
     } finally {
       this.running.delete(n.id);
@@ -451,32 +520,34 @@ export class RunEngine {
     st.activity = undefined;
     if (a.status !== 'annullata') a.status = a.error ? 'errore' : 'ok';
     const declared = a.declared;
+    const where = { nodeId: n.id, attemptId: a.id };
     if (a.status === 'annullata') {
       st.status = 'fallita';
-      this.event('fase', `${d.label}: annullata.`, { nodeId: n.id, attemptId: a.id });
+      this.say('fase', msg('events.phaseCancelled', { label: d.label }), where);
     } else if (a.status === 'errore') {
       st.status = 'fallita';
-      st.pendingReason = a.error;
+      this.setPending(st, errorMsg, a.error);
       st.pendingActions = a.sessionId ? ['riprova', 'riprendi', 'salta', 'annulla'] : ['riprova', 'salta', 'annulla'];
-      this.event('errore', `${d.label}: fallita — ${a.error}`, { nodeId: n.id, attemptId: a.id });
+      this.say('errore', msg('events.phaseFailed', { label: d.label, error: a.error }), where);
     } else if (declared?.esito === 'bloccato') {
       st.status = 'bloccata';
-      st.pendingReason = declared.sintesi;
+      // La sintesi è testo dell'agente: nessun messaggio localizzabile.
+      this.setPending(st, undefined, declared.sintesi);
       st.pendingActions = ['riprendi', 'riprova', 'salta', 'annulla'];
-      this.event('intervento', `${d.label}: l'agente dichiara di essere bloccato — ${declared.sintesi}`, { nodeId: n.id, attemptId: a.id });
+      this.say('intervento', msg('events.agentBlocked', { label: d.label, summary: declared.sintesi }), where);
     } else if (declared?.esito === 'ko') {
       st.status = 'fallita';
-      st.pendingReason = `Esito negativo dichiarato: ${declared.sintesi}`;
+      this.setPending(st, msg('interventions.declaredKo', { summary: declared.sintesi }));
       st.pendingActions = ['riprendi', 'riprova', 'salta', 'annulla'];
-      this.event('errore', `${d.label}: esito negativo — ${declared.sintesi}`, { nodeId: n.id, attemptId: a.id });
+      this.say('errore', msg('events.agentKo', { label: d.label, summary: declared.sintesi }), where);
     } else {
       st.status = 'completata';
       st.output = declared
-        ? `${declared.sintesi}${declared.decisioni.length ? `\nDecisioni: ${declared.decisioni.map((x) => `- ${x}`).join('\n')}` : ''}`
+        ? `${declared.sintesi}${declared.decisioni.length ? `\n${this.t('agent.output.decisions')} ${declared.decisioni.map((x) => `- ${x}`).join('\n')}` : ''}`
         : clip(a.resultText ?? '', 3000);
-      if (!declared) this.event('fase', `${d.label}: l'agente non ha restituito il blocco di esito previsto; uso il testo finale come risultato.`, { nodeId: n.id, attemptId: a.id });
+      if (!declared) this.say('fase', msg('events.noOutcomeBlock', { label: d.label }), where);
       for (const dec of declared?.decisioni ?? []) this.decision(n.id, a.id, dec, 'dichiarata', false);
-      this.event('risultato', `${d.label}: completata — ${declared?.sintesi ?? clip(a.resultText ?? '', 300)}`, { nodeId: n.id, attemptId: a.id });
+      this.say('risultato', msg('events.phaseCompleted', { label: d.label, summary: declared?.sintesi ?? clip(a.resultText ?? '', 300) }), where);
       if (key) writeReuseEntry(key, { runId: this.run.id, attemptId: a.id, output: st.output, declared, resultText: a.resultText, savedAt: new Date().toISOString() });
     }
     this.nodeChanged(n.id);
@@ -484,10 +555,17 @@ export class RunEngine {
     this.schedule();
   }
 
-  private decision(nodeId: string, attemptId: string, text: string, source: 'dichiarata' | 'osservata', subagent: boolean) {
-    const t = clip(redact(text), 300);
-    this.run.nodes[nodeId].lastDecision = t;
-    this.event('decisione', t, { nodeId, attemptId, source, subagent });
+  /** Decisione: testo dell'agente (dichiarata) o messaggio di Regia (osservata). */
+  private decision(nodeId: string, attemptId: string, what: string | Msg, source: 'dichiarata' | 'osservata', subagent: boolean) {
+    const extra = { nodeId, attemptId, source, subagent } as const;
+    if (typeof what === 'string') {
+      const t = clip(redact(what), 300);
+      this.run.nodes[nodeId].lastDecision = t;
+      this.event('decisione', t, extra);
+      return;
+    }
+    this.say('decisione', what, extra);
+    this.run.nodes[nodeId].lastDecision = this.run.events.at(-1)?.text.slice(0, 300);
   }
 
   private startNode(n: WorkflowNode, reason: Attempt['reason']) {
@@ -502,7 +580,7 @@ export class RunEngine {
   private async runService(n: WorkflowNode, reason: Attempt['reason']): Promise<void> {
     const st = this.run.nodes[n.id];
     const d = n.data;
-    this.stopService(n.id, 'riavvio');
+    this.stopService(n.id, 'restart');
     const cwd = d.subdir?.trim() ? path.resolve(this.wf.settings.projectDir, d.subdir.trim()) : this.wf.settings.projectDir;
     const command = (d.command ?? '').trim();
     const timeoutSec = d.readyTimeoutSec ?? 90;
@@ -512,17 +590,18 @@ export class RunEngine {
     a.usage.costUsd = 0;
     st.status = 'attiva';
     st.pendingActions = undefined;
-    st.pendingReason = undefined;
-    st.activity = 'Preparazione…';
+    this.setPending(st, undefined);
+    st.activity = this.t('events.activity.preparing');
     const svc: ServiceState = { command, cwd, url: d.url?.trim() || undefined, status: 'avvio', startedAt: new Date().toISOString(), log: [] };
     st.service = svc;
     this.running.add(n.id);
     const sim = this.run.mode === 'prova';
-    const ev = (text: string, kind: EventKind = 'servizio') => this.event(kind, d.label + ': ' + text, { nodeId: n.id, attemptId: a.id });
+    /** Evento della fase: il nome della fase è aggiunto ai parametri del messaggio. */
+    const ev = (m: Msg, kind: EventKind = 'servizio') => this.say(kind, { key: m.key, params: { ...m.params, label: d.label } }, { nodeId: n.id, attemptId: a.id });
     this.nodeChanged(n.id);
     this.updateRunStatus();
 
-    const finish = (ok: boolean, failure?: string, actions?: HumanAction[]) => {
+    const finish = (ok: boolean, failure?: Msg, actions?: HumanAction[]) => {
       this.running.delete(n.id);
       a.endedAt = new Date().toISOString();
       st.activity = undefined;
@@ -530,16 +609,20 @@ export class RunEngine {
       if (ok) {
         a.status = 'ok';
         st.status = 'completata';
-        st.output = 'Server locale attivo: ' + svc.url + '\nComando: ' + command + (svc.pid ? ' (PID ' + svc.pid + ')' : '') + (svc.node ? ', Node ' + svc.node : '') + (sim ? ' — simulato' : '');
+        st.output = this.t('agent.output.serverActive', { url: svc.url, command })
+          + (svc.pid ? ' (PID ' + svc.pid + ')' : '') + (svc.node ? ', Node ' + svc.node : '') + (sim ? this.t('agent.output.simulated') : '');
         a.resultText = st.output;
-        ev('server attivo su ' + svc.url + ". Resta attivo fino alla fine dell'esecuzione.");
+        ev(msg('events.service.active', { url: svc.url }));
       } else {
+        const reasonText = failure ? this.tx(failure) : '';
         a.status = 'errore';
-        a.error = failure;
+        a.error = reasonText;
         st.status = 'fallita';
-        st.pendingReason = failure + (svc.log.length ? '\n\nUltime righe:\n' + svc.log.slice(-8).join('\n') : '');
+        // Le ultime righe dell'output restano testo, passate come parametro.
+        if (svc.log.length) this.setPending(st, msg('interventions.serviceFailedLog', { reason: reasonText, log: svc.log.slice(-8).join('\n') }));
+        else this.setPending(st, failure, reasonText);
         st.pendingActions = actions ?? ['riprova', 'salta', 'annulla'];
-        ev('avvio non riuscito — ' + failure, 'errore');
+        ev(msg('events.service.startFailed', { reason: reasonText }), 'errore');
       }
       this.nodeChanged(n.id);
       this.runChanged();
@@ -547,24 +630,24 @@ export class RunEngine {
     };
 
     // 1. Versione di Node richiesta dal progetto (.nvmrc / .node-version / engines, o quella dedotta da un errore precedente).
-    const res = await resolveNode(cwd, d.nodeVersion?.trim() || fix.range);
+    const res = await resolveNode(cwd, d.nodeVersion?.trim() || fix.range, this.lang);
     if (res.ok) {
       svc.node = res.version;
-      if (res.note) ev(res.note);
+      if (res.note) ev(msg('events.service.withLabel', { text: this.tx(res.note) }));
     } else if (sim) {
-      ev('in un\'esecuzione reale servirebbe un intervento: ' + res.message);
+      ev(msg('events.service.simNeedsIntervention', { reason: res.message }));
     } else {
       fix.install = res.install;
-      return finish(false, res.message, res.install ? ['installa_node', 'riprova', 'salta', 'annulla'] : ['riprova', 'salta', 'annulla']);
+      return finish(false, res.msg, res.install ? ['installa_node', 'riprova', 'salta', 'annulla'] : ['riprova', 'salta', 'annulla']);
     }
     const env = envWithNode(res.ok ? res.dir : undefined);
 
     if (sim) {
-      st.activity = 'Avvio: ' + command;
-      ev('avvio di "' + command + '" in ' + cwd + ' (simulato: nessun comando eseguito).');
+      st.activity = this.t('events.activity.command', { command });
+      ev(msg('events.service.simStart', { command, cwd }));
       await new Promise((r) => setTimeout(r, Number(process.env.REGIA_MOCK_SPEED ?? 600)));
       svc.url = svc.url ?? 'http://localhost:5173/';
-      for (const l of ['> ' + command, 'Server di sviluppo pronto (simulato).', '  Local:   ' + svc.url]) pushLog(svc.log, l);
+      for (const l of ['> ' + command, this.t('events.service.simReady'), '  Local:   ' + svc.url]) pushLog(svc.log, l);
       svc.status = 'simulato';
       return finish(true);
     }
@@ -572,18 +655,22 @@ export class RunEngine {
     // 2. Dipendenze mancanti: installazione automatica senza modificare il lockfile.
     const deps = depsPlan(cwd);
     if (deps && needsDeps(cwd)) {
-      st.activity = 'Installazione dipendenze: ' + deps.display;
-      ev('node_modules non presente: eseguo "' + deps.display + '".');
+      st.activity = this.t('events.activity.deps', { command: deps.display });
+      ev(msg('events.service.depsMissing', { command: deps.display }));
       this.nodeChanged(n.id);
       let shown = 0;
-      const code = await runOnce(deps.command, null, cwd, env, (l) => { pushLog(svc.log, redact(l)); if (++shown <= 10) ev(redact(l)); });
-      if (code !== 0) return finish(false, 'Installazione delle dipendenze non riuscita ("' + deps.display + '", codice ' + code + ').');
-      ev('dipendenze installate.');
+      const code = await runOnce(deps.command, null, cwd, env, (l) => {
+        pushLog(svc.log, redact(l));
+        // Output del comando: resta testo, non viene tradotto.
+        if (++shown <= 10) this.event('servizio', d.label + ': ' + redact(l), { nodeId: n.id, attemptId: a.id });
+      });
+      if (code !== 0) return finish(false, msg('interventions.service.depsInstallFailed', { command: deps.display, code: String(code) }));
+      ev(msg('events.service.depsInstalled'));
     }
 
     // 3. Avvio e attesa dell'indirizzo.
-    st.activity = 'Avvio: ' + command;
-    ev('avvio di "' + command + '" in ' + cwd + (svc.node ? ' con Node ' + svc.node : '') + '.');
+    st.activity = this.t('events.activity.command', { command });
+    ev(svc.node ? msg('events.service.startWithNode', { command, cwd, version: svc.node }) : msg('events.service.start', { command, cwd }));
     this.nodeChanged(n.id);
     const ctrl = new AbortController();
     this.controllers.set(n.id, ctrl);
@@ -604,7 +691,7 @@ export class RunEngine {
         if (this.services.get(n.id) === h) this.services.delete(n.id);
         if (svc.status === 'attivo') {
           svc.status = 'terminato';
-          this.event('errore', d.label + ': il server si è chiuso (codice ' + (code ?? '?') + ').', { nodeId: n.id });
+          this.say('errore', msg('events.service.exited', { label: d.label, code: String(code ?? '?') }), { nodeId: n.id });
         } else if (svc.status === 'avvio') {
           svc.status = 'errore';
         }
@@ -635,40 +722,40 @@ export class RunEngine {
       return finish(true);
     }
     const exited = h.exited;
-    this.stopService(n.id, 'avvio non riuscito');
+    this.stopService(n.id, 'startFailed');
     svc.status = 'errore';
-    if (this.run.status === 'annullata') return finish(false, 'esecuzione annullata');
+    if (this.run.status === 'annullata') return finish(false, msg('interventions.service.cancelled'));
 
     // 4. Diagnosi dall'output: correzione automatica se possibile, altrimenti l'intervento adatto.
-    const diag = diagnose(svc.log);
+    const diag = diagnose(svc.log, this.lang);
     const base = exited
-      ? "il comando è terminato durante l'avvio (codice " + (svc.exitCode ?? '?') + ')'
-      : url ? url + ' non risponde entro ' + timeoutSec + ' secondi'
-        : "nessun indirizzo locale trovato nell'output entro " + timeoutSec + ' secondi (indicalo nel campo URL della fase)';
+      ? msg('interventions.service.exitedDuringStart', { code: String(svc.exitCode ?? '?') })
+      : url ? msg('interventions.service.noResponse', { url, seconds: timeoutSec })
+        : msg('interventions.service.noUrl', { seconds: timeoutSec });
     if (diag?.kind === 'node') {
       const range = diag.requiredRange ?? fix.range;
-      const res2 = range ? await resolveNode(cwd, range) : null;
+      const res2 = range ? await resolveNode(cwd, range, this.lang) : null;
       if (res2?.ok && res2.version !== svc.node && !fix.autoRetried) {
         fix.range = range;
         fix.autoRetried = true;
-        ev(diag.message + ' Riprovo automaticamente con Node ' + res2.version + ' (' + res2.manager + ').');
+        ev(msg('events.service.nodeRetry', { diag: diag.message, version: res2.version, manager: res2.manager }));
         this.running.delete(n.id);
         a.status = 'errore';
-        a.error = base;
+        a.error = this.tx(base);
         a.endedAt = new Date().toISOString();
         return this.runService(n, 'riprova');
       }
       if (res2 && !res2.ok) {
         fix.range = range;
         fix.install = res2.install;
-        return finish(false, diag.message + ' ' + res2.message, res2.install ? ['installa_node', 'riprova', 'salta', 'annulla'] : undefined);
+        return finish(false, msg('interventions.service.nodeUnresolved', { diag: diag.message, detail: res2.message }), res2.install ? ['installa_node', 'riprova', 'salta', 'annulla'] : undefined);
       }
-      return finish(false, diag.message + ' Indica la versione nel campo "Versione di Node" della fase e riprova.');
+      return finish(false, msg('interventions.service.nodeSetVersion', { diag: diag.message }));
     }
     if (diag?.kind === 'dipendenze' && deps) {
-      return finish(false, diag.message + ' Si possono reinstallare con "' + deps.display + '".', ['installa_dipendenze', 'riprova', 'salta', 'annulla']);
+      return finish(false, msg('interventions.service.depsReinstall', { diag: diag.message, command: deps.display }), ['installa_dipendenze', 'riprova', 'salta', 'annulla']);
     }
-    return finish(false, diag ? base + '. ' + diag.message : base);
+    return finish(false, diag ? msg('interventions.service.withDiagnosis', { base: this.tx(base), diag: diag.message }) : base);
   }
 
   /** Installa la versione di Node mancante o le dipendenze, su richiesta esplicita, poi riavvia la fase. */
@@ -687,20 +774,20 @@ export class RunEngine {
     const onLine = (l: string) => { pushLog(svc.log, redact(l)); if (++shown <= 15) this.event('servizio', redact(l), { nodeId: n.id }); };
     if (what === 'installa_node') {
       const plan = fix.install;
-      if (!plan) { this.running.delete(n.id); throw new Error('Nessuna installazione di Node disponibile'); }
+      if (!plan) { this.running.delete(n.id); throw this.fail(msg('api.noNodeInstall')); }
       label = plan.display;
-      st.activity = 'Installazione: ' + label;
-      this.event('servizio', d.label + ': eseguo "' + label + '" (scarica Node ' + plan.version + '; la versione di sistema non cambia).', { nodeId: n.id });
+      st.activity = this.t('events.activity.install', { command: label });
+      this.say('servizio', msg('events.service.installNode', { label: d.label, command: label, version: plan.version }), { nodeId: n.id });
       this.nodeChanged(n.id);
       code = await runOnce(plan.command, plan.args, cwd, process.env, onLine);
       if (code === 0) fix.range = fix.range ?? plan.version;
     } else {
       const deps = depsPlan(cwd);
-      if (!deps) { this.running.delete(n.id); throw new Error('Nessun package.json nella cartella'); }
-      const res = await resolveNode(cwd, d.nodeVersion?.trim() || fix.range);
+      if (!deps) { this.running.delete(n.id); throw this.fail(msg('api.noPackageJson')); }
+      const res = await resolveNode(cwd, d.nodeVersion?.trim() || fix.range, this.lang);
       label = deps.display;
-      st.activity = 'Installazione dipendenze: ' + label;
-      this.event('servizio', d.label + ': eseguo "' + label + '".', { nodeId: n.id });
+      st.activity = this.t('events.activity.deps', { command: label });
+      this.say('servizio', msg('events.service.run', { label: d.label, command: label }), { nodeId: n.id });
       this.nodeChanged(n.id);
       code = await runOnce(deps.command, null, cwd, envWithNode(res.ok ? res.dir : undefined), onLine);
     }
@@ -708,26 +795,26 @@ export class RunEngine {
     if (code !== 0) {
       st.status = 'fallita';
       st.activity = undefined;
-      st.pendingReason = '"' + label + '" non è riuscito (codice ' + code + ').\n\nUltime righe:\n' + svc.log.slice(-8).join('\n');
+      this.setPending(st, msg('interventions.repairFailed', { command: label, code: String(code), log: svc.log.slice(-8).join('\n') }));
       st.pendingActions = ['riprova', 'salta', 'annulla'];
-      this.event('errore', d.label + ': "' + label + '" non riuscito.', { nodeId: n.id });
+      this.say('errore', msg('events.service.repairFailed', { label: d.label, command: label }), { nodeId: n.id });
       this.nodeChanged(n.id);
       this.updateRunStatus();
       return;
     }
-    this.event('servizio', d.label + ': "' + label + '" completato. Riavvio il server.', { nodeId: n.id });
+    this.say('servizio', msg('events.service.repairDone', { label: d.label, command: label }), { nodeId: n.id });
     fix.autoRetried = false;
     await this.runService(n, 'riprova');
   }
 
-  private stopService(nodeId: string, why: string) {
+  private stopService(nodeId: string, why: StopReason) {
     const h = this.services.get(nodeId);
     const svc = this.run.nodes[nodeId]?.service;
     if (h) {
       this.services.delete(nodeId);
       if (svc && svc.status !== 'errore') svc.status = 'fermato';
       h.stop();
-      this.event('servizio', this.node(nodeId).data.label + ': server fermato (' + why + ').', { nodeId });
+      this.say('servizio', msg(`events.service.stopped.${why}`, { label: this.node(nodeId).data.label }), { nodeId });
       this.nodeChanged(nodeId);
     } else if (svc?.status === 'simulato') {
       svc.status = 'fermato';
@@ -735,16 +822,16 @@ export class RunEngine {
     }
   }
 
-  private stopAllServices(why: string) {
+  private stopAllServices(why: StopReason) {
     for (const id of Object.keys(this.run.nodes)) this.stopService(id, why);
   }
 
   /** Azioni manuali sul server di una fase: ferma o riavvia, senza cambiare lo stato delle altre fasi. */
   async serviceAction(nodeId: string, action: 'ferma' | 'riavvia') {
     const n = this.node(nodeId);
-    if (!n || n.data.kind !== 'server') throw new Error('La fase non è un server locale');
-    if (action === 'ferma') return this.stopService(nodeId, 'richiesta manuale');
-    if (this.running.has(nodeId)) throw new Error('Il server si sta già avviando');
+    if (!n || n.data.kind !== 'server') throw this.fail(msg('api.notServer'));
+    if (action === 'ferma') return this.stopService(nodeId, 'manual');
+    if (this.running.has(nodeId)) throw this.fail(msg('api.serverStarting'));
     await this.runService(n, 'riprova');
   }
 
@@ -780,37 +867,40 @@ export class RunEngine {
     const st = this.run.nodes[n.id];
     st.status = 'attesa_intervento';
     st.pendingActions = ['approva', 'respingi', 'annulla'];
-    st.pendingReason = n.data.instructions;
-    this.event('intervento', `${n.data.label}: in attesa della tua approvazione.`, { nodeId: n.id });
+    // Le istruzioni dell'approvazione sono testo del workflow: nessun messaggio localizzabile.
+    this.setPending(st, undefined, n.data.instructions);
+    this.say('intervento', msg('events.awaitingApproval', { label: n.data.label }), { nodeId: n.id });
     this.nodeChanged(n.id);
   }
 
   async human(nodeId: string, action: HumanAction, feedback = '') {
     const st = this.run.nodes[nodeId];
     const n = this.node(nodeId);
-    if (!st || !n) throw new Error('Fase inesistente');
+    if (!st || !n) throw this.fail(msg('api.phaseNotFound'));
     if (action === 'annulla') return this.cancel();
-    if (!st.pendingActions?.includes(action)) throw new Error(`Azione "${action}" non disponibile per questa fase`);
+    if (!st.pendingActions?.includes(action)) throw this.fail(msg('api.actionUnavailable', { action }));
     const fb = redact(feedback.trim());
-    this.event('intervento', `Intervento su ${n.data.label}: ${action}${fb ? ` — "${clip(fb, 300)}"` : ''}`, { nodeId });
+    this.say('intervento', fb
+      ? msg('events.humanActionFeedback', { label: n.data.label, action, feedback: clip(fb, 300) })
+      : msg('events.humanAction', { label: n.data.label, action }), { nodeId });
     st.pendingActions = undefined;
-    st.pendingReason = undefined;
+    this.setPending(st, undefined);
 
     if (n.data.kind === 'approvazione') {
       if (action === 'approva') {
         st.status = 'completata';
-        st.output = `Approvato dalla persona${fb ? `: ${fb}` : '.'}`;
+        st.output = fb ? this.t('agent.output.approvedWith', { feedback: fb }) : this.t('agent.output.approved');
         this.nodeChanged(nodeId);
         this.schedule();
         return;
       }
       if (action === 'respingi') {
-        if (!fb) { st.pendingActions = ['approva', 'respingi', 'annulla']; throw new Error('Per respingere serve un commento con le correzioni richieste'); }
+        if (!fb) { st.pendingActions = ['approva', 'respingi', 'annulla']; throw this.fail(msg('api.rejectNeedsComment')); }
         st.feedbackRounds++;
         if (st.feedbackRounds > MAX_FEEDBACK_ROUNDS) {
           st.status = 'fallita';
           st.pendingActions = ['approva', 'annulla'];
-          st.pendingReason = `Raggiunto il numero massimo di ${MAX_FEEDBACK_ROUNDS} cicli di correzione.`;
+          this.setPending(st, msg('interventions.maxFeedbackRounds', { count: MAX_FEEDBACK_ROUNDS }));
           this.nodeChanged(nodeId);
           this.updateRunStatus();
           return;
@@ -820,7 +910,7 @@ export class RunEngine {
         const targets = this.reworkTargets(nodeId);
         const between = this.nodesBetween(targets, nodeId);
         st.status = 'in_attesa';
-        st.activity = `Correzione in corso: ${targets.map((t) => this.node(t).data.label).join(', ')}`;
+        st.activity = this.t('events.activity.correction', { phases: targets.map((t) => this.node(t).data.label).join(', ') });
         this.reworking.add(nodeId);
         for (const b of between) {
           const bs = this.run.nodes[b];
@@ -846,14 +936,14 @@ export class RunEngine {
     }
 
     if (action === 'installa_node' || action === 'installa_dipendenze') {
-      if (n.data.kind !== 'server') throw new Error('Azione disponibile solo per il server locale');
+      if (n.data.kind !== 'server') throw this.fail(msg('api.serverOnly'));
       void this.repairService(n, action);
       return;
     }
 
     if (action === 'salta') {
       st.status = 'saltata';
-      st.output = '(fase saltata dalla persona)';
+      st.output = this.t('agent.output.skipped');
       this.nodeChanged(nodeId);
       this.schedule();
     } else if (action === 'riprova') {
@@ -862,8 +952,8 @@ export class RunEngine {
       void this.startNode(n, 'riprova');
     } else if (action === 'riprendi') {
       const sess = [...st.attempts].reverse().find((x) => x.sessionId)?.sessionId;
-      if (!sess) throw new Error('Nessuna sessione da riprendere');
-      void this.runAgent(n, 'ripresa_con_feedback', { sessionId: sess, feedback: fb || 'Continua dal punto in cui ti eri fermato.' });
+      if (!sess) throw this.fail(msg('api.noSession'));
+      void this.runAgent(n, 'ripresa_con_feedback', { sessionId: sess, feedback: fb || this.t('agent.continue') });
     }
   }
 
@@ -871,12 +961,12 @@ export class RunEngine {
     this.run.status = 'annullata';
     this.run.endedAt = new Date().toISOString();
     for (const c of this.controllers.values()) c.abort();
-    this.stopAllServices('esecuzione annullata');
+    this.stopAllServices('cancelled');
     for (const s of Object.values(this.run.nodes)) {
       s.pendingActions = undefined;
       if (s.status === 'in_attesa' || s.status === 'attesa_intervento') s.status = 'saltata';
     }
-    this.event('run', 'Esecuzione annullata.');
+    this.say('run', msg('events.runCancelled'));
     for (const id of Object.keys(this.run.nodes)) this.send({ t: 'node', node: this.run.nodes[id] });
     this.runChanged();
     active.delete(this.run.id);
@@ -884,14 +974,27 @@ export class RunEngine {
   }
 }
 
-const PROTOCOL = `# Protocollo di risposta
-- Quando prendi una decisione rilevante (cosa leggere, cosa modificare, come verificare), scrivi una riga che inizia con "DECISIONE:" seguita da una spiegazione breve, una sola frase.
-- Lavora solo nella cartella del progetto e solo con gli strumenti che hai a disposizione.
-- Termina SEMPRE la risposta con questo blocco, in JSON valido:
-\`\`\`regia
-{"esito": "ok" | "ko" | "bloccato", "sintesi": "risultato in 1-3 frasi, utile alla fase successiva", "decisioni": ["decisione principale e motivo", "..."]}
-\`\`\`
-Usa "ko" se il compito non è riuscito (es. test falliti), "bloccato" se non puoi procedere senza un intervento umano (spiega cosa serve nella sintesi).`;
+/** Motivo dell'arresto di un server locale (chiave events.service.stopped.*). */
+type StopReason = 'completed' | 'restart' | 'startFailed' | 'manual' | 'cancelled';
+
+/**
+ * Protocollo di risposta chiesto agli agenti, nella lingua del workflow.
+ * Le parti lette da Regia restano invariate in ogni lingua: il blocco ```regia, le chiavi esito/sintesi/decisioni
+ * e i valori ok/ko/bloccato. Le righe di decisione iniziano con "DECISIONE:" (it) o "DECISION:" (en).
+ */
+export function agentProtocol(lang = 'it'): string {
+  const t = serverT(lang);
+  return t('agent.protocol');
+}
+
+/** Riga di decisione dichiarata dall'agente: "DECISIONE:" o "DECISION:", in qualsiasi lingua, anche in grassetto. */
+const DECISION_LINE = /^\s*\**\s*(?:DECISIONE|DECISION)\s*\**\s*:\s*\**\s*(.+)$/i;
+
+export function parseDecisionLine(line: string): string | null {
+  const m = line.match(DECISION_LINE);
+  const text = m?.[1].trim();
+  return text ? text : null;
+}
 
 export function parseDeclared(text: unknown): DeclaredOutcome | undefined {
   if (typeof text !== 'string') return undefined;
@@ -911,31 +1014,34 @@ export function parseDeclared(text: unknown): DeclaredOutcome | undefined {
   }
 }
 
-function summarizeTool(name: string, input: Record<string, any>): string {
+function summarizeTool(name: string, input: Record<string, any>, t: Translate): string {
   const rel = (p: unknown) => (typeof p === 'string' ? p.replace(/\\/g, '/').split('/').slice(-3).join('/') : '');
   switch (name) {
     case 'Read': case 'Edit': case 'Write': case 'NotebookEdit': return `${name} ${rel(input.file_path ?? input.notebook_path)}`;
     case 'Bash': return `Bash: ${clip(String(input.command ?? ''), 160)}`;
     case 'Glob': return `Glob ${input.pattern ?? ''}`;
     case 'Grep': return `Grep "${clip(String(input.pattern ?? ''), 80)}"`;
-    case 'Agent': case 'Task': return `Subagente: ${input.description ?? ''}`;
+    case 'Agent': case 'Task': return t('events.tool.subagent', { description: input.description ?? '' });
     case 'WebFetch': return `WebFetch ${input.url ?? ''}`;
     case 'WebSearch': return `WebSearch "${input.query ?? ''}"`;
     default: return name;
   }
 }
 
-function observedDecision(name: string, input: Record<string, any>): string | null {
+function observedDecision(name: string, input: Record<string, any>): Msg | null {
   const f = typeof input.file_path === 'string' ? input.file_path.replace(/\\/g, '/').split('/').slice(-2).join('/') : '';
-  if (name === 'Edit' || name === 'Write') return `Ha scelto di modificare ${f}`;
-  if (name === 'Bash') return `Ha scelto di eseguire: ${clip(String(input.command ?? ''), 120)}`;
+  if (name === 'Edit' || name === 'Write') return msg('events.decisions.edit', { file: f });
+  if (name === 'Bash') return msg('events.decisions.bash', { command: clip(String(input.command ?? ''), 120) });
   return null;
 }
 
-function usageLine(a: Attempt) {
+function usageMsg(a: Attempt): Msg {
   const u = a.usage;
-  const cost = u.costUsd === null ? 'costo non disponibile' : `${u.costUsd.toFixed(4)} USD stimati`;
-  return `Consumi (${a.usageSource}): input ${u.inputTokens}, output ${u.outputTokens}, cache scritta ${u.cacheCreationInputTokens}, cache letta ${u.cacheReadInputTokens}; ${cost}; turni ${a.numTurns ?? '?'}; messaggi duplicati ignorati ${a.live.duplicatesSkipped}.`;
+  const p: Params = {
+    source: a.usageSource, input: u.inputTokens, output: u.outputTokens, cacheWrite: u.cacheCreationInputTokens, cacheRead: u.cacheReadInputTokens,
+    turns: a.numTurns ?? '?', duplicates: a.live.duplicatesSkipped,
+  };
+  return u.costUsd === null ? msg('events.usage.unknown', p) : msg('events.usage.known', { ...p, cost: u.costUsd.toFixed(4) });
 }
 
 /** Impronta leggera dei file del progetto (percorso, dimensione, data di modifica). */

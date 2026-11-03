@@ -1,11 +1,16 @@
 // Suggerimenti di ottimizzazione basati solo su dati misurati dell'esecuzione.
 // Non stimano risparmi: indicano dove si concentra la spesa e cosa provare, con il compromesso atteso.
 // L'effetto reale si verifica confrontando due esecuzioni.
+// I testi sono messaggi localizzabili (chiavi insights.* in locales/<lingua>/workflow.json):
+// le varianti (dati simulati, frammenti facoltativi) sono chiavi distinte, così ogni lingua può formularle in modo naturale.
 import type { Attempt, Insight, Run, WorkflowNode } from '../shared/types.ts';
 import { WRITE_TOOLS, isAgentKind } from '../shared/types.ts';
+import { msg, type Msg, type Params } from '../shared/i18n.ts';
 
 const usd = (n: number) => `${n.toFixed(4)} USD`;
-const tok = (n: number) => n.toLocaleString('it-IT');
+/** Numero di token senza separatori: il formato dipende dalla lingua di chi legge. */
+const tok = (n: number) => Math.round(n);
+const I = (key: string, params?: Params): Msg => msg(`insights.${key}`, params);
 
 function tier(models: string[], configured: string): 'premium' | 'medio' | 'economico' | 'sconosciuto' {
   const all = [...models, configured].join(' ').toLowerCase();
@@ -59,7 +64,8 @@ export function computeInsights(run: Run): Insight[] {
   const pct = (s: NodeStats) => `${Math.round(share(s) * 100)}%`;
   const sev = (s: NodeStats): Insight['severity'] => (share(s) >= 0.35 ? 'alta' : share(s) >= 0.15 ? 'media' : 'info');
   const wf = run.snapshot;
-  const sim = run.mode === 'prova' ? ' (dati simulati)' : '';
+  // Con dati simulati si usa la variante della chiave con il suffisso "Sim".
+  const sim = run.mode === 'prova' ? 'Sim' : '';
   const ctxs = all.map((s) => s.input + s.cacheCreate + s.cacheRead).filter((x) => x > 0).sort((a, b) => a - b);
   const medianCtx = ctxs.length ? ctxs[Math.floor(ctxs.length / 2)] : 0;
   const preds = (id: string) => wf.edges.filter((e) => e.target === id).map((e) => e.source);
@@ -76,10 +82,12 @@ export function computeInsights(run: Run): Insight[] {
     const names = [...new Set(correctionAttempts.map(({ s }) => s.node.data.label))];
     out.push({
       id: 'corrections', severity: total > 0 && c / total > 0.25 ? 'alta' : 'media',
-      title: rounds === 1 ? '1 ciclo di correzione richiesto in approvazione' : `${rounds} cicli di correzione richiesti in approvazione`,
-      evidence: `Costo stimato dei passaggi rifatti: ${usd(c)}${total > 0 ? ` (${Math.round((c / total) * 100)}% del totale)` : ''}${sim}. Fasi coinvolte: ${names.join(', ')}.`,
-      suggestion: 'Riporta nelle istruzioni della fase di implementazione i criteri che hai usato per respingere, oppure aggiungi una revisione automatica mirata a quei criteri prima dell\'approvazione.',
-      tradeoff: 'Criteri più rigidi allungano le istruzioni (più input a ogni chiamata) e una revisione in più costa anche quando il lavoro è già corretto.',
+      title: I('corrections.title', { count: rounds }),
+      evidence: total > 0
+        ? I(`corrections.evidenceShare${sim}`, { cost: usd(c), pct: `${Math.round((c / total) * 100)}%`, phases: names.join(', ') })
+        : I(`corrections.evidence${sim}`, { cost: usd(c), phases: names.join(', ') }),
+      suggestion: I('corrections.suggestion'),
+      tradeoff: I('corrections.tradeoff'),
     });
   }
 
@@ -88,10 +96,10 @@ export function computeInsights(run: Run): Insight[] {
   if (top && total > 0 && share(top) >= 0.4 && all.length > 1) {
     out.push({
       id: `top-${top.node.id}`, severity: 'alta', nodeId: top.node.id,
-      title: `"${top.node.data.label}" concentra ${pct(top)} della spesa stimata`,
-      evidence: `${usd(top.cost)} su ${usd(total)}${sim}; input+cache ${tok(top.input + top.cacheCreate + top.cacheRead)} token, output ${tok(top.output)}.`,
-      suggestion: 'È la fase su cui un intervento ha più effetto: vedi i suggerimenti specifici sotto per questa fase.',
-      tradeoff: 'Nessuno di per sé: è un\'indicazione di priorità.',
+      title: I('top.title', { phase: top.node.data.label, pct: pct(top) }),
+      evidence: I(`top.evidence${sim}`, { cost: usd(top.cost), total: usd(total), context: tok(top.input + top.cacheCreate + top.cacheRead), output: tok(top.output) }),
+      suggestion: I('top.suggestion'),
+      tradeoff: I('top.tradeoff'),
     });
   }
 
@@ -105,14 +113,15 @@ export function computeInsights(run: Run): Insight[] {
       const target = t === 'premium' ? 'sonnet' : 'haiku';
       out.push({
         id: `model-${s.node.id}`, severity: sev(s), nodeId: s.node.id,
-        title: `"${d.label}": prova un modello meno costoso (${target})`,
-        evidence: `Fase di tipo ${d.kind}${readOnly ? ', senza strumenti di scrittura' : ''}, modello ${s.models.join(', ') || d.model}; ${usd(s.cost)} (${pct(s)} del totale)${sim}.`,
-        suggestion: `Imposta il modello "${target}" per questa fase e confronta le due esecuzioni (esito, decisioni, tempi).`,
+        title: I('model.title', { phase: d.label, model: target }),
+        // Variante per tipo di fase (test, revisione, analisi), con "Ro" se senza strumenti di scrittura.
+        evidence: I(`model.evidence.${d.kind}${readOnly ? 'Ro' : ''}${sim}`, { models: s.models.join(', ') || d.model, cost: usd(s.cost), pct: pct(s) }),
+        suggestion: I('model.suggestion', { model: target }),
         tradeoff: d.kind === 'test'
-          ? 'Eseguire i test e riportarne l\'esito richiede poco ragionamento, ma la diagnosi delle cause di un fallimento può essere meno precisa.'
+          ? I('model.tradeoff.test')
           : d.kind === 'revisione'
-            ? 'Una revisione con un modello più piccolo può non accorgersi di problemi sottili (logica, casi limite). Tienilo se la revisione è il tuo controllo di qualità principale.'
-            : 'L\'analisi può essere meno approfondita e indicare meno file o cause: verifica che la fase successiva non debba poi rifare il lavoro.',
+            ? I('model.tradeoff.revisione')
+            : I('model.tradeoff.analisi'),
       });
     }
 
@@ -122,36 +131,36 @@ export function computeInsights(run: Run): Insight[] {
     const relHigh = all.length > 1 && medianCtx > 0 && ctxTokens >= 2 * medianCtx;
     const fullCtx = d.contextMode === 'completo' && wf.edges.some((e) => e.target === s.node.id);
     if (ctxTokens > 40000 && s.output > 0 && (relHigh || fullCtx)) {
+      // Frammenti facoltativi del suggerimento: modalità "completo" e impostazioni del progetto caricate.
+      const sugg = `${d.contextMode === 'completo' ? 'full' : 'base'}${wf.settings.loadProjectSettings ? 'ProjectSettings' : ''}`;
       out.push({
         id: `ctx-${s.node.id}`, severity: sev(s), nodeId: s.node.id,
-        title: `"${d.label}": ${relHigh ? 'molto più contesto delle altre fasi' : 'riceve il testo completo delle fasi precedenti'}`,
-        evidence: `${tok(ctxTokens)} token di input/cache${relHigh ? ` (${(ctxTokens / medianCtx).toFixed(1)}× la mediana delle fasi)` : ''} contro ${tok(s.output)} di output${sim}.`,
-        suggestion: [
-          d.contextMode === 'completo' ? 'Passa i risultati delle fasi precedenti in modalità "sintesi" invece che "completo".' : null,
-          'Indica nelle istruzioni i file o le cartelle da guardare, così l\'agente legge meno.',
-          wf.settings.loadProjectSettings ? 'Se il CLAUDE.md del progetto è lungo e non serve a questa fase, valuta di non caricarlo.' : null,
-        ].filter(Boolean).join(' '),
-        tradeoff: 'Con meno contesto l\'agente può non vedere informazioni utili e sbagliare o chiedere un altro passaggio: restringi gradualmente.',
+        title: relHigh ? I('ctx.title.relHigh', { phase: d.label }) : I('ctx.title.fullCtx', { phase: d.label }),
+        evidence: relHigh
+          ? I(`ctx.evidence.ratio${sim}`, { context: tok(ctxTokens), ratio: (ctxTokens / medianCtx).toFixed(1), output: tok(s.output) })
+          : I(`ctx.evidence.base${sim}`, { context: tok(ctxTokens), output: tok(s.output) }),
+        suggestion: I(`ctx.suggestion.${sugg}`),
+        tradeoff: I('ctx.tradeoff'),
       });
     }
 
     if (s.repeated.length) {
       out.push({
         id: `rep-${s.node.id}`, severity: 'media', nodeId: s.node.id,
-        title: `"${d.label}": chiamate identiche ripetute`,
-        evidence: s.repeated.map((r) => `${r.name} ×${r.count} con gli stessi parametri`).join('; ') + '.',
-        suggestion: 'Chiedi nelle istruzioni di non rileggere file già letti se non sono cambiati e di riassumere ciò che serve; imposta un limite di turni adeguato.',
-        tradeoff: 'Rileggere un file dopo una modifica può essere legittimo (verifica): non vietarlo del tutto.',
+        title: I('rep.title', { phase: d.label }),
+        evidence: I('rep.evidence', { count: s.repeated.length, calls: s.repeated.map((r) => `${r.name} ×${r.count}`).join('; ') }),
+        suggestion: I('rep.suggestion'),
+        tradeoff: I('rep.tradeoff'),
       });
     }
 
     if (d.maxTurns && s.attempts.some((a) => (a.numTurns ?? 0) >= d.maxTurns! * 0.8)) {
       out.push({
         id: `turns-${s.node.id}`, severity: 'media', nodeId: s.node.id,
-        title: `"${d.label}": vicino al limite di turni`,
-        evidence: `Turni usati: ${s.attempts.map((a) => a.numTurns ?? '?').join(', ')} su un massimo di ${d.maxTurns}.`,
-        suggestion: 'Spezza il compito in due fasi più piccole o rendi le istruzioni più specifiche, invece di alzare soltanto il limite.',
-        tradeoff: 'Più fasi significano più avvii di sessione e contesto ricaricato: conviene solo se i passaggi sono davvero separabili.',
+        title: I('turns.title', { phase: d.label }),
+        evidence: I('turns.evidence', { used: s.attempts.map((a) => a.numTurns ?? '?').join(', '), max: d.maxTurns }),
+        suggestion: I('turns.suggestion'),
+        tradeoff: I('turns.tradeoff'),
       });
     }
 
@@ -162,20 +171,22 @@ export function computeInsights(run: Run): Insight[] {
       const failures = s.attempts.filter((a) => a.status === 'errore').map((a) => a.error ?? a.resultSubtype ?? 'errore');
       out.push({
         id: `retry-${s.node.id}`, severity: retryCost > 0 && total > 0 && retryCost / total > 0.15 ? 'alta' : 'media', nodeId: s.node.id,
-        title: `"${d.label}": ${retries.length} tentativi aggiuntivi dopo errori o blocchi`,
-        evidence: `Costo stimato dei tentativi aggiuntivi: ${usd(retryCost)}${sim}.${failures.length ? ` Cause: ${failures.slice(0, 3).join('; ')}.` : ''}`,
-        suggestion: 'Se la causa è ricorrente (limite di turni o di spesa, strumento mancante, informazione assente), correggi la configurazione invece di ritentare; "Riprendi la sessione" riusa il contesto già costruito invece di ricominciare.',
-        tradeoff: 'Riprendere una sessione porta con sé anche eventuali errori di impostazione dell\'agente; ripartire da capo costa di più ma è più pulito.',
+        title: I('retry.title', { phase: d.label, count: retries.length }),
+        evidence: failures.length
+          ? I(`retry.evidenceCauses${sim}`, { cost: usd(retryCost), causes: failures.slice(0, 3).join('; ') })
+          : I(`retry.evidence${sim}`, { cost: usd(retryCost) }),
+        suggestion: I('retry.suggestion'),
+        tradeoff: I('retry.tradeoff'),
       });
     }
 
     if (readOnly && !d.reuseResult && share(s) >= 0.1 && !hasWriterAncestor(s.node.id)) {
       out.push({
         id: `reuse-${s.node.id}`, severity: 'info', nodeId: s.node.id,
-        title: `"${d.label}": candidato al riuso del risultato`,
-        evidence: `Fase in sola lettura, ${usd(s.cost)}${sim}.`,
-        suggestion: 'Attiva "Riusa il risultato se nulla è cambiato": nelle esecuzioni successive, se istruzioni, input e file del progetto sono identici, il risultato precedente viene riusato senza chiamate.',
-        tradeoff: 'L\'impronta dei file si basa su percorso, dimensione e data di modifica: cambiamenti fuori dalla cartella del progetto (dipendenze, servizi esterni) non vengono rilevati.',
+        title: I('reuse.title', { phase: d.label }),
+        evidence: I(`reuse.evidence${sim}`, { cost: usd(s.cost) }),
+        suggestion: I('reuse.suggestion'),
+        tradeoff: I('reuse.tradeoff'),
       });
     }
   }
@@ -190,10 +201,10 @@ export function computeInsights(run: Run): Insight[] {
     if (ro(a) && ro(b) && onlyPred && a.data.model === b.data.model) {
       out.push({
         id: `merge-${a.id}-${b.id}`, severity: 'info', nodeId: b.id,
-        title: `"${a.data.label}" e "${b.data.label}" sono due fasi in sola lettura consecutive`,
-        evidence: 'Stesso modello, nessuna modifica ai file tra le due: la seconda ricarica il contesto del progetto.',
-        suggestion: 'Valuta di unirle in un\'unica fase con istruzioni in due punti.',
-        tradeoff: 'Una fase unica è meno leggibile nel diagramma e un errore costringe a rifare entrambe le parti.',
+        title: I('merge.title', { first: a.data.label, second: b.data.label }),
+        evidence: I('merge.evidence'),
+        suggestion: I('merge.suggestion'),
+        tradeoff: I('merge.tradeoff'),
       });
     }
   }
@@ -203,20 +214,20 @@ export function computeInsights(run: Run): Insight[] {
   if (cc > 20000 && cr < cc) {
     out.push({
       id: 'cache', severity: 'info',
-      title: 'La cache viene scritta più di quanto venga riletta',
-      evidence: `Cache scritta ${tok(cc)} token, letta ${tok(cr)} token${sim}. La scrittura in cache costa più dell'input normale.`,
-      suggestion: 'Succede con molte fasi brevi, ognuna con un contesto nuovo. Meno fasi più corpose, o fasi che condividono lo stesso modello e lo stesso prompt di sistema, riutilizzano meglio la cache.',
-      tradeoff: 'Accorpare le fasi riduce la granularità di controllo e la possibilità di usare modelli diversi per compiti diversi.',
+      title: I('cache.title'),
+      evidence: I(`cache.evidence${sim}`, { written: tok(cc), read: tok(cr) }),
+      suggestion: I('cache.suggestion'),
+      tradeoff: I('cache.tradeoff'),
     });
   }
 
   if (run.budgetUsd === undefined && run.mode === 'reale' && total > 0) {
     out.push({
       id: 'budget', severity: 'media',
-      title: 'Nessun limite di spesa per esecuzione',
-      evidence: `Questa esecuzione è costata circa ${usd(total)} (stima del SDK).`,
-      suggestion: `Imposta un limite nelle impostazioni del workflow, ad esempio ${usd(Math.max(0.05, total * 1.5))} (1,5× il valore osservato), e limiti per fase sulle fasi più costose.`,
-      tradeoff: 'Un limite troppo basso interrompe una fase a metà: il lavoro parziale resta nei file ma va completato con un nuovo tentativo.',
+      title: I('budget.title'),
+      evidence: I('budget.evidence', { cost: usd(total) }),
+      suggestion: I('budget.suggestion', { suggested: usd(Math.max(0.05, total * 1.5)) }),
+      tradeoff: I('budget.tradeoff'),
     });
   }
 

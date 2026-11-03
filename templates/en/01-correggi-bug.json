@@ -1,0 +1,36 @@
+{
+  "id": "correggi-bug",
+  "name": "Fix a bug",
+  "description": "Root cause analysis, targeted fix, tests and review in parallel, final approval.",
+  "goalHint": "Describe the bug: expected behaviour, current behaviour, how to reproduce it, any suspect files.",
+  "settings": { "runBudgetUsd": 2, "maxParallel": 2, "loadProjectSettings": true, "applyGeneralRules": true },
+  "nodes": [
+    { "id": "analisi", "position": { "x": 0, "y": 120 }, "data": {
+      "label": "Root cause analysis", "kind": "analisi", "role": "Analyst: finds the cause of the problem without modifying files.",
+      "instructions": "Find the cause of the bug described in the goal. Read only the files you need, starting from the ones mentioned. List the files and lines to change and the minimal fix. Do not modify files.",
+      "model": "sonnet", "allowedTools": ["Read", "Glob", "Grep"], "maxTurns": 15, "maxBudgetUsd": 0.6, "contextMode": "sintesi", "reuseResult": false } },
+    { "id": "correzione", "position": { "x": 300, "y": 120 }, "data": {
+      "label": "Fix", "kind": "implementazione", "role": "Developer: applies small, targeted changes in the project's style.",
+      "instructions": "Apply the fix identified by the analysis, touching only the files that need it. Do not modify existing tests unless they are wrong (if so, explain why). If there is a test suite, run it once.",
+      "model": "sonnet", "allowedTools": ["Read", "Glob", "Grep", "Edit", "Bash"], "maxTurns": 25, "maxBudgetUsd": 1, "contextMode": "sintesi", "reuseResult": false } },
+    { "id": "test", "position": { "x": 600, "y": 40 }, "data": {
+      "label": "Test", "kind": "test", "role": "Tester: runs the tests and reports the outcome without modifying the code.",
+      "instructions": "Run the project's test suite (look for the command in package.json, Makefile, pyproject or README). Report how many tests pass and fail. Outcome 'ko' if at least one fails. Do not modify files.",
+      "model": "haiku", "allowedTools": ["Read", "Glob", "Bash"], "maxTurns": 8, "maxBudgetUsd": 0.3, "contextMode": "nessuno", "reuseResult": false } },
+    { "id": "revisione", "position": { "x": 600, "y": 210 }, "data": {
+      "label": "Review", "kind": "revisione", "role": "Reviewer: checks that the fix solves the problem without side effects.",
+      "instructions": "Review the modified files reported by the previous phase. Report only concrete problems: uncovered cases, regressions, code inconsistent with the rest. Do not modify files.",
+      "model": "sonnet", "allowedTools": ["Read", "Glob", "Grep"], "maxTurns": 10, "maxBudgetUsd": 0.5, "contextMode": "sintesi", "reuseResult": false } },
+    { "id": "approvazione", "position": { "x": 900, "y": 120 }, "data": {
+      "label": "Approval", "kind": "approvazione", "role": "",
+      "instructions": "Check the test outcome, the review and the git diff. Approve, or reject explaining what to fix: the fix will resume from where it left off.",
+      "model": "", "allowedTools": [], "contextMode": "sintesi", "reuseResult": false } }
+  ],
+  "edges": [
+    { "id": "e1", "source": "analisi", "target": "correzione" },
+    { "id": "e2", "source": "correzione", "target": "test" },
+    { "id": "e3", "source": "correzione", "target": "revisione" },
+    { "id": "e4", "source": "test", "target": "approvazione" },
+    { "id": "e5", "source": "revisione", "target": "approvazione" }
+  ]
+}

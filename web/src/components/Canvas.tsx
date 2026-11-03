@@ -4,23 +4,25 @@ import {
   type Connection, type Edge, type EdgeChange, type Node, type NodeChange, type NodeProps,
 } from '@xyflow/react';
 import { Crosshair, ExternalLink, LayoutGrid, Maximize2, Minus, Plus, TriangleAlert } from 'lucide-react';
-import { isAgentKind, type NodeRunState, type PhaseConfig, type PhaseKind, type ValidationIssue, type Workflow } from '../../../shared/types.ts';
+import { isAgentKind, type NodeRunState, type PhaseConfig, type PhaseKind, type ServiceStatus, type ValidationIssue, type Workflow } from '../../../shared/types.ts';
 import { layoutGraph, NODE_W } from '../../../shared/layout.ts';
 import { fmtTok, fmtUsd } from '../api.ts';
-import { KIND_META, KindTile, STATUS_META, StatusPill } from '../ui.tsx';
+import { useI18n } from '../i18n.tsx';
+import { KindTile, STATUS_META, StatusPill, kindLabel, serviceLabel } from '../ui.tsx';
 
-/** Compatibilità con i componenti che usano ancora le etichette per tipo. */
-export const KIND_LABEL: Record<PhaseKind, string> = Object.fromEntries(Object.entries(KIND_META).map(([k, v]) => [k, v.label])) as Record<PhaseKind, string>;
-
-export const SERVICE_LABEL: Record<string, string> = {
-  avvio: 'Avvio in corso', attivo: 'Attivo', simulato: 'Attivo (simulato)', fermato: 'Fermato', terminato: 'Chiuso', errore: 'Errore',
-};
+/**
+ * Compatibilità con i componenti che usano ancora le etichette per tipo e per stato del server.
+ * @deprecated usare kindLabel / serviceLabel da ui.tsx
+ */
+export const KIND_LABEL = new Proxy({} as Record<PhaseKind, string>, { get: (_, k) => (typeof k === 'string' ? kindLabel(k as PhaseKind) : undefined) });
+/** @deprecated usare serviceLabel da ui.tsx */
+export const SERVICE_LABEL = new Proxy({} as Record<string, string>, { get: (_, k) => (typeof k === 'string' ? serviceLabel(k as ServiceStatus) : undefined) });
 
 type PhaseData = { cfg: PhaseConfig; run?: NodeRunState; issues: ValidationIssue[]; live: boolean };
 
-const modelLabel = (m: string) => m || 'predefinito';
-
 function PhaseNode({ data, selected }: NodeProps<Node<PhaseData>>) {
+  const { t, tm } = useI18n();
+  const modelLabel = (m: string) => m || t('common.defaultModel');
   const { cfg, run, issues, live } = data;
   const status = run?.status;
   const tone = status ? STATUS_META[status].tone : 'idle';
@@ -33,9 +35,9 @@ function PhaseNode({ data, selected }: NodeProps<Node<PhaseData>>) {
   const svc = run?.service;
   const svcUp = svc && (svc.status === 'attivo' || svc.status === 'simulato');
 
-  const meta = cfg.kind === 'approvazione' ? 'Approvazione umana'
-    : cfg.kind === 'server' ? 'Server locale'
-      : `${KIND_META[cfg.kind].label} · ${modelLabel(cfg.model)}`;
+  const meta = cfg.kind === 'approvazione' ? kindLabel('approvazione')
+    : cfg.kind === 'server' ? kindLabel('server')
+      : `${kindLabel(cfg.kind)} · ${modelLabel(cfg.model)}`;
 
   return (
     <div className={`node tone-${live ? tone : 'idle'} ${selected ? 'is-selected' : ''} ${!live && errors ? 'has-error' : ''} ${live ? 'is-live' : ''}`} style={{ width: NODE_W }}>
@@ -43,7 +45,7 @@ function PhaseNode({ data, selected }: NodeProps<Node<PhaseData>>) {
       <div className="node-head">
         <KindTile kind={cfg.kind} />
         <div className="node-titles">
-          <div className="node-title">{cfg.label || 'Senza nome'}</div>
+          <div className="node-title">{cfg.label || t('common.untitled')}</div>
           <div className="node-meta">{meta}</div>
         </div>
         {live && status && <StatusPill status={status} compact />}
@@ -52,9 +54,9 @@ function PhaseNode({ data, selected }: NodeProps<Node<PhaseData>>) {
 
       {!live && (
         <div className="node-foot">
-          {agent && <><span>{cfg.allowedTools.length} strumenti</span><span>{cfg.maxTurns ? `${cfg.maxTurns} turni` : 'turni liberi'}</span>{cfg.maxBudgetUsd ? <span>max ${cfg.maxBudgetUsd}</span> : null}{cfg.reuseResult && <span>riuso</span>}</>}
-          {cfg.kind === 'server' && <code className="node-cmd">{cfg.command || 'nessun comando'}</code>}
-          {cfg.kind === 'approvazione' && <span>Si ferma finché non decidi</span>}
+          {agent && <><span>{t('canvas.tools', { count: cfg.allowedTools.length })}</span><span>{cfg.maxTurns ? t('canvas.turns', { count: cfg.maxTurns }) : t('canvas.freeTurns')}</span>{cfg.maxBudgetUsd ? <span>{t('canvas.maxBudget', { amount: cfg.maxBudgetUsd })}</span> : null}{cfg.reuseResult && <span>{t('canvas.reuse')}</span>}</>}
+          {cfg.kind === 'server' && <code className="node-cmd">{cfg.command || t('canvas.noCommand')}</code>}
+          {cfg.kind === 'approvazione' && <span>{t('canvas.waitsForYou')}</span>}
         </div>
       )}
 
@@ -63,7 +65,7 @@ function PhaseNode({ data, selected }: NodeProps<Node<PhaseData>>) {
           {run?.activity && <div className="node-activity" title={run.activity}>{run.activity}</div>}
           {svc && (
             <div className="node-service">
-              <span className={`dot ${svcUp ? 'on' : ''}`} />{SERVICE_LABEL[svc.status]}
+              <span className={`dot ${svcUp ? 'on' : ''}`} />{serviceLabel(svc.status)}
               {svcUp && svc.url && (
                 <a className="nodrag" href={svc.url} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}>{svc.url.replace(/^https?:\/\//, '')}<ExternalLink /></a>
               )}
@@ -73,8 +75,8 @@ function PhaseNode({ data, selected }: NodeProps<Node<PhaseData>>) {
           {(agent && attempts.length > 0) || attempts.length > 1 ? (
             <div className="node-foot">
               {agent && attempts.length > 0 && <span className="num">{fmtUsd(cost, 3)}</span>}
-              {active && <span className="num">{fmtTok(liveTok)} tok</span>}
-              {attempts.length > 1 && <span>{attempts.length} tentativi</span>}
+              {active && <span className="num">{t('canvas.tokens', { n: fmtTok(liveTok) })}</span>}
+              {attempts.length > 1 && <span>{t('canvas.attempts', { count: attempts.length })}</span>}
             </div>
           ) : null}
         </div>
@@ -99,6 +101,7 @@ interface Props {
 }
 
 export function Canvas({ workflow, runNodes, issues, selectedId, editable, onSelect, onChange, onDropPhase }: Props) {
+  const { t } = useI18n();
   const rf = useReactFlow();
   const live = Boolean(runNodes);
   const [follow, setFollow] = useState(true);
@@ -228,24 +231,24 @@ export function Canvas({ workflow, runNodes, issues, selectedId, editable, onSel
         <Background variant={BackgroundVariant.Dots} gap={22} size={1.2} />
       </ReactFlow>
 
-      <div className="canvas-tools" role="toolbar" aria-label="Strumenti del diagramma">
-        <button className="icon-btn" onClick={() => rf.zoomIn({ duration: 150 })} title="Ingrandisci" aria-label="Ingrandisci"><Plus /></button>
-        <button className="icon-btn" onClick={() => rf.zoomOut({ duration: 150 })} title="Riduci" aria-label="Riduci"><Minus /></button>
-        <button className="icon-btn" onClick={() => rf.fitView({ padding: 0.2, duration: 300 })} title="Mostra tutto il diagramma" aria-label="Mostra tutto"><Maximize2 /></button>
+      <div className="canvas-tools" role="toolbar" aria-label={t('canvas.toolbar')}>
+        <button className="icon-btn" onClick={() => rf.zoomIn({ duration: 150 })} title={t('canvas.zoomIn')} aria-label={t('canvas.zoomIn')}><Plus /></button>
+        <button className="icon-btn" onClick={() => rf.zoomOut({ duration: 150 })} title={t('canvas.zoomOut')} aria-label={t('canvas.zoomOut')}><Minus /></button>
+        <button className="icon-btn" onClick={() => rf.fitView({ padding: 0.2, duration: 300 })} title={t('canvas.fitViewTitle')} aria-label={t('canvas.fitView')}><Maximize2 /></button>
         {editable && <span className="tools-sep" />}
-        {editable && <button className="btn sm ghost" onClick={relayout} title="Dispone le fasi dall'alto verso il basso"><LayoutGrid />Riordina</button>}
+        {editable && <button className="btn sm ghost" onClick={relayout} title={t('canvas.relayoutTitle')}><LayoutGrid />{t('canvas.relayout')}</button>}
         {live && <span className="tools-sep" />}
         {live && (
-          <button className={`btn sm ${follow ? 'soft' : 'ghost'}`} onClick={() => { setFollow(!follow); lastFocus.current = null; }} aria-pressed={follow} title="Inquadra automaticamente la fase attiva">
-            <Crosshair />Segui fase attiva
+          <button className={`btn sm ${follow ? 'soft' : 'ghost'}`} onClick={() => { setFollow(!follow); lastFocus.current = null; }} aria-pressed={follow} title={t('canvas.followTitle')}>
+            <Crosshair />{t('canvas.follow')}
           </button>
         )}
       </div>
 
       {editable && workflow.nodes.length === 0 && (
         <div className="canvas-empty">
-          <strong>Il diagramma è vuoto</strong>
-          <span>Trascina qui una fase dalla palette a sinistra, oppure fai clic su una fase per aggiungerla.</span>
+          <strong>{t('canvas.emptyTitle')}</strong>
+          <span>{t('canvas.emptyText')}</span>
         </div>
       )}
     </div>

@@ -1,0 +1,249 @@
+{
+  "common": {
+    "cancel": "Cancel",
+    "close": "Close",
+    "start": "Start",
+    "loading": "Loading…",
+    "untitled": "Untitled",
+    "defaultModel": "default"
+  },
+  "kinds": {
+    "analisi": {
+      "label": "Analysis",
+      "hint": "Reads the code and works out what to do"
+    },
+    "implementazione": {
+      "label": "Implementation",
+      "hint": "Changes the code"
+    },
+    "test": {
+      "label": "Test",
+      "hint": "Runs the tests and reports the outcome"
+    },
+    "revisione": {
+      "label": "Review",
+      "hint": "Checks the changes"
+    },
+    "approvazione": {
+      "label": "Human approval",
+      "hint": "Stops until you decide"
+    },
+    "server": {
+      "label": "Local server",
+      "hint": "Starts the preview in the browser"
+    },
+    "personalizzata": {
+      "label": "Custom",
+      "hint": "Agent with free-form instructions"
+    }
+  },
+  "status": {
+    "in_attesa": "Waiting",
+    "attiva": "Active",
+    "completata": "Completed",
+    "fallita": "Failed",
+    "bloccata": "Blocked",
+    "attesa_intervento": "Needs you",
+    "saltata": "Skipped",
+    "riusata": "Reused"
+  },
+  "runStatus": {
+    "in_corso": "Running",
+    "attesa_intervento": "Needs your input",
+    "completata": "Completed",
+    "fallita": "Failed",
+    "annullata": "Cancelled",
+    "interrotta": "Interrupted"
+  },
+  "service": {
+    "avvio": "Starting",
+    "attivo": "Running",
+    "simulato": "Running (simulated)",
+    "fermato": "Stopped",
+    "terminato": "Closed",
+    "errore": "Error"
+  },
+  "app": {
+    "loadError": "Error: {message}",
+    "confirmDiscard": "There are unsaved changes. Continue and lose them?",
+    "confirmDelete": "Delete the workflow \"{name}\"? Saved runs are kept."
+  },
+  "toast": {
+    "relayouted": "Diagram rearranged top to bottom: save to keep the new layout.",
+    "saved": "Workflow saved",
+    "testStarted": "Dry run started",
+    "realStarted": "Real run started",
+    "created": "Workflow created. Check the phases, then try it with \"Test\"."
+  },
+  "topbar": {
+    "rules": "Rules",
+    "rulesTitle": "General rules",
+    "language": "Language",
+    "workflows": "Workflows",
+    "phases": {
+      "one": "{count} phase",
+      "other": "{count} phases"
+    },
+    "newWorkflow": "New workflow…",
+    "deleteWorkflow": "Delete this workflow",
+    "save": "Save",
+    "saveTitle": "Save (Ctrl+S)",
+    "saved": "Saved",
+    "view": "View",
+    "editor": "Editor",
+    "run": "Runs",
+    "noRuns": "No runs for this workflow",
+    "compare": "Compare",
+    "needTwoRuns": "At least two runs are needed",
+    "errors": {
+      "one": "{count} error",
+      "other": "{count} errors"
+    },
+    "warnings": {
+      "one": "{count} warning",
+      "other": "{count} warnings"
+    },
+    "valid": "Valid",
+    "checkTitle": "Workflow check",
+    "noIssues": "No problems: you can start.",
+    "test": "Dry run",
+    "testTitle": "Simulated agents: no calls, no cost",
+    "runReal": "Run"
+  },
+  "palette": {
+    "label": "Available phases",
+    "agents": "Agents",
+    "control": "Control",
+    "ready": "Ready to use",
+    "itemTitle": "Drag onto the diagram or click to add",
+    "publishSub": "Commit, push and releases",
+    "hint": "Drag a phase onto the diagram, or select one and click here: the new phase is connected after it."
+  },
+  "realRun": {
+    "title": "Real run",
+    "confirm": "I have read the summary and want to start",
+    "auth": "Authentication",
+    "checking": "Checking…",
+    "access": "Access",
+    "apiKey": "API key (ANTHROPIC_API_KEY)",
+    "login": "Login {method}",
+    "plan": ", {plan} plan",
+    "none": "none",
+    "sdkExecutable": "SDK executable",
+    "whatHappens": "What will happen",
+    "agentPhases": "Agent phases",
+    "maxSpend": "Maximum spend",
+    "noLimit": "no limit",
+    "generalRules": "General rules",
+    "rulesOff": "not applied",
+    "rulesOn": "applied to every phase",
+    "workdir": "Working folder",
+    "writersTitle": "Can modify files or run commands:",
+    "writersText": "{list}. Tools not granted are denied.",
+    "serversTitle": "Local commands started by Regia:",
+    "subscription": "Usage counts against the limits of your {plan} plan (and extra credits only if enabled): the dollar amounts shown are a list-price equivalent computed by the SDK. The SDK documentation asks third-party products to use API keys: for personal, local use the login works, but check your organization's policies.",
+    "apiKeyNote": "With an API key, usage is billed per token: check the actual cost in the Console."
+  },
+  "canvas": {
+    "tools": {
+      "one": "{count} tool",
+      "other": "{count} tools"
+    },
+    "turns": {
+      "one": "{count} turn",
+      "other": "{count} turns"
+    },
+    "freeTurns": "unlimited turns",
+    "maxBudget": "max ${amount}",
+    "reuse": "reuse",
+    "noCommand": "no command",
+    "waitsForYou": "Stops until you decide",
+    "tokens": "{n} tok",
+    "attempts": {
+      "one": "{count} attempt",
+      "other": "{count} attempts"
+    },
+    "toolbar": "Diagram tools",
+    "zoomIn": "Zoom in",
+    "zoomOut": "Zoom out",
+    "fitView": "Show all",
+    "fitViewTitle": "Show the whole diagram",
+    "relayout": "Arrange",
+    "relayoutTitle": "Arranges the phases from top to bottom",
+    "follow": "Follow active phase",
+    "followTitle": "Automatically frame the active phase",
+    "emptyTitle": "The diagram is empty",
+    "emptyText": "Drag a phase here from the palette on the left, or click a phase to add it."
+  },
+  "welcome": {
+    "title": "Welcome to Regia",
+    "text": "Draw the path, let the agents work, step in when needed. Create your first workflow from a preset."
+  },
+  "setup": {
+    "title": "New workflow",
+    "step1": "Choose a starting point",
+    "step2": "Project and goal",
+    "presets": "Presets",
+    "emptyTemplate": "Empty",
+    "emptyTemplateDesc": "No phases: build the diagram from scratch.",
+    "projectDir": "Project folder",
+    "projectDirPlaceholder": "C:\\path\\to\\project",
+    "goal": "Goal",
+    "goalHint": "What needs doing and when the work is done: the more precise, the fewer steps needed.",
+    "goalPlaceholder": "What the agents should achieve.",
+    "name": "Name",
+    "namePlaceholder": "New workflow",
+    "footnote": "You can change everything in the editor. Always try it first with \"Test\": it's free.",
+    "create": "Create workflow"
+  },
+  "folder": {
+    "hint": "Enter the absolute path of the project folder.",
+    "checking": "Checking the folder…",
+    "notFound": "Folder not found: an existing absolute path is required.",
+    "isFile": "The path points to a file, not a folder.",
+    "found": "Folder found",
+    "hasClaudeMd": " · contains CLAUDE.md",
+    "gitDirty": {
+      "one": "Git ({branch}): {count} modified file. Commit or stash before a real run, so you can undo the agents' changes.",
+      "other": "Git ({branch}): {count} modified files. Commit or stash before a real run, so you can undo the agents' changes."
+    },
+    "gitClean": "Git ({branch}) clean: you can review everything with git diff.",
+    "notRepo": "Not a git repository: the agents' changes will not be easy to undo."
+  },
+  "rules": {
+    "title": "General rules",
+    "footnote": "Each run saves the rules it used.",
+    "leadBefore": "Added to the instructions of ",
+    "leadStrong": "every phase",
+    "leadAfter": " in workflows with \"Apply general rules\" enabled. They take precedence over the phase instructions.",
+    "personal": "Personal rules",
+    "readOnly": "read-only",
+    "emptyFile": "(empty file)",
+    "fileMissing": "File not present.",
+    "regia": "Regia rules",
+    "save": "Save rules",
+    "saved": "Saved",
+    "projectClaudeMd": "Project CLAUDE.md",
+    "ifEnabled": "if enabled in the workflow",
+    "noProjectClaudeMd": "The project has no CLAUDE.md.",
+    "applied": "Applied rules",
+    "partPersonal": "personal",
+    "partProject": "project",
+    "noText": "no text",
+    "disabled": "disabled",
+    "personalShort": "Personal",
+    "projectLoaded": "Project CLAUDE.md loaded by the CLI:"
+  },
+  "continue": {
+    "title": "Continue from run",
+    "realConfirm": "Start with real agents",
+    "leadReal": "New real run with the saved workflow. Phases already completed and unchanged are reused without redoing them.",
+    "leadTest": "New test run with the saved workflow. Phases already completed and unchanged are reused without redoing them.",
+    "computing": "Computing…",
+    "reused": "Reused",
+    "noneReused": "None: everything will run.",
+    "toRun": "To run",
+    "noneToRun": "None: the workflow has not changed.",
+    "hint": "If you reject a new approval, the reused implementation resumes from its original session with your comment."
+  }
+}

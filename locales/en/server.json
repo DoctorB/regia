@@ -1,0 +1,251 @@
+{
+  "events": {
+    "runStarted": {
+      "test": "Run started in dry-run mode (no paid calls).",
+      "real": "Run started in real mode."
+    },
+    "continued": {
+      "one": "Continuing from run {from}: {count} phase reused without calls ({phases}).",
+      "other": "Continuing from run {from}: {count} phases reused without calls ({phases})."
+    },
+    "continuedNone": "Continuing from run {from}: 0 phases reused without calls (none).",
+    "budget": "Estimated spending limit for the run: {amount} USD.",
+    "rules": {
+      "both": "General rules applied to every phase: personal rules ({path}) and Regia rules.",
+      "global": "General rules applied to every phase: personal rules ({path}).",
+      "regia": "General rules applied to every phase: Regia rules.",
+      "empty": "General rules are enabled, but no rules text was found.",
+      "off": "General rules not applied (disabled in the workflow settings).",
+      "project": "Project CLAUDE.md loaded by the CLI: {path}."
+    },
+    "runCompleted": "Run completed.",
+    "runPaused": "The run is paused: your input is needed.",
+    "runCancelled": "Run cancelled.",
+    "notStartedBudget": "{label}: not started, the run's spending limit has been reached.",
+    "reused": "{label}: result reused from run {run} (configuration, input and project files unchanged). No calls made.",
+    "phaseStarted": {
+      "initial": "{label}: started. Model: {model}; tools: {tools}.",
+      "initialLimit": "{label}: started. Model: {model}; tools: {tools}; limit {limit} USD.",
+      "resumed": "{label}: started (session resumed with feedback). Model: {model}; tools: {tools}.",
+      "resumedLimit": "{label}: started (session resumed with feedback). Model: {model}; tools: {tools}; limit {limit} USD.",
+      "retry": "{label}: started (new attempt). Model: {model}; tools: {tools}.",
+      "retryLimit": "{label}: started (new attempt). Model: {model}; tools: {tools}; limit {limit} USD."
+    },
+    "defaultModel": "default",
+    "noTools": "none",
+    "sessionReady": "{label}: session ready (model {model}).",
+    "toolFallbackName": "tool",
+    "toolError": "{name} returned an error: {content}",
+    "toolNoOutput": "{name}: (no output)",
+    "subagentStarted": "Subagent started: {description}",
+    "subagentEnded": {
+      "completed": "Subagent completed: {summary}",
+      "completedTokens": {
+        "one": "Subagent completed: {summary} ({count} token reported by the subagent, already included in the phase totals)",
+        "other": "Subagent completed: {summary} ({count} tokens reported by the subagent, already included in the phase totals)"
+      },
+      "other": "Subagent {status}: {summary}",
+      "otherTokens": {
+        "one": "Subagent {status}: {summary} ({count} token reported by the subagent, already included in the phase totals)",
+        "other": "Subagent {status}: {summary} ({count} tokens reported by the subagent, already included in the phase totals)"
+      }
+    },
+    "rateLimit": "Subscription usage limit: {status}.",
+    "rateLimitType": "Subscription usage limit: {status} ({type}).",
+    "apiRetry": "Retrying the API call.",
+    "apiRetryError": "Retrying the API call: {error}.",
+    "usage": {
+      "known": "Usage ({source}): input {input}, output {output}, cache written {cacheWrite}, cache read {cacheRead}; {cost} USD estimated; turns {turns}; duplicate messages ignored {duplicates}.",
+      "unknown": "Usage ({source}): input {input}, output {output}, cache written {cacheWrite}, cache read {cacheRead}; cost not available; turns {turns}; duplicate messages ignored {duplicates}."
+    },
+    "phaseCancelled": "{label}: cancelled.",
+    "phaseFailed": "{label}: failed — {error}",
+    "agentBlocked": "{label}: the agent reports being blocked — {summary}",
+    "agentKo": "{label}: negative outcome — {summary}",
+    "noOutcomeBlock": "{label}: the agent did not return the expected outcome block; using the final text as the result.",
+    "phaseCompleted": "{label}: completed — {summary}",
+    "awaitingApproval": "{label}: waiting for your approval.",
+    "humanAction": "Action on {label}: {action}",
+    "humanActionFeedback": "Action on {label}: {action} — \"{feedback}\"",
+    "decisions": {
+      "delegated": "Delegated to a subagent: {description}",
+      "denied": "Tool denied by the configuration: {tool}",
+      "edit": "Chose to modify {file}",
+      "bash": "Chose to run: {command}"
+    },
+    "tool": {
+      "subagent": "Subagent: {description}"
+    },
+    "activity": {
+      "starting": "Starting…",
+      "preparing": "Preparing…",
+      "command": "Starting: {command}",
+      "deps": "Installing dependencies: {command}",
+      "install": "Installing: {command}",
+      "correction": "Correction in progress: {phases}",
+      "subagent": "Subagent · {summary}"
+    },
+    "service": {
+      "withLabel": "{label}: {text}",
+      "simNeedsIntervention": "{label}: a real run would need your intervention: {reason}",
+      "simStart": "{label}: starting \"{command}\" in {cwd} (simulated: no command run).",
+      "simReady": "Development server ready (simulated).",
+      "depsMissing": "{label}: node_modules not found: running \"{command}\".",
+      "depsInstalled": "{label}: dependencies installed.",
+      "start": "{label}: starting \"{command}\" in {cwd}.",
+      "startWithNode": "{label}: starting \"{command}\" in {cwd} with Node {version}.",
+      "active": "{label}: server running at {url}. It stays up until the end of the run.",
+      "startFailed": "{label}: start failed — {reason}",
+      "exited": "{label}: the server exited (code {code}).",
+      "nodeRetry": "{label}: {diag} Retrying automatically with Node {version} ({manager}).",
+      "installNode": "{label}: running \"{command}\" (downloads Node {version}; the system version does not change).",
+      "run": "{label}: running \"{command}\".",
+      "repairFailed": "{label}: \"{command}\" failed.",
+      "repairDone": "{label}: \"{command}\" completed. Restarting the server.",
+      "stopped": {
+        "completed": "{label}: server stopped (run completed).",
+        "restart": "{label}: server stopped (restart).",
+        "startFailed": "{label}: server stopped (start failed).",
+        "manual": "{label}: server stopped (manual request).",
+        "cancelled": "{label}: server stopped (run cancelled)."
+      }
+    }
+  },
+  "interventions": {
+    "budgetReached": "The run's spending limit was reached before starting the phase.",
+    "declaredKo": "Negative outcome declared: {summary}",
+    "maxFeedbackRounds": "Reached the maximum of {count} correction rounds.",
+    "serviceFailedLog": "{reason}\n\nLast lines:\n{log}",
+    "repairFailed": "\"{command}\" failed (code {code}).\n\nLast lines:\n{log}",
+    "error": {
+      "phaseBudget": "phase spending limit reached",
+      "maxTurns": "maximum number of turns reached",
+      "cancelled": "Cancelled"
+    },
+    "service": {
+      "depsInstallFailed": "Dependency installation failed (\"{command}\", code {code}).",
+      "exitedDuringStart": "the command exited during startup (code {code})",
+      "noResponse": "{url} did not respond within {seconds} seconds",
+      "noUrl": "no local address found in the output within {seconds} seconds (enter it in the phase's URL field)",
+      "withDiagnosis": "{base}. {diag}",
+      "cancelled": "run cancelled",
+      "nodeUnresolved": "{diag} {detail}",
+      "nodeSetVersion": "{diag} Enter the version in the phase's \"Node version\" field and try again.",
+      "depsReinstall": "{diag} They can be reinstalled with \"{command}\"."
+    }
+  },
+  "agent": {
+    "protocol": "# Response protocol\n- When you make a significant decision (what to read, what to change, how to verify), write a line that starts with \"DECISION:\" followed by a short explanation in a single sentence.\n- Work only inside the project folder and only with the tools available to you.\n- ALWAYS end your response with this block, as valid JSON (keep the keys and the outcome values exactly as shown):\n```regia\n{\"esito\": \"ok\" | \"ko\" | \"bloccato\", \"sintesi\": \"result in 1-3 sentences, useful to the next phase\", \"decisioni\": [\"main decision and reason\", \"...\"]}\n```\n\"esito\" is the outcome, \"sintesi\" the summary, \"decisioni\" the list of decisions. Use \"ko\" if the task did not succeed (e.g. failing tests), \"bloccato\" if you cannot proceed without human intervention (explain what is needed in \"sintesi\").",
+    "goal": "# Workflow goal\n{goal}",
+    "task": "# Your task: {label}\n{instructions}",
+    "previousResults": "# Results of the previous phases\n{results}",
+    "skippedPhase": "(phase skipped)",
+    "feedback": "Feedback from the person supervising the workflow:\n{feedback}\n\nTake this feedback into account and complete the task \"{label}\" again.\n\n{protocol}",
+    "continue": "Continue from where you left off.",
+    "role": "Your role in this workflow: {role}",
+    "output": {
+      "decisions": "Decisions:",
+      "approved": "Approved by the reviewer.",
+      "approvedWith": "Approved by the reviewer: {feedback}",
+      "skipped": "(phase skipped by the reviewer)",
+      "serverActive": "Local server running: {url}\nCommand: {command}",
+      "simulated": " — simulated"
+    }
+  },
+  "mock": {
+    "decisions": {
+      "feedback": "DECISION: I apply the feedback received, limiting the change to the point raised.",
+      "analysisStart": "DECISION: I start from the project structure and the existing tests to understand the expected behaviour.",
+      "analysisEnd": "DECISION: The cause is limited to a single module; there is no need to touch the rest of the project.",
+      "implStart": "DECISION: I only change the totale() function, as indicated by the analysis.",
+      "implEnd": "DECISION: The tests pass, I am not adding further changes.",
+      "test": "DECISION: I consider the suite passed because all 5 tests pass.",
+      "review": "DECISION: The change is minimal and covered by tests; I am not reporting any blocking issues.",
+      "generic": "DECISION: I completed the requested task with the fewest steps."
+    },
+    "fileContent": "…file contents…",
+    "fileUpdated": "File updated",
+    "subagentTask": "Explore the existing tests",
+    "subagentSummary": "The existing tests cover the module's main cases.",
+    "thinking": "(internal reasoning: not shown)",
+    "crash": "Simulated error: process terminated unexpectedly.",
+    "budgetReached": "Spending limit reached ({limit} USD, simulated).",
+    "summary": {
+      "blocked": "Simulated block: human confirmation is needed before proceeding.",
+      "resumed": "Feedback applied with a targeted change.",
+      "done": "Phase \"{label}\" completed in simulation."
+    },
+    "finalDecision": "Outcome {outcome} declared at the end of phase {label}.",
+    "workDone": "Work completed."
+  },
+  "api": {
+    "originForbidden": "Origin not allowed",
+    "workflowNotFound": "Workflow not found",
+    "presetNotFound": "Preset not found",
+    "defaultWorkflowName": "New workflow",
+    "textMissing": "Missing text",
+    "idMismatch": "Inconsistent id",
+    "runNotFound": "Run not found",
+    "sourceStillActive": "The source run is still active: cancel it or wait for it to finish.",
+    "sourceNotFound": "Source run not found",
+    "sourceOtherWorkflow": "The source run belongs to another workflow.",
+    "sourceModeMismatch": "You can only continue in the same mode (test or real) as the source run.",
+    "invalidMode": "Invalid mode",
+    "workflowHasErrors": "The workflow contains errors",
+    "realDisabled": "Real runs are disabled (REGIA_DISABLE_REAL=1).",
+    "confirmReal": "Confirmation required for a real run.",
+    "noAuth": "No Claude authentication available.",
+    "runNotActive": "The run is no longer active",
+    "invalidAction": "Invalid action",
+    "unexpected": "{message}",
+    "phaseNotFound": "Phase not found",
+    "actionUnavailable": "Action \"{action}\" is not available for this phase",
+    "rejectNeedsComment": "To reject, add a comment describing the corrections needed",
+    "noSession": "No session to resume",
+    "serverOnly": "Action available only for the local server",
+    "notServer": "The phase is not a local server",
+    "serverStarting": "The server is already starting",
+    "noNodeInstall": "No Node installation available",
+    "noPackageJson": "No package.json in the folder"
+  },
+  "nodeenv": {
+    "source": {
+      "phase": "{value} (phase setting)",
+      "phaseLts": "LTS (phase setting)"
+    },
+    "and": " and ",
+    "noneInstalled": "none",
+    "useVersion": "The project requires Node {sources}: using Node {version} ({manager}) for this command only.",
+    "useVersionInsteadOfSystem": "The project requires Node {sources}: using Node {version} ({manager}) for this command only, instead of the system {system}.",
+    "noCompatible": {
+      "install": "The project requires Node {sources}, but no installed version is compatible (installed: {installed}). Node {version} can be installed with \"{command}\": the system version does not change, it is used only for this command.",
+      "manual": "The project requires Node {sources}, but no installed version is compatible (installed: {installed}). Install a compatible version (for example from nodejs.org or with a version manager such as nvm) and try again."
+    },
+    "diag": {
+      "node": "The Node version in use is not supported by the project.",
+      "nodeRange": "The Node version in use is not supported by the project (required: {range}).",
+      "deps": "A module or command is missing: the dependencies are probably not installed or incomplete.",
+      "port": "The port is already in use: another server (perhaps a previous preview) is probably still running. Close it, or set a different port in the command.",
+      "permissions": "Insufficient permissions to start the command or for a port/folder it uses."
+    }
+  },
+  "rules": {
+    "default": "- Do not run git commit, git push or other operations that publish changes, unless the phase instructions explicitly ask for it.\n- Do not modify files outside the project folder.\n- Do not read or report files containing credentials (.env, keys, tokens) unless it is essential to the task.\n",
+    "prompt": {
+      "header": "# General rules\nAlways follow these rules, in every file, comment, commit message and text you produce. They take precedence over the phase instructions in case of conflict.",
+      "personal": "## User's personal rules ({path})",
+      "workflow": "## Workflow rules"
+    }
+  },
+  "notes": {
+    "unknownCost": "Some phases stopped without a final result: their cost is unknown and is not included in the total."
+  },
+  "continuation": {
+    "newPhase": "new phase",
+    "configChanged": "configuration changed",
+    "linksChanged": "connections changed",
+    "serverRestart": "local server: needs restarting",
+    "notCompleted": "not completed in the previous run ({status})",
+    "upstreamRerun": "a previous phase will be run again"
+  }
+}

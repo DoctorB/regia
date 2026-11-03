@@ -7,7 +7,8 @@
     "build": "vite build",
     "dev": "concurrently -n api,web -c blue,magenta \"tsx watch server/index.ts\" \"vite\"",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "test": "node --import tsx --test server/test/*.test.ts"
+    "test": "node --import tsx --test server/test/*.test.ts",
+    "i18n:check": "node --import tsx scripts/i18n-check.ts"
   },
   "license": "MIT",
   "type": "module",

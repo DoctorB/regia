@@ -6,6 +6,8 @@ Regia fa lavorare agenti AI su un tuo progetto seguendo un percorso che disegni 
 
 Le immagini di questo manuale sono prese in **modalità di prova**: agenti simulati, nessun costo.
 
+L'interfaccia è disponibile in italiano e in inglese: si cambia dal menu delle lingue in alto a destra. Ogni workflow ha anche una **lingua degli agenti** (Impostazioni → Esecuzione), che decide la lingua delle istruzioni inviate agli agenti.
+
 ---
 
 ## 1. Avvio

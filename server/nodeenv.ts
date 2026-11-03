@@ -5,6 +5,8 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import semver from 'semver';
+import { msg, type Msg, type Translate } from '../shared/i18n.ts';
+import { serverT } from './i18n.ts';
 
 export interface NodeRequirement {
   /** Range semver combinato. */
@@ -19,8 +21,10 @@ export interface InstalledNode { version: string; dir: string; manager: string }
 export interface InstallPlan { manager: string; version: string; command: string; args: string[]; display: string }
 
 export type NodeResolution =
-  | { ok: true; version: string; dir?: string; manager: string; requirement: NodeRequirement; note?: string }
-  | { ok: false; requirement: NodeRequirement; installed: InstalledNode[]; install?: InstallPlan; message: string };
+  /** note: versione diversa da quella di sistema, scelta per il progetto (messaggio localizzabile). */
+  | { ok: true; version: string; dir?: string; manager: string; requirement: NodeRequirement; note?: Msg }
+  /** msg: perché nessuna versione va bene (localizzabile); message: lo stesso testo nella lingua richiesta. */
+  | { ok: false; requirement: NodeRequirement; installed: InstalledNode[]; install?: InstallPlan; msg: Msg; message: string };
 
 const isWin = process.platform === 'win32';
 
@@ -39,13 +43,13 @@ function versionFileRange(v: string): { range?: string; lts?: boolean } {
   return semver.validRange(s) ? { range: s } : {};
 }
 
-export function readRequirement(projectDir: string, override?: string): NodeRequirement {
+export function readRequirement(projectDir: string, override?: string, t: Translate = serverT('it')): NodeRequirement {
   const req: NodeRequirement = { sources: [] };
   const ranges: string[] = [];
   if (override?.trim()) {
     const r = versionFileRange(override.trim());
-    if (r.range) { ranges.push(r.range); req.sources.push(`${override.trim()} (impostazione della fase)`); }
-    if (r.lts) { req.lts = true; req.sources.push('LTS (impostazione della fase)'); }
+    if (r.range) { ranges.push(r.range); req.sources.push(t('nodeenv.source.phase', { value: override.trim() })); }
+    if (r.lts) { req.lts = true; req.sources.push(t('nodeenv.source.phaseLts')); }
   } else {
     for (const f of ['.nvmrc', '.node-version']) {
       const v = readFirstLine(path.join(projectDir, f));
@@ -138,8 +142,11 @@ async function installPlan(req: NodeRequirement): Promise<InstallPlan | undefine
   return undefined;
 }
 
-export async function resolveNode(projectDir: string, override?: string): Promise<NodeResolution> {
-  const requirement = readRequirement(projectDir, override);
+/** Sceglie la versione di Node per il progetto. I messaggi sono nella lingua indicata (le fonti del requisito vanno nei parametri). */
+export async function resolveNode(projectDir: string, override?: string, lang = 'it'): Promise<NodeResolution> {
+  const t = serverT(lang);
+  const requirement = readRequirement(projectDir, override, t);
+  const sources = requirement.sources.join(t('nodeenv.and'));
   const installed = installedNodes();
   const sys = installed.find((n) => n.manager === 'sistema');
   if (!requirement.range && !requirement.lts) {
@@ -149,15 +156,16 @@ export async function resolveNode(projectDir: string, override?: string): Promis
   const match = installed.find((n) => n.manager !== 'sistema' && satisfies(n.version, requirement.range));
   if (match) {
     return { ok: true, version: match.version, dir: match.dir, manager: match.manager, requirement,
-      note: `Il progetto richiede Node ${requirement.sources.join(' e ')}: uso Node ${match.version} (${match.manager}) solo per questo comando${sys ? `, invece di ${sys.version} di sistema` : ''}.` };
+      note: sys
+        ? msg('nodeenv.useVersionInsteadOfSystem', { sources, version: match.version, manager: match.manager, system: sys.version })
+        : msg('nodeenv.useVersion', { sources, version: match.version, manager: match.manager }) };
   }
   const install = await installPlan(requirement);
-  const have = [...new Set(installed.map((n) => n.version))].slice(0, 8).join(', ') || 'nessuna';
-  return {
-    ok: false, requirement, installed, install,
-    message: `Il progetto richiede Node ${requirement.sources.join(' e ')}, ma nessuna versione installata è compatibile (installate: ${have}).`
-      + (install ? ` Si può installare Node ${install.version} con "${install.display}": non cambia la versione di sistema, viene usata solo per questo comando.` : ' Installa una versione compatibile (ad esempio da nodejs.org o con un gestore di versioni come nvm) e riprova.'),
-  };
+  const have = [...new Set(installed.map((n) => n.version))].slice(0, 8).join(', ') || t('nodeenv.noneInstalled');
+  const m = install
+    ? msg('nodeenv.noCompatible.install', { sources, installed: have, version: install.version, command: install.display })
+    : msg('nodeenv.noCompatible.manual', { sources, installed: have });
+  return { ok: false, requirement, installed, install, msg: m, message: t(m.key, m.params) };
 }
 
 /** Ambiente con la cartella di Node scelta in testa al PATH (rispettando il nome della variabile su Windows). */
@@ -205,10 +213,13 @@ export function runOnce(command: string, args: string[] | null, cwd: string, env
   });
 }
 
-export interface Diagnosis { kind: 'node' | 'dipendenze' | 'porta' | 'permessi'; message: string; requiredRange?: string }
+/** msg: spiegazione localizzabile; message: lo stesso testo nella lingua richiesta. */
+export interface Diagnosis { kind: 'node' | 'dipendenze' | 'porta' | 'permessi'; msg: Msg; message: string; requiredRange?: string }
 
 /** Riconosce le cause più comuni di avvio fallito dall'output. */
-export function diagnose(log: string[]): Diagnosis | null {
+export function diagnose(log: string[], lang = 'it'): Diagnosis | null {
+  const t = serverT(lang);
+  const found = (kind: Diagnosis['kind'], m: Msg, requiredRange?: string): Diagnosis => ({ kind, msg: m, message: t(m.key, m.params), requiredRange });
   const text = log.join('\n');
   const nodeMsg = /node(\.js)?\s+v?([\d.]+)\s+is not supported|unsupported engine|requires? node(\.js)?\s*(version)?\s*[>=^~\d]|The engine "node" is incompatible|SyntaxError: Unexpected token|ERR_UNKNOWN_FILE_EXTENSION|ERR_REQUIRE_ESM/i;
   if (nodeMsg.test(text)) {
@@ -222,16 +233,16 @@ export function diagnose(log: string[]): Diagnosis | null {
     ].filter(Boolean) as RegExpMatchArray[];
     let range = candidates.map((m) => m[1].trim().replace(/[.,;:]+$/, '')).find((r) => semver.validRange(r));
     if (range && /^\d[\d.]*$/.test(range) && /or (higher|newer|later|above)|\+ is required/i.test(text)) range = `>=${range}`;
-    return { kind: 'node', requiredRange: range, message: `La versione di Node in uso non è supportata dal progetto${range ? ` (richiesta: ${range})` : ''}.` };
+    return found('node', range ? msg('nodeenv.diag.nodeRange', { range }) : msg('nodeenv.diag.node'), range);
   }
   if (/Cannot find module|ERR_MODULE_NOT_FOUND|is not recognized as an internal or external command|command not found|not found: |missing script|Cannot find package/i.test(text)) {
-    return { kind: 'dipendenze', message: 'Manca un modulo o un comando: probabilmente le dipendenze non sono installate o sono incomplete.' };
+    return found('dipendenze', msg('nodeenv.diag.deps'));
   }
   if (/EADDRINUSE|address already in use|port \d+ is (already )?in use/i.test(text)) {
-    return { kind: 'porta', message: 'La porta è già occupata: probabilmente un altro server (forse una precedente anteprima) è ancora attivo. Chiudilo, oppure indica nel comando una porta diversa.' };
+    return found('porta', msg('nodeenv.diag.port'));
   }
   if (/EACCES|EPERM|permission denied/i.test(text)) {
-    return { kind: 'permessi', message: 'Permessi insufficienti per avviare il comando o per una porta/cartella che usa.' };
+    return found('permessi', msg('nodeenv.diag.permissions'));
   }
   return null;
 }

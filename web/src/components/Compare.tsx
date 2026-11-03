@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { isAgentKind, type Run, type RunSummary } from '../../../shared/types.ts';
 import { api, fmtDur, fmtTime, fmtTok, fmtUsd, runDuration } from '../api.ts';
-import { STATUS_META } from '../ui.tsx';
+import { t, useI18n } from '../i18n.tsx';
+import { statusLabel } from '../ui.tsx';
 
 interface PhaseM { cost: number | null; tokens: number; input: number; output: number; cacheW: number; cacheR: number; durMs: number; turns: number; attempts: number; esito: string; status: string }
 
@@ -17,13 +18,14 @@ function metrics(run: Run, nodeId: string): PhaseM | null {
     cacheW: s((x) => x.usage.cacheCreationInputTokens), cacheR: s((x) => x.usage.cacheReadInputTokens),
     tokens: s((x) => x.usage.inputTokens + x.usage.outputTokens + x.usage.cacheCreationInputTokens + x.usage.cacheReadInputTokens),
     durMs: s((x) => x.durationMs ?? 0), turns: s((x) => x.numTurns ?? 0), attempts: a.length,
-    esito: a.at(-1)?.declared?.esito ?? (st.status === 'completata' ? 'ok (non dichiarato)' : '—'),
-    status: STATUS_META[st.status].label,
+    esito: a.at(-1)?.declared?.esito ?? (st.status === 'completata' ? t('compare.okUndeclared') : '—'),
+    status: statusLabel(st.status),
   };
 }
 
 function Delta({ a, b, fmt, lowerIsBetter = true }: { a: number | null; b: number | null; fmt: (n: number) => string; lowerIsBetter?: boolean }) {
-  if (a === null || b === null) return <span className="muted">n.d.</span>;
+  const { t } = useI18n();
+  if (a === null || b === null) return <span className="muted">{t('compare.na')}</span>;
   const d = b - a;
   if (Math.abs(d) < 1e-12 || fmt(Math.abs(d)) === fmt(0)) return <span className="muted">=</span>;
   const pct = a !== 0 ? ` (${d > 0 ? '+' : ''}${Math.round((d / a) * 100)}%)` : '';
@@ -34,28 +36,31 @@ function Delta({ a, b, fmt, lowerIsBetter = true }: { a: number | null; b: numbe
 function configDiff(a: Run, b: Run): string[] {
   const out: string[] = [];
   const A = a.snapshot, B = b.snapshot;
+  const def = t('compare.diff.default');
+  const yesNo = (v: boolean) => (v ? t('compare.diff.yes') : t('compare.diff.no'));
   for (const nb of B.nodes) {
     const na = A.nodes.find((n) => n.id === nb.id);
-    if (!na) { out.push(`Fase aggiunta: ${nb.data.label}`); continue; }
+    if (!na) { out.push(t('compare.diff.phaseAdded', { label: nb.data.label })); continue; }
     const d = nb.data, c = na.data, l = d.label;
-    if (c.model !== d.model) out.push(`${l}: modello ${c.model || 'predefinito'} → ${d.model || 'predefinito'}`);
-    if (c.instructions !== d.instructions) out.push(`${l}: istruzioni modificate`);
-    if (c.role !== d.role) out.push(`${l}: ruolo modificato`);
-    if (c.allowedTools.join() !== d.allowedTools.join()) out.push(`${l}: strumenti ${c.allowedTools.join(', ') || '—'} → ${d.allowedTools.join(', ') || '—'}`);
-    if (c.contextMode !== d.contextMode) out.push(`${l}: contesto ${c.contextMode} → ${d.contextMode}`);
-    if (c.maxTurns !== d.maxTurns) out.push(`${l}: max turni ${c.maxTurns ?? '∞'} → ${d.maxTurns ?? '∞'}`);
-    if (c.maxBudgetUsd !== d.maxBudgetUsd) out.push(`${l}: limite fase ${c.maxBudgetUsd ?? '—'} → ${d.maxBudgetUsd ?? '—'}`);
-    if (c.reuseResult !== d.reuseResult) out.push(`${l}: riuso ${c.reuseResult ? 'sì' : 'no'} → ${d.reuseResult ? 'sì' : 'no'}`);
+    if (c.model !== d.model) out.push(t('compare.diff.model', { label: l, from: c.model || def, to: d.model || def }));
+    if (c.instructions !== d.instructions) out.push(t('compare.diff.instructions', { label: l }));
+    if (c.role !== d.role) out.push(t('compare.diff.role', { label: l }));
+    if (c.allowedTools.join() !== d.allowedTools.join()) out.push(t('compare.diff.tools', { label: l, from: c.allowedTools.join(', ') || '—', to: d.allowedTools.join(', ') || '—' }));
+    if (c.contextMode !== d.contextMode) out.push(t('compare.diff.context', { label: l, from: c.contextMode, to: d.contextMode }));
+    if (c.maxTurns !== d.maxTurns) out.push(t('compare.diff.maxTurns', { label: l, from: c.maxTurns ?? '∞', to: d.maxTurns ?? '∞' }));
+    if (c.maxBudgetUsd !== d.maxBudgetUsd) out.push(t('compare.diff.phaseBudget', { label: l, from: c.maxBudgetUsd ?? '—', to: d.maxBudgetUsd ?? '—' }));
+    if (c.reuseResult !== d.reuseResult) out.push(t('compare.diff.reuse', { label: l, from: yesNo(c.reuseResult), to: yesNo(d.reuseResult) }));
   }
-  for (const na of A.nodes) if (!B.nodes.some((n) => n.id === na.id)) out.push(`Fase rimossa: ${na.data.label}`);
-  if (JSON.stringify(A.edges.map((e) => `${e.source}>${e.target}`).sort()) !== JSON.stringify(B.edges.map((e) => `${e.source}>${e.target}`).sort())) out.push('Collegamenti tra le fasi modificati');
-  if (A.settings.goal !== B.settings.goal) out.push('Obiettivo modificato');
-  if (A.settings.loadProjectSettings !== B.settings.loadProjectSettings) out.push('Caricamento CLAUDE.md del progetto modificato');
-  if (A.settings.runBudgetUsd !== B.settings.runBudgetUsd) out.push(`Limite per esecuzione ${A.settings.runBudgetUsd ?? '—'} → ${B.settings.runBudgetUsd ?? '—'}`);
+  for (const na of A.nodes) if (!B.nodes.some((n) => n.id === na.id)) out.push(t('compare.diff.phaseRemoved', { label: na.data.label }));
+  if (JSON.stringify(A.edges.map((e) => `${e.source}>${e.target}`).sort()) !== JSON.stringify(B.edges.map((e) => `${e.source}>${e.target}`).sort())) out.push(t('compare.diff.edges'));
+  if (A.settings.goal !== B.settings.goal) out.push(t('compare.diff.goal'));
+  if (A.settings.loadProjectSettings !== B.settings.loadProjectSettings) out.push(t('compare.diff.projectSettings'));
+  if (A.settings.runBudgetUsd !== B.settings.runBudgetUsd) out.push(t('compare.diff.runBudget', { from: A.settings.runBudgetUsd ?? '—', to: B.settings.runBudgetUsd ?? '—' }));
   return out;
 }
 
 export function Compare({ workflowId, initialB }: { workflowId: string; initialB?: string }) {
+  const { t } = useI18n();
   const [list, setList] = useState<RunSummary[]>([]);
   const [ids, setIds] = useState<[string, string]>(['', '']);
   const [runs, setRuns] = useState<[Run | null, Run | null]>([null, null]);
@@ -71,15 +76,16 @@ export function Compare({ workflowId, initialB }: { workflowId: string; initialB
     Promise.all(ids.map((id) => (id ? api.run(id) : Promise.resolve(null)))).then((r) => setRuns([r[0], r[1]]));
   }, [ids]);
   const [A, B] = runs;
-  const label = (r: RunSummary) => `${fmtTime(r.startedAt)} · ${r.mode} · ${STATUS_RUN[r.status]} · ${fmtUsd(r.costUsd)}`;
+  const mode = (m: Run['mode']) => t(`compare.mode.${m}`);
+  const label = (r: RunSummary) => `${fmtTime(r.startedAt)} · ${mode(r.mode)} · ${statusRun(r.status)} · ${fmtUsd(r.costUsd)}`;
 
   return (
     <div className="compare">
-      <h2>Confronta due esecuzioni</h2>
-      {list.length < 2 && <p className="muted">Servono almeno due esecuzioni di questo workflow.</p>}
+      <h2>{t('compare.title')}</h2>
+      {list.length < 2 && <p className="muted">{t('compare.needTwo')}</p>}
       <div className="row2">
-        {(['A (prima)', 'B (dopo)'] as const).map((l, i) => (
-          <label key={l}>{l}
+        {([t('compare.pickA'), t('compare.pickB')] as const).map((l, i) => (
+          <label key={i}>{l}
             <select value={ids[i]} onChange={(e) => setIds(i === 0 ? [e.target.value, ids[1]] : [ids[0], e.target.value])}>
               <option value="">—</option>
               {list.map((r) => <option key={r.id} value={r.id}>{label(r)}</option>)}
@@ -89,34 +95,33 @@ export function Compare({ workflowId, initialB }: { workflowId: string; initialB
       </div>
       {A && B && (
         <>
-          {A.mode !== B.mode && <div className="issue errore">✕ Le due esecuzioni hanno modalità diverse ({A.mode} / {B.mode}): i dati simulati non sono confrontabili con quelli reali.</div>}
+          {A.mode !== B.mode && <div className="issue errore">✕ {t('compare.modeMismatch', { a: mode(A.mode), b: mode(B.mode) })}</div>}
           <div className="note">
-            Le differenze sono misurate, non stimate. Una sola coppia di esecuzioni non basta a dimostrare un effetto: gli agenti non sono deterministici, quindi tempi e token variano anche
-            a parità di configurazione. Ripeti il confronto più volte prima di trarre conclusioni, e guarda sempre insieme consumi ed esiti.
+            {t('compare.note')}
           </div>
 
-          <h3>Totali</h3>
+          <h3>{t('compare.totals')}</h3>
           <table className="tbl">
-            <thead><tr><th></th><th className="num">A</th><th className="num">B</th><th className="num">Differenza B − A</th></tr></thead>
+            <thead><tr><th></th><th className="num">A</th><th className="num">B</th><th className="num">{t('compare.col.diff')}</th></tr></thead>
             <tbody>
-              <tr><td>Costo {A.mode === 'prova' ? 'simulato' : 'stimato (SDK)'}</td><td className="num mono">{fmtUsd(A.totals.costUsd)}</td><td className="num mono">{fmtUsd(B.totals.costUsd)}</td><td className="num"><Delta a={A.totals.costUsd} b={B.totals.costUsd} fmt={(n) => fmtUsd(n)} /></td></tr>
-              {([['Input', 'inputTokens'], ['Output', 'outputTokens'], ['Cache scritta', 'cacheCreationInputTokens'], ['Cache letta', 'cacheReadInputTokens']] as const).map(([l, k]) => (
+              <tr><td>{A.mode === 'prova' ? t('compare.row.costSimulated') : t('compare.row.costEstimated')}</td><td className="num mono">{fmtUsd(A.totals.costUsd)}</td><td className="num mono">{fmtUsd(B.totals.costUsd)}</td><td className="num"><Delta a={A.totals.costUsd} b={B.totals.costUsd} fmt={(n) => fmtUsd(n)} /></td></tr>
+              {([[t('usage.series.inputTokens'), 'inputTokens'], [t('usage.series.outputTokens'), 'outputTokens'], [t('usage.series.cacheCreationInputTokens'), 'cacheCreationInputTokens'], [t('usage.series.cacheReadInputTokens'), 'cacheReadInputTokens']] as const).map(([l, k]) => (
                 <tr key={k}><td>{l}</td><td className="num mono">{fmtTok(A.totals[k])}</td><td className="num mono">{fmtTok(B.totals[k])}</td><td className="num"><Delta a={A.totals[k]} b={B.totals[k]} fmt={fmtTok} /></td></tr>
               ))}
-              <tr><td>Durata totale (incluse attese umane)</td><td className="num">{fmtDur(runDuration(A))}</td><td className="num">{fmtDur(runDuration(B))}</td><td className="num"><Delta a={runDuration(A)} b={runDuration(B)} fmt={fmtDur} /></td></tr>
-              <tr><td>Esito finale</td><td className="num">{STATUS_RUN[A.status]}</td><td className="num">{STATUS_RUN[B.status]}</td><td className="num">{A.status === B.status ? <span className="muted">=</span> : <span className={B.status === 'completata' ? 'delta-good' : 'delta-bad'}>cambiato</span>}</td></tr>
+              <tr><td>{t('compare.row.duration')}</td><td className="num">{fmtDur(runDuration(A))}</td><td className="num">{fmtDur(runDuration(B))}</td><td className="num"><Delta a={runDuration(A)} b={runDuration(B)} fmt={fmtDur} /></td></tr>
+              <tr><td>{t('compare.row.outcome')}</td><td className="num">{statusRun(A.status)}</td><td className="num">{statusRun(B.status)}</td><td className="num">{A.status === B.status ? <span className="muted">=</span> : <span className={B.status === 'completata' ? 'delta-good' : 'delta-bad'}>{t('compare.changed')}</span>}</td></tr>
             </tbody>
           </table>
 
-          <h3>Per fase</h3>
+          <h3>{t('compare.byPhase')}</h3>
           <div className="tbl-scroll">
             <table className="tbl">
-              <thead><tr><th>Fase</th><th>Esito A → B</th><th className="num">Costo A</th><th className="num">Costo B</th><th className="num">Δ costo</th><th className="num">Δ token</th><th className="num">Δ durata agente</th><th className="num">Tentativi</th></tr></thead>
+              <thead><tr><th>{t('compare.col.phase')}</th><th>{t('compare.col.outcome')}</th><th className="num">{t('compare.col.costA')}</th><th className="num">{t('compare.col.costB')}</th><th className="num">{t('compare.col.deltaCost')}</th><th className="num">{t('compare.col.deltaTokens')}</th><th className="num">{t('compare.col.deltaDuration')}</th><th className="num">{t('compare.col.attempts')}</th></tr></thead>
               <tbody>
                 {B.snapshot.nodes.map((n) => {
                   const a = metrics(A, n.id), b = metrics(B, n.id);
                   if (!isAgentKind(n.data.kind)) {
-                    return <tr key={n.id}><td>{n.data.label}</td><td colSpan={7}>{a?.status ?? '—'} → {b?.status ?? '—'} · cicli di correzione: {A.nodes[n.id]?.feedbackRounds ?? 0} → {B.nodes[n.id]?.feedbackRounds ?? 0}</td></tr>;
+                    return <tr key={n.id}><td>{n.data.label}</td><td colSpan={7}>{a?.status ?? '—'} → {b?.status ?? '—'} · {t('compare.feedbackRounds', { a: A.nodes[n.id]?.feedbackRounds ?? 0, b: B.nodes[n.id]?.feedbackRounds ?? 0 })}</td></tr>;
                   }
                   const worse = a && b && a.esito.startsWith('ok') && !b.esito.startsWith('ok');
                   return (
@@ -135,24 +140,25 @@ export function Compare({ workflowId, initialB }: { workflowId: string; initialB
             </table>
           </div>
 
-          <h3>Cosa è cambiato nella configurazione</h3>
-          {(() => { const d = configDiff(A, B); return d.length ? <ul>{d.map((x, i) => <li key={i}>{x}</li>)}</ul> : <p className="muted">Nessuna differenza di configurazione: le variazioni dipendono dalla variabilità degli agenti o dal contenuto del progetto.</p>; })()}
+          <h3>{t('compare.configTitle')}</h3>
+          {(() => { const d = configDiff(A, B); return d.length ? <ul>{d.map((x, i) => <li key={i}>{x}</li>)}</ul> : <p className="muted">{t('compare.noConfigDiff')}</p>; })()}
 
-          <h3>Segnali di qualità</h3>
+          <h3>{t('compare.quality.title')}</h3>
           <ul>
-            <li>Esito finale: A {STATUS_RUN[A.status]}, B {STATUS_RUN[B.status]}.</li>
-            <li>Fasi con esito dichiarato diverso da "ok": A {countKo(A)}, B {countKo(B)}.</li>
-            <li>Cicli di correzione richiesti in approvazione: A {sumRounds(A)}, B {sumRounds(B)}.</li>
-            <li>Tentativi aggiuntivi (errori o blocchi): A {extra(A)}, B {extra(B)}.</li>
+            <li>{t('compare.quality.outcome', { a: statusRun(A.status), b: statusRun(B.status) })}</li>
+            <li>{t('compare.quality.notOk', { a: countKo(A), b: countKo(B) })}</li>
+            <li>{t('compare.quality.rounds', { a: sumRounds(A), b: sumRounds(B) })}</li>
+            <li>{t('compare.quality.extra', { a: extra(A), b: extra(B) })}</li>
           </ul>
-          <p className="hint">Una riduzione dei consumi ha senso solo se questi segnali non peggiorano. Controlla anche il contenuto: apri le due esecuzioni e leggi sintesi e decisioni delle fasi chiave.</p>
+          <p className="hint">{t('compare.quality.hint')}</p>
         </>
       )}
     </div>
   );
 }
 
-const STATUS_RUN: Record<Run['status'], string> = { in_corso: 'in corso', attesa_intervento: 'in attesa', completata: 'completata', fallita: 'fallita', annullata: 'annullata', interrotta: 'interrotta' };
+// Stato dell'esecuzione in minuscolo, per le frasi (locales/<lingua>/run.json, compare.status.<stato>).
+const statusRun = (s: Run['status']) => t(`compare.status.${s}`);
 const countKo = (r: Run) => Object.values(r.nodes).filter((n) => { const d = n.attempts.at(-1)?.declared; return d && d.esito !== 'ok'; }).length;
 const sumRounds = (r: Run) => Object.values(r.nodes).reduce((s, n) => s + n.feedbackRounds, 0);
 const extra = (r: Run) => Object.values(r.nodes).reduce((s, n) => s + n.attempts.filter((a) => a.reason !== 'iniziale' && a.reason !== 'riuso').length, 0);

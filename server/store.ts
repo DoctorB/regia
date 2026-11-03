@@ -41,12 +41,20 @@ export function initStore() {
   }
 }
 
-export function listTemplates(): WorkflowTemplate[] {
-  return fs
-    .readdirSync(TEMPLATE_DIR)
-    .filter((f) => f.endsWith('.json'))
-    .sort()
-    .map((f) => JSON.parse(fs.readFileSync(path.join(TEMPLATE_DIR, f), 'utf8')) as WorkflowTemplate);
+/**
+ * Preset nella lingua richiesta (templates/<lingua>/*.json). Per ogni preset mancante in quella lingua si usa
+ * la versione inglese, poi quella italiana: una lingua nuova può tradurre anche solo una parte dei preset.
+ */
+export function listTemplates(lang = 'it'): WorkflowTemplate[] {
+  const read = (l: string): WorkflowTemplate[] => {
+    const dir = path.join(TEMPLATE_DIR, l);
+    if (!/^[a-z]{2,3}(-[A-Za-z0-9]{2,8})?$/.test(l) || !fs.existsSync(dir)) return [];
+    return fs.readdirSync(dir).filter((f) => f.endsWith('.json')).sort()
+      .map((f) => ({ ...(JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8')) as WorkflowTemplate), _file: f }) as WorkflowTemplate & { _file: string });
+  };
+  const byFile = new Map<string, WorkflowTemplate>();
+  for (const l of ['it', 'en', lang]) for (const t of read(l) as (WorkflowTemplate & { _file: string })[]) byFile.set(t._file, t);
+  return [...byFile.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([, t]) => { const { _file, ...rest } = t as WorkflowTemplate & { _file: string }; void _file; return rest as WorkflowTemplate; });
 }
 
 export function listWorkflows(): Workflow[] {

@@ -1,0 +1,31 @@
+{
+  "id": "revisione-codice",
+  "name": "Code review (read-only)",
+  "description": "No files are modified: overview, quality and security reviews in parallel, final report.",
+  "goalHint": "Say what to review (folders, a module, recent changes such as 'git diff main') and what to focus on.",
+  "settings": { "runBudgetUsd": 2, "maxParallel": 2, "loadProjectSettings": true, "applyGeneralRules": true },
+  "nodes": [
+    { "id": "panoramica", "position": { "x": 0, "y": 120 }, "data": {
+      "label": "Overview", "kind": "analisi", "role": "Analyst: reconstructs the structure and responsibilities of the code to review.",
+      "instructions": "Reconstruct the structure of the part of the project named in the goal: modules, responsibilities, main dependencies, entry points. List the files most relevant to the review.",
+      "model": "sonnet", "allowedTools": ["Read", "Glob", "Grep"], "maxTurns": 15, "maxBudgetUsd": 0.5, "contextMode": "sintesi", "reuseResult": true } },
+    { "id": "qualita", "position": { "x": 300, "y": 40 }, "data": {
+      "label": "Quality and correctness", "kind": "revisione", "role": "Reviewer: looks for bugs, unhandled edge cases and code that is hard to maintain.",
+      "instructions": "Review the files listed in the overview. Report only concrete problems with file and line, severity and proposed fix: bugs, edge cases, error handling, duplication, misleading names.",
+      "model": "sonnet", "allowedTools": ["Read", "Glob", "Grep"], "maxTurns": 20, "maxBudgetUsd": 0.7, "contextMode": "sintesi", "reuseResult": false } },
+    { "id": "sicurezza", "position": { "x": 300, "y": 210 }, "data": {
+      "label": "Security", "kind": "revisione", "role": "Security reviewer: looks for exploitable vulnerabilities, not style.",
+      "instructions": "Review the files listed in the overview looking for vulnerabilities: unvalidated input, injection, secrets in the code, permissions, risky dependencies. For each one give file and line, an exploitation scenario and the fix.",
+      "model": "sonnet", "allowedTools": ["Read", "Glob", "Grep"], "maxTurns": 20, "maxBudgetUsd": 0.7, "contextMode": "sintesi", "reuseResult": false } },
+    { "id": "rapporto", "position": { "x": 600, "y": 120 }, "data": {
+      "label": "Report", "kind": "personalizzata", "role": "Editor: merges the results into a report ordered by priority.",
+      "instructions": "Merge the findings of the reviews into a single report: remove duplicates, sort by severity, and for each item give file, problem and fix. Do not read other files except to check a doubt.",
+      "model": "haiku", "allowedTools": ["Read"], "maxTurns": 6, "maxBudgetUsd": 0.2, "contextMode": "completo", "reuseResult": false } }
+  ],
+  "edges": [
+    { "id": "e1", "source": "panoramica", "target": "qualita" },
+    { "id": "e2", "source": "panoramica", "target": "sicurezza" },
+    { "id": "e3", "source": "qualita", "target": "rapporto" },
+    { "id": "e4", "source": "sicurezza", "target": "rapporto" }
+  ]
+}

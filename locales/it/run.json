@@ -1,0 +1,414 @@
+{
+  "run": {
+    "confirmCancel": "Annullare l'esecuzione? Le fasi in corso vengono interrotte.",
+    "confirmCancelShort": "Annullare l'esecuzione?",
+    "tabs": {
+      "status": "Stato",
+      "events": "Eventi",
+      "decisions": "Decisioni",
+      "usage": "Consumi",
+      "optimize": "Ottimizza"
+    },
+    "mode": {
+      "prova": "Prova",
+      "reale": "Reale"
+    },
+    "modeLower": {
+      "prova": "prova",
+      "reale": "reale"
+    },
+    "cancel": "Annulla",
+    "continue": "Continua…",
+    "continueHint": "Nuova esecuzione con il workflow attuale: le fasi già completate e invariate vengono riprese",
+    "picker": "Esecuzione",
+    "metrics": {
+      "costSimulated": "Costo simulato",
+      "costEstimated": "Costo stimato",
+      "budgetPct": "{pct}% del limite di {budget}",
+      "noLimit": "nessun limite",
+      "limit": "limite {budget}",
+      "phasesDone": "Fasi completate",
+      "tokens": "Token"
+    },
+    "progress": "Avanzamento delle fasi",
+    "rateLimit": "Limiti dell'abbonamento: {status}",
+    "rateLimitUsage": ", utilizzo {pct}%",
+    "attempts": {
+      "one": "{count} tentativo",
+      "other": "{count} tentativi"
+    },
+    "continuedFrom": "Continua dall'esecuzione {id}.",
+    "intervention": {
+      "needComment": "Scrivi un commento con le correzioni da fare.",
+      "awaitingApproval": "In attesa della tua approvazione",
+      "outcome": "esito {esito}",
+      "noOutput": "Nessun risultato.",
+      "commentPlaceholder": "Commento: obbligatorio per respingere, facoltativo per approvare",
+      "messagePlaceholder": "Messaggio per l'agente (per \"Riprendi la sessione\")"
+    },
+    "service": {
+      "stop": "Ferma",
+      "restart": "Riavvia",
+      "startAgain": "Avvia di nuovo",
+      "stoppedAtEnd": "Fermato a fine esecuzione.",
+      "output": "Output"
+    }
+  },
+  "actions": {
+    "approva": {
+      "label": "Approva"
+    },
+    "respingi": {
+      "label": "Respingi con commento",
+      "help": "La fase che ha prodotto il lavoro riprende la sua sessione con il tuo commento; le fasi intermedie vengono rifatte."
+    },
+    "riprova": {
+      "label": "Riprova da capo",
+      "help": "Nuova sessione con le stesse istruzioni."
+    },
+    "riprendi": {
+      "label": "Riprendi la sessione",
+      "help": "Continua la stessa sessione dell'agente con il tuo messaggio."
+    },
+    "salta": {
+      "label": "Salta la fase",
+      "help": "Le fasi successive partono senza il risultato di questa."
+    },
+    "annulla": {
+      "label": "Annulla esecuzione"
+    },
+    "installa_node": {
+      "label": "Installa Node e riprova",
+      "help": "Scarica la versione indicata con il gestore di versioni; quella di sistema non cambia."
+    },
+    "installa_dipendenze": {
+      "label": "Installa le dipendenze e riprova",
+      "help": "Esegue il comando di installazione indicato sopra."
+    }
+  },
+  "events": {
+    "kind": {
+      "run": "Esecuzione",
+      "fase": "Fase",
+      "testo": "Testo",
+      "decisione": "Decisione",
+      "strumento": "Strumento",
+      "esito_strumento": "Esito strumento",
+      "subagente": "Subagente",
+      "consumi": "Consumi",
+      "risultato": "Risultato",
+      "errore": "Errore",
+      "intervento": "Intervento",
+      "limite": "Limite",
+      "servizio": "Server"
+    },
+    "only": "Solo: {label}",
+    "subagents": "Subagenti",
+    "subagentTag": "subagente",
+    "follow": "Scorri",
+    "emptyTitle": "Nessun evento",
+    "emptyText": "Cambia i filtri o attendi l'avvio delle fasi."
+  },
+  "decisions": {
+    "legend": {
+      "declared": "Dichiarate",
+      "declaredText": ": spiegazioni brevi scritte dagli agenti.",
+      "observed": "Osservate",
+      "observedText": ": dedotte dalle loro azioni (file modificati, comandi, subagenti).",
+      "reasoning": "Il ragionamento interno dei modelli non è accessibile e non viene mostrato."
+    },
+    "source": {
+      "dichiarata": "dichiarata",
+      "osservata": "osservata"
+    },
+    "emptyTitle": "Nessuna decisione",
+    "emptyPhase": "Questa fase non ha ancora registrato decisioni.",
+    "emptyText": "Le decisioni compaiono mentre gli agenti lavorano."
+  },
+  "insights_ui": {
+    "computing": "Calcolo…",
+    "severity": {
+      "alta": "Priorità alta",
+      "media": "Media",
+      "info": "Info"
+    },
+    "lead": "Basati solo sui consumi misurati.",
+    "leadSimulated": "Basati solo sui consumi misurati (qui simulati).",
+    "leadCompare": "Non stimano risparmi: applica una modifica, riesegui e usa",
+    "compare": "Confronta",
+    "live": "Esecuzione in corso: i suggerimenti si aggiornano a ogni fase completata.",
+    "emptyTitle": "Niente da segnalare",
+    "emptyText": "Nessuna anomalia nei dati raccolti.",
+    "evidence": "Dati",
+    "suggestion": "Cosa provare",
+    "tradeoff": "Compromesso"
+  },
+  "usage": {
+    "source": {
+      "risultato": "result del SDK",
+      "delta_ripresa": "sessione ripresa: solo differenza",
+      "parziale": "parziale: nessun result (solo input/cache)",
+      "riusato": "riusato: nessuna chiamata",
+      "nessuno": "nessun dato"
+    },
+    "series": {
+      "inputTokens": "Input",
+      "outputTokens": "Output",
+      "cacheCreationInputTokens": "Cache scritta",
+      "cacheReadInputTokens": "Cache letta"
+    },
+    "billing": {
+      "simulated": "Modalità di prova: token e costi sono generati dal simulatore con tariffe fittizie. Servono solo a provare l'interfaccia.",
+      "base": "I costi sono stime calcolate localmente dal SDK con il listino incluso nella sua versione (campi total_cost_usd e modelUsage): non sono dati di fatturazione.",
+      "subscription": "Questa esecuzione ha usato un login senza chiave API (es. abbonamento claude.ai): il consumo rientra nei limiti del piano, e nei crediti extra solo se attivi; il valore in dollari è un equivalente a prezzi di listino, non un addebito.",
+      "apiKey": "Con una chiave API il consumo è fatturato a token: il costo effettivo si legge nella Console (Usage/Cost)."
+    },
+    "tiles": {
+      "costSimulated": "Costo simulato",
+      "costEstimated": "Costo stimato (SDK)",
+      "limit": "limite {budget}",
+      "noLimit": "nessun limite",
+      "input": "Token di input",
+      "output": "Token di output"
+    },
+    "hint": {
+      "totalsBefore": "Totali dal campo",
+      "totalsAfter": "del result di ogni fase (include i subagenti: {count} avviati).",
+      "duplicatesBefore": "Messaggi duplicati ignorati (stesso",
+      "duplicatesAfter": "per strumenti in parallelo): {count}.",
+      "resumed": "Per le sessioni riprese viene registrata solo la differenza rispetto ai totali già contati."
+    },
+    "costByPhase": "Costo per fase",
+    "partial": "(parziale)",
+    "tokensByPhase": "Composizione dei token per fase",
+    "detail": "Dettaglio per fase e tentativo",
+    "col": {
+      "phase": "Fase",
+      "input": "Input",
+      "output": "Output",
+      "cacheW": "Cache W",
+      "cacheR": "Cache R",
+      "cost": "Costo",
+      "turns": "Turni",
+      "duration": "Durata",
+      "agent": "Agente",
+      "phases": "Fasi",
+      "tokens": "Token",
+      "model": "Modello",
+      "basis": "Listino"
+    },
+    "reason": {
+      "iniziale": "iniziale",
+      "riprova": "riprova",
+      "ripresa_con_feedback": "ripresa con feedback",
+      "dopo_correzione": "dopo correzione",
+      "riuso": "riuso"
+    },
+    "attemptStatus": {
+      "attiva": "attiva",
+      "ok": "ok",
+      "errore": "errore",
+      "annullata": "annullata"
+    },
+    "attempt": {
+      "data": "dati: {source}",
+      "models": "modelli: {models}",
+      "subagents": "subagenti: {count}",
+      "duplicates": "duplicati ignorati: {count}",
+      "reusedFrom": "riusato da {id}"
+    },
+    "unknownCost": "* Almeno un tentativo si è interrotto senza result: il suo costo non è noto e non è incluso.",
+    "byAgent": "Per agente (ruolo)",
+    "byModel": "Per modello",
+    "basis": {
+      "title": "Listino:",
+      "list": "= prezzi inclusi nel SDK,",
+      "managed": "= tabella prezzi dell'organizzazione,",
+      "unknown": "= modello non riconosciuto (stima approssimativa),",
+      "simulated": "= modalità di prova."
+    },
+    "basisValue": {
+      "list": "listino SDK",
+      "managed": "listino organizzazione",
+      "unknown": "non riconosciuto",
+      "simulato": "simulato"
+    }
+  },
+  "compare": {
+    "okUndeclared": "ok (non dichiarato)",
+    "na": "n.d.",
+    "diff": {
+      "default": "predefinito",
+      "yes": "sì",
+      "no": "no",
+      "phaseAdded": "Fase aggiunta: {label}",
+      "phaseRemoved": "Fase rimossa: {label}",
+      "model": "{label}: modello {from} → {to}",
+      "instructions": "{label}: istruzioni modificate",
+      "role": "{label}: ruolo modificato",
+      "tools": "{label}: strumenti {from} → {to}",
+      "context": "{label}: contesto {from} → {to}",
+      "maxTurns": "{label}: max turni {from} → {to}",
+      "phaseBudget": "{label}: limite fase {from} → {to}",
+      "reuse": "{label}: riuso {from} → {to}",
+      "edges": "Collegamenti tra le fasi modificati",
+      "goal": "Obiettivo modificato",
+      "projectSettings": "Caricamento CLAUDE.md del progetto modificato",
+      "runBudget": "Limite per esecuzione {from} → {to}"
+    },
+    "mode": {
+      "prova": "prova",
+      "reale": "reale"
+    },
+    "status": {
+      "in_corso": "in corso",
+      "attesa_intervento": "in attesa",
+      "completata": "completata",
+      "fallita": "fallita",
+      "annullata": "annullata",
+      "interrotta": "interrotta"
+    },
+    "title": "Confronta due esecuzioni",
+    "needTwo": "Servono almeno due esecuzioni di questo workflow.",
+    "pickA": "A (prima)",
+    "pickB": "B (dopo)",
+    "modeMismatch": "Le due esecuzioni hanno modalità diverse ({a} / {b}): i dati simulati non sono confrontabili con quelli reali.",
+    "note": "Le differenze sono misurate, non stimate. Una sola coppia di esecuzioni non basta a dimostrare un effetto: gli agenti non sono deterministici, quindi tempi e token variano anche a parità di configurazione. Ripeti il confronto più volte prima di trarre conclusioni, e guarda sempre insieme consumi ed esiti.",
+    "totals": "Totali",
+    "col": {
+      "diff": "Differenza B − A",
+      "phase": "Fase",
+      "outcome": "Esito A → B",
+      "costA": "Costo A",
+      "costB": "Costo B",
+      "deltaCost": "Δ costo",
+      "deltaTokens": "Δ token",
+      "deltaDuration": "Δ durata agente",
+      "attempts": "Tentativi"
+    },
+    "row": {
+      "costSimulated": "Costo simulato",
+      "costEstimated": "Costo stimato (SDK)",
+      "duration": "Durata totale (incluse attese umane)",
+      "outcome": "Esito finale"
+    },
+    "changed": "cambiato",
+    "byPhase": "Per fase",
+    "feedbackRounds": "cicli di correzione: {a} → {b}",
+    "configTitle": "Cosa è cambiato nella configurazione",
+    "noConfigDiff": "Nessuna differenza di configurazione: le variazioni dipendono dalla variabilità degli agenti o dal contenuto del progetto.",
+    "quality": {
+      "title": "Segnali di qualità",
+      "outcome": "Esito finale: A {a}, B {b}.",
+      "notOk": "Fasi con esito dichiarato diverso da \"ok\": A {a}, B {b}.",
+      "rounds": "Cicli di correzione richiesti in approvazione: A {a}, B {b}.",
+      "extra": "Tentativi aggiuntivi (errori o blocchi): A {a}, B {b}.",
+      "hint": "Una riduzione dei consumi ha senso solo se questi segnali non peggiorano. Controlla anche il contenuto: apri le due esecuzioni e leggi sintesi e decisioni delle fasi chiave."
+    }
+  },
+  "inspector": {
+    "models": {
+      "haiku": "Veloce ed economico: test, controlli, compiti semplici",
+      "sonnet": "Equilibrato: la scelta giusta per la maggior parte delle fasi",
+      "opus": "Il più capace: compiti difficili, ragionamento lungo"
+    },
+    "tools": {
+      "title": "Strumenti",
+      "active": {
+        "one": "{count} attivo",
+        "other": "{count} attivi"
+      },
+      "canWrite": "può modificare il progetto",
+      "hint": "Gli strumenti spenti non sono disponibili. Quelli con la matita possono modificare file o eseguire comandi.",
+      "Read": "Legge file",
+      "Glob": "Cerca file per nome",
+      "Grep": "Cerca testo nei file",
+      "Edit": "Modifica file",
+      "Write": "Crea o sovrascrive file",
+      "Bash": "Esegue comandi",
+      "NotebookEdit": "Modifica notebook",
+      "WebFetch": "Scarica pagine web",
+      "WebSearch": "Cerca sul web",
+      "Agent": "Avvia subagenti",
+      "TodoWrite": "Lista di attività"
+    },
+    "phaseName": "Nome della fase",
+    "phaseKind": "Tipo di fase",
+    "server": {
+      "title": "Server",
+      "command": "Comando da avviare",
+      "url": "Indirizzo da aprire",
+      "urlHint": "Vuoto: il primo indirizzo locale stampato dal server.",
+      "subdir": "Sottocartella",
+      "subdirPlaceholder": "es. web",
+      "wait": "Attesa avvio (s)",
+      "node": "Versione di Node",
+      "nodeHint": "Vuoto: automatica da .nvmrc o engines del progetto.",
+      "nodePlaceholder": "automatica",
+      "hint": "Regia sceglie la versione di Node giusta tra quelle installate, installa le dipendenze se mancano e tiene il server attivo fino alla fine dell'esecuzione. Nessun costo: non usa agenti."
+    },
+    "task": {
+      "title": "Compito",
+      "titleHuman": "Cosa verificare",
+      "role": "Ruolo",
+      "rolePlaceholder": "Es. Revisore attento alla sicurezza",
+      "instructions": "Istruzioni",
+      "instructionsHuman": "Indicazioni per chi approva",
+      "instructionsHint": "Indica file e cartelle da guardare: meno contesto, meno costi."
+    },
+    "model": {
+      "title": "Modello",
+      "other": "Altro",
+      "otherHint": "Modello predefinito della CLI, oppure un id completo",
+      "defaultHint": "Vuoto usa il modello predefinito di Claude Code; puoi anche indicare un id completo.",
+      "id": "Id del modello (facoltativo)",
+      "idPlaceholder": "predefinito"
+    },
+    "limits": {
+      "title": "Limiti",
+      "maxTurns": "Turni massimi",
+      "maxBudget": "Spesa massima ($)",
+      "none": "nessuno",
+      "noneF": "nessuna"
+    },
+    "context": {
+      "title": "Contesto e riuso",
+      "label": "Cosa riceve dalle fasi precedenti",
+      "sintesi": "La sintesi dichiarata (consigliato)",
+      "completo": "Il testo finale completo",
+      "nessuno": "Niente",
+      "reuse": "Riusa il risultato",
+      "reuseHint": "Se istruzioni, input e file del progetto non sono cambiati, non rifà la fase."
+    },
+    "deletePhase": "Elimina fase"
+  },
+  "settings": {
+    "workflowName": "Nome del workflow",
+    "subtitle": "Impostazioni del workflow · seleziona una fase per configurarla",
+    "project": {
+      "title": "Progetto",
+      "dir": "Cartella del progetto",
+      "dirPlaceholder": "C:\\percorso\\progetto",
+      "goal": "Obiettivo",
+      "goalHint": "Incluso nelle istruzioni di ogni fase. Scrivi anche quando il lavoro è finito.",
+      "description": "Descrizione"
+    },
+    "run": {
+      "title": "Esecuzione",
+      "maxBudget": "Spesa massima ($)",
+      "maxBudgetHint": "Stima del SDK, per esecuzione.",
+      "parallel": "Fasi in parallelo",
+      "agentLanguage": "Lingua degli agenti",
+      "agentLanguageHint": "Lingua del protocollo di risposta e delle regole inviate agli agenti."
+    },
+    "rules": {
+      "title": "Regole e contesto",
+      "show": "Vedi regole",
+      "general": "Applica le regole generali",
+      "generalHint": "Le tue regole personali e quelle di Regia, in ogni fase.",
+      "projectSettings": "Carica il CLAUDE.md del progetto",
+      "projectSettingsHint": "E il file .claude/settings.json, se presente."
+    },
+    "edgesHint": "Collega le fasi trascinando dal punto in basso di una al punto in alto della successiva. Seleziona un collegamento e premi Canc per rimuoverlo."
+  }
+}

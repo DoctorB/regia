@@ -84,6 +84,18 @@ Hook, plugin e impostazioni personali di `~/.claude` non vengono caricati; le re
 
 "Prova" esegue il workflow con agenti simulati: nessuna chiamata di rete e nessun costo, tariffe fittizie. I messaggi simulati hanno la stessa forma di quelli del SDK (ID duplicati per strumenti in parallelo, subagenti, sessioni riprese con totali ripristinati, crash con valori azzerati), quindi la contabilità segue lo stesso percorso del codice reale. Nelle istruzioni di una fase si può scrivere `[simula-errore]`, `[simula-blocco]` o `[simula-budget]` per provare gli interventi. Il server locale è simulato e nessun comando viene eseguito.
 
+## Lingue
+
+Interfaccia, messaggi di Regia e istruzioni inviate agli agenti sono tradotti tramite file JSON, senza toccare il codice.
+
+- **Traduzioni**: `locales/<lingua>/*.json` (es. `locales/it/`, `locales/en/`). Ogni cartella contiene `_meta.json` con nome e locale (`{"name": "Italiano", "locale": "it-IT"}`) e uno o più file con chiavi annidate; i file di una lingua vengono uniti. Parametri tra graffe (`{count} fasi`), plurali come oggetti (`{"one": "{count} fase", "other": "{count} fasi"}`). Le chiavi mancanti usano l'inglese, poi l'italiano.
+- **Preset**: `templates/<lingua>/*.json`, stessi nomi di file per tutte le lingue; un preset non tradotto usa la versione inglese, poi quella italiana.
+- **Lingua dell'interfaccia**: scelta dal menu con l'icona delle lingue in alto a destra (ricordata nel browser); all'inizio segue la lingua del browser.
+- **Lingua degli agenti**: impostazione di ogni workflow ("Lingua degli agenti"). Determina la lingua del protocollo di risposta, delle regole e dei titoli del prompt inviati agli agenti; i nuovi workflow usano la lingua dell'interfaccia.
+- I messaggi generati da Regia (validazione, eventi, interventi, suggerimenti) viaggiano come chiave e parametri e vengono tradotti nella lingua di chi li guarda; il testo prodotto dagli agenti resta come lo scrivono.
+
+**Aggiungere una lingua**: copia `locales/en/` in `locales/<codice>/`, aggiorna `_meta.json` e traduci i valori (non le chiavi). Facoltativamente traduci i preset in `templates/<codice>/`. I file vengono riletti a ogni richiesta: basta ricaricare la pagina. `npm run i18n:check` elenca le chiavi mancanti o in più per ogni lingua.
+
 ## Variabili d'ambiente
 
 | Variabile | Effetto |
@@ -92,6 +104,7 @@ Hook, plugin e impostazioni personali di `~/.claude` non vengono caricati; le re
 | `REGIA_DATA_DIR` | Cartella dei dati locali (predefinita `data/`) |
 | `REGIA_GLOBAL_RULES` | File delle regole personali (predefinito `~/.claude/CLAUDE.md`) |
 | `REGIA_DISABLE_REAL=1` | Disattiva le esecuzioni reali |
+| `REGIA_LANG` | Lingua predefinita del server (es. per le regole di Regia iniziali); altrimenti quella del sistema |
 | `REGIA_MOCK_SPEED` | Millisecondi per passo nella modalità di prova (predefinito 600) |
 | `ANTHROPIC_API_KEY` | Se presente, le esecuzioni reali usano la chiave API invece del login |
 

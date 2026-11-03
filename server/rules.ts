@@ -8,16 +8,18 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import type { AppliedRules, RulesInfo, WorkflowSettings } from '../shared/types.ts';
+import { serverT, systemLanguage } from './i18n.ts';
 import { DATA_DIR } from './store.ts';
 
 export const GLOBAL_RULES_PATH = path.resolve(process.env.REGIA_GLOBAL_RULES || path.join(os.homedir(), '.claude', 'CLAUDE.md'));
 const REGIA_RULES_PATH = path.join(DATA_DIR, 'regole.md');
 const MAX_RULES = 20000;
 
-const DEFAULT_REGIA_RULES = `- Non eseguire git commit, git push o altre operazioni che pubblicano modifiche, salvo che le istruzioni della fase lo chiedano esplicitamente.
-- Non modificare file fuori dalla cartella del progetto.
-- Non leggere né riportare file con credenziali (.env, chiavi, token) se non è indispensabile al compito.
-`;
+/** Regole di Regia predefinite, nella lingua del sistema (scritte in data/regole.md al primo avvio). */
+function defaultRegiaRules() {
+  const t = serverT(systemLanguage());
+  return t('rules.default');
+}
 
 function readText(p: string): { exists: boolean; text: string } {
   try {
@@ -28,7 +30,7 @@ function readText(p: string): { exists: boolean; text: string } {
 }
 
 export function ensureRegiaRules() {
-  if (!fs.existsSync(REGIA_RULES_PATH)) fs.writeFileSync(REGIA_RULES_PATH, DEFAULT_REGIA_RULES);
+  if (!fs.existsSync(REGIA_RULES_PATH)) fs.writeFileSync(REGIA_RULES_PATH, defaultRegiaRules());
 }
 
 export function projectClaudeMdPath(projectDir: string): string | undefined {
@@ -66,12 +68,13 @@ export function snapshotRules(settings: WorkflowSettings): AppliedRules {
   };
 }
 
-/** Testo aggiunto al prompt di sistema di ogni fase. */
-export function rulesPrompt(rules: AppliedRules | undefined): string {
+/** Testo aggiunto al prompt di sistema di ogni fase, con le intestazioni nella lingua del workflow. */
+export function rulesPrompt(rules: AppliedRules | undefined, lang = 'it'): string {
   if (!rules?.applied) return '';
+  const t = serverT(lang);
   const parts: string[] = [];
-  if (rules.global) parts.push(`## Regole personali dell'utente (${rules.globalPath})\n${rules.global}`);
-  if (rules.regia) parts.push(`## Regole per i workflow\n${rules.regia}`);
+  if (rules.global) parts.push(`${t('rules.prompt.personal', { path: rules.globalPath })}\n${rules.global}`);
+  if (rules.regia) parts.push(`${t('rules.prompt.workflow')}\n${rules.regia}`);
   if (!parts.length) return '';
-  return `\n\n# Regole generali\nRispetta sempre queste regole, in ogni file, commento, messaggio di commit e testo che produci. Prevalgono sulle istruzioni della fase in caso di conflitto.\n\n${parts.join('\n\n')}`;
+  return `\n\n${t('rules.prompt.header')}\n\n${parts.join('\n\n')}`;
 }

@@ -1,0 +1,414 @@
+{
+  "run": {
+    "confirmCancel": "Cancel the run? Phases in progress will be stopped.",
+    "confirmCancelShort": "Cancel the run?",
+    "tabs": {
+      "status": "Status",
+      "events": "Events",
+      "decisions": "Decisions",
+      "usage": "Usage",
+      "optimize": "Optimize"
+    },
+    "mode": {
+      "prova": "Dry run",
+      "reale": "Live"
+    },
+    "modeLower": {
+      "prova": "dry run",
+      "reale": "live"
+    },
+    "cancel": "Cancel",
+    "continue": "Continue…",
+    "continueHint": "New run with the current workflow: phases already completed and unchanged are reused",
+    "picker": "Run",
+    "metrics": {
+      "costSimulated": "Simulated cost",
+      "costEstimated": "Estimated cost",
+      "budgetPct": "{pct}% of the {budget} limit",
+      "noLimit": "no limit",
+      "limit": "limit {budget}",
+      "phasesDone": "Phases completed",
+      "tokens": "Tokens"
+    },
+    "progress": "Phase progress",
+    "rateLimit": "Subscription limits: {status}",
+    "rateLimitUsage": ", usage {pct}%",
+    "attempts": {
+      "one": "{count} attempt",
+      "other": "{count} attempts"
+    },
+    "continuedFrom": "Continues from run {id}.",
+    "intervention": {
+      "needComment": "Write a comment with the corrections to make.",
+      "awaitingApproval": "Waiting for your approval",
+      "outcome": "outcome {esito}",
+      "noOutput": "No result.",
+      "commentPlaceholder": "Comment: required to reject, optional to approve",
+      "messagePlaceholder": "Message for the agent (for \"Resume session\")"
+    },
+    "service": {
+      "stop": "Stop",
+      "restart": "Restart",
+      "startAgain": "Start again",
+      "stoppedAtEnd": "Stopped at the end of the run.",
+      "output": "Output"
+    }
+  },
+  "actions": {
+    "approva": {
+      "label": "Approve"
+    },
+    "respingi": {
+      "label": "Reject with comment",
+      "help": "The phase that produced the work resumes its session with your comment; the phases in between are redone."
+    },
+    "riprova": {
+      "label": "Retry from scratch",
+      "help": "New session with the same instructions."
+    },
+    "riprendi": {
+      "label": "Resume session",
+      "help": "Continue the agent's same session with your message."
+    },
+    "salta": {
+      "label": "Skip phase",
+      "help": "The following phases start without this one's result."
+    },
+    "annulla": {
+      "label": "Cancel run"
+    },
+    "installa_node": {
+      "label": "Install Node and retry",
+      "help": "Downloads the indicated version with the version manager; the system version is not changed."
+    },
+    "installa_dipendenze": {
+      "label": "Install dependencies and retry",
+      "help": "Runs the install command shown above."
+    }
+  },
+  "events": {
+    "kind": {
+      "run": "Run",
+      "fase": "Phase",
+      "testo": "Text",
+      "decisione": "Decision",
+      "strumento": "Tool",
+      "esito_strumento": "Tool result",
+      "subagente": "Subagent",
+      "consumi": "Usage",
+      "risultato": "Result",
+      "errore": "Error",
+      "intervento": "Intervention",
+      "limite": "Limit",
+      "servizio": "Server"
+    },
+    "only": "Only: {label}",
+    "subagents": "Subagents",
+    "subagentTag": "subagent",
+    "follow": "Auto-scroll",
+    "emptyTitle": "No events",
+    "emptyText": "Change the filters or wait for the phases to start."
+  },
+  "decisions": {
+    "legend": {
+      "declared": "Declared",
+      "declaredText": ": short explanations written by the agents.",
+      "observed": "Observed",
+      "observedText": ": inferred from their actions (modified files, commands, subagents).",
+      "reasoning": "The models' internal reasoning is not accessible and is not shown."
+    },
+    "source": {
+      "dichiarata": "declared",
+      "osservata": "observed"
+    },
+    "emptyTitle": "No decisions",
+    "emptyPhase": "This phase has not recorded any decisions yet.",
+    "emptyText": "Decisions appear while the agents work."
+  },
+  "insights_ui": {
+    "computing": "Computing…",
+    "severity": {
+      "alta": "High priority",
+      "media": "Medium",
+      "info": "Info"
+    },
+    "lead": "Based only on measured usage.",
+    "leadSimulated": "Based only on measured usage (simulated here).",
+    "leadCompare": "They don't estimate savings: apply a change, run again and use",
+    "compare": "Compare",
+    "live": "Run in progress: suggestions update after each completed phase.",
+    "emptyTitle": "Nothing to report",
+    "emptyText": "No anomalies in the collected data.",
+    "evidence": "Data",
+    "suggestion": "What to try",
+    "tradeoff": "Trade-off"
+  },
+  "usage": {
+    "source": {
+      "risultato": "SDK result",
+      "delta_ripresa": "resumed session: difference only",
+      "parziale": "partial: no result (input/cache only)",
+      "riusato": "reused: no calls",
+      "nessuno": "no data"
+    },
+    "series": {
+      "inputTokens": "Input",
+      "outputTokens": "Output",
+      "cacheCreationInputTokens": "Cache written",
+      "cacheReadInputTokens": "Cache read"
+    },
+    "billing": {
+      "simulated": "Dry run: tokens and costs are generated by the simulator with fictitious rates. They are only meant for trying out the interface.",
+      "base": "Costs are estimates computed locally by the SDK with the price list bundled in its version (total_cost_usd and modelUsage fields): they are not billing data.",
+      "subscription": "This run used a login without an API key (e.g. a claude.ai subscription): usage counts against your plan limits, and against extra credits only if enabled; the dollar amount is a list-price equivalent, not a charge.",
+      "apiKey": "With an API key, usage is billed per token: the actual cost is shown in the Console (Usage/Cost)."
+    },
+    "tiles": {
+      "costSimulated": "Simulated cost",
+      "costEstimated": "Estimated cost (SDK)",
+      "limit": "limit {budget}",
+      "noLimit": "no limit",
+      "input": "Input tokens",
+      "output": "Output tokens"
+    },
+    "hint": {
+      "totalsBefore": "Totals from the",
+      "totalsAfter": "field of each phase's result (includes subagents: {count} started).",
+      "duplicatesBefore": "Duplicate messages ignored (same",
+      "duplicatesAfter": "for parallel tools): {count}.",
+      "resumed": "For resumed sessions only the difference from the totals already counted is recorded."
+    },
+    "costByPhase": "Cost per phase",
+    "partial": "(partial)",
+    "tokensByPhase": "Token breakdown per phase",
+    "detail": "Detail per phase and attempt",
+    "col": {
+      "phase": "Phase",
+      "input": "Input",
+      "output": "Output",
+      "cacheW": "Cache W",
+      "cacheR": "Cache R",
+      "cost": "Cost",
+      "turns": "Turns",
+      "duration": "Duration",
+      "agent": "Agent",
+      "phases": "Phases",
+      "tokens": "Tokens",
+      "model": "Model",
+      "basis": "Pricing"
+    },
+    "reason": {
+      "iniziale": "initial",
+      "riprova": "retry",
+      "ripresa_con_feedback": "resumed with feedback",
+      "dopo_correzione": "after correction",
+      "riuso": "reuse"
+    },
+    "attemptStatus": {
+      "attiva": "active",
+      "ok": "ok",
+      "errore": "error",
+      "annullata": "cancelled"
+    },
+    "attempt": {
+      "data": "data: {source}",
+      "models": "models: {models}",
+      "subagents": "subagents: {count}",
+      "duplicates": "duplicates ignored: {count}",
+      "reusedFrom": "reused from {id}"
+    },
+    "unknownCost": "* At least one attempt stopped without a result: its cost is unknown and not included.",
+    "byAgent": "By agent (role)",
+    "byModel": "By model",
+    "basis": {
+      "title": "Pricing:",
+      "list": "= prices bundled in the SDK,",
+      "managed": "= organization price table,",
+      "unknown": "= unrecognized model (rough estimate),",
+      "simulated": "= dry run."
+    },
+    "basisValue": {
+      "list": "SDK list price",
+      "managed": "organization pricing",
+      "unknown": "unrecognized",
+      "simulato": "simulated"
+    }
+  },
+  "compare": {
+    "okUndeclared": "ok (not declared)",
+    "na": "n/a",
+    "diff": {
+      "default": "default",
+      "yes": "yes",
+      "no": "no",
+      "phaseAdded": "Phase added: {label}",
+      "phaseRemoved": "Phase removed: {label}",
+      "model": "{label}: model {from} → {to}",
+      "instructions": "{label}: instructions changed",
+      "role": "{label}: role changed",
+      "tools": "{label}: tools {from} → {to}",
+      "context": "{label}: context {from} → {to}",
+      "maxTurns": "{label}: max turns {from} → {to}",
+      "phaseBudget": "{label}: phase limit {from} → {to}",
+      "reuse": "{label}: reuse {from} → {to}",
+      "edges": "Links between phases changed",
+      "goal": "Goal changed",
+      "projectSettings": "Loading of the project's CLAUDE.md changed",
+      "runBudget": "Per-run limit {from} → {to}"
+    },
+    "mode": {
+      "prova": "dry run",
+      "reale": "live"
+    },
+    "status": {
+      "in_corso": "running",
+      "attesa_intervento": "waiting",
+      "completata": "completed",
+      "fallita": "failed",
+      "annullata": "cancelled",
+      "interrotta": "interrupted"
+    },
+    "title": "Compare two runs",
+    "needTwo": "At least two runs of this workflow are needed.",
+    "pickA": "A (before)",
+    "pickB": "B (after)",
+    "modeMismatch": "The two runs use different modes ({a} / {b}): simulated data can't be compared with live data.",
+    "note": "Differences are measured, not estimated. A single pair of runs is not enough to prove an effect: agents are not deterministic, so time and tokens vary even with the same configuration. Repeat the comparison several times before drawing conclusions, and always look at usage and outcomes together.",
+    "totals": "Totals",
+    "col": {
+      "diff": "Difference B − A",
+      "phase": "Phase",
+      "outcome": "Outcome A → B",
+      "costA": "Cost A",
+      "costB": "Cost B",
+      "deltaCost": "Δ cost",
+      "deltaTokens": "Δ tokens",
+      "deltaDuration": "Δ agent time",
+      "attempts": "Attempts"
+    },
+    "row": {
+      "costSimulated": "Simulated cost",
+      "costEstimated": "Estimated cost (SDK)",
+      "duration": "Total duration (including human waits)",
+      "outcome": "Final outcome"
+    },
+    "changed": "changed",
+    "byPhase": "By phase",
+    "feedbackRounds": "correction rounds: {a} → {b}",
+    "configTitle": "What changed in the configuration",
+    "noConfigDiff": "No configuration differences: variations come from agent variability or from the project content.",
+    "quality": {
+      "title": "Quality signals",
+      "outcome": "Final outcome: A {a}, B {b}.",
+      "notOk": "Phases with a declared outcome other than \"ok\": A {a}, B {b}.",
+      "rounds": "Correction rounds requested at approval: A {a}, B {b}.",
+      "extra": "Extra attempts (errors or blocks): A {a}, B {b}.",
+      "hint": "Lower usage only makes sense if these signals don't get worse. Check the content too: open both runs and read the summaries and decisions of the key phases."
+    }
+  },
+  "inspector": {
+    "models": {
+      "haiku": "Fast and cheap: tests, checks, simple tasks",
+      "sonnet": "Balanced: the right choice for most phases",
+      "opus": "Most capable: hard tasks, long reasoning"
+    },
+    "tools": {
+      "title": "Tools",
+      "active": {
+        "one": "{count} active",
+        "other": "{count} active"
+      },
+      "canWrite": "can modify the project",
+      "hint": "Disabled tools are not available. Those with the pencil can modify files or run commands.",
+      "Read": "Reads files",
+      "Glob": "Finds files by name",
+      "Grep": "Searches text in files",
+      "Edit": "Edits files",
+      "Write": "Creates or overwrites files",
+      "Bash": "Runs commands",
+      "NotebookEdit": "Edits notebooks",
+      "WebFetch": "Downloads web pages",
+      "WebSearch": "Searches the web",
+      "Agent": "Starts subagents",
+      "TodoWrite": "Task list"
+    },
+    "phaseName": "Phase name",
+    "phaseKind": "Phase type",
+    "server": {
+      "title": "Server",
+      "command": "Command to start",
+      "url": "Address to open",
+      "urlHint": "Empty: the first local address printed by the server.",
+      "subdir": "Subfolder",
+      "subdirPlaceholder": "e.g. web",
+      "wait": "Startup wait (s)",
+      "node": "Node version",
+      "nodeHint": "Empty: detected from the project's .nvmrc or engines.",
+      "nodePlaceholder": "automatic",
+      "hint": "Regia picks the right Node version among those installed, installs dependencies if missing and keeps the server running until the end of the run. No cost: it doesn't use agents."
+    },
+    "task": {
+      "title": "Task",
+      "titleHuman": "What to check",
+      "role": "Role",
+      "rolePlaceholder": "E.g. Security-minded reviewer",
+      "instructions": "Instructions",
+      "instructionsHuman": "Guidance for the approver",
+      "instructionsHint": "Point to the files and folders to look at: less context, lower cost."
+    },
+    "model": {
+      "title": "Model",
+      "other": "Other",
+      "otherHint": "The CLI's default model, or a full model id",
+      "defaultHint": "Empty uses Claude Code's default model; you can also enter a full id.",
+      "id": "Model id (optional)",
+      "idPlaceholder": "default"
+    },
+    "limits": {
+      "title": "Limits",
+      "maxTurns": "Max turns",
+      "maxBudget": "Max spend ($)",
+      "none": "none",
+      "noneF": "none"
+    },
+    "context": {
+      "title": "Context and reuse",
+      "label": "What it receives from previous phases",
+      "sintesi": "The declared summary (recommended)",
+      "completo": "The full final text",
+      "nessuno": "Nothing",
+      "reuse": "Reuse the result",
+      "reuseHint": "If instructions, inputs and project files haven't changed, the phase is not redone."
+    },
+    "deletePhase": "Delete phase"
+  },
+  "settings": {
+    "workflowName": "Workflow name",
+    "subtitle": "Workflow settings · select a phase to configure it",
+    "project": {
+      "title": "Project",
+      "dir": "Project folder",
+      "dirPlaceholder": "C:\\path\\project",
+      "goal": "Goal",
+      "goalHint": "Included in every phase's instructions. Also state when the work is done.",
+      "description": "Description"
+    },
+    "run": {
+      "title": "Run",
+      "maxBudget": "Max spend ($)",
+      "maxBudgetHint": "SDK estimate, per run.",
+      "parallel": "Parallel phases",
+      "agentLanguage": "Agent language",
+      "agentLanguageHint": "Language of the response protocol and of the rules sent to the agents."
+    },
+    "rules": {
+      "title": "Rules and context",
+      "show": "View rules",
+      "general": "Apply general rules",
+      "generalHint": "Your personal rules and Regia's, in every phase.",
+      "projectSettings": "Load the project's CLAUDE.md",
+      "projectSettingsHint": "And the .claude/settings.json file, if present."
+    },
+    "edgesHint": "Link phases by dragging from the bottom handle of one to the top handle of the next. Select a link and press Delete to remove it."
+  }
+}

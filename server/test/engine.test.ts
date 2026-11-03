@@ -108,7 +108,7 @@ test('esecuzione di prova completa con approvazione e ripresa con feedback', asy
   assert.ok(!run.events.some((e) => e.text.includes('ragionamento interno')));
   const insights = computeInsights(run);
   assert.ok(insights.length > 0);
-  for (const i of insights) assert.ok(i.tradeoff.length > 0);
+  for (const i of insights) assert.ok(i.tradeoff.key.length > 0);
 });
 
 const phase = (p: Partial<PhaseConfig> & Pick<PhaseConfig, 'label' | 'kind' | 'instructions'>): PhaseConfig => ({
@@ -161,7 +161,8 @@ test('errore, blocco, parallelo, subagenti, riuso e limite di spesa', async () =
 });
 
 test('continua da un\'esecuzione completata: solo le fasi nuove, correzione sulla sessione originale', async () => {
-  const { PHASE_SNIPPETS, PHASE_PRESETS } = await import('../../shared/types.ts');
+  const { phasePreset, phaseSnippets } = await import('../../shared/presets.ts');
+  const { serverT } = await import('../i18n.ts');
   const { planContinuation } = await import('../engine.ts');
   const wf = fromTemplate(templates.find((t) => t.id === 'nuova-funzionalita')!);
   const eng1 = startRun(wf, 'prova', 10);
@@ -175,9 +176,9 @@ test('continua da un\'esecuzione completata: solo le fasi nuove, correzione sull
 
   // Dopo il completamento si aggiungono anteprima → approvazione → pubblicazione in coda.
   const wf2 = structuredClone(wf);
-  const snip = (id: string) => structuredClone(PHASE_SNIPPETS.find((s) => s.id === id)!.data);
+  const snip = (id: string) => structuredClone(phaseSnippets(serverT('it')).find((s) => s.id === id)!.data);
   wf2.nodes.push(
-    { id: 'anteprima', position: { x: 0, y: 0 }, data: { ...structuredClone(PHASE_PRESETS.server) } },
+    { id: 'anteprima', position: { x: 0, y: 0 }, data: phasePreset('server', serverT('it')) },
     { id: 'ok_risultato', position: { x: 0, y: 0 }, data: { label: 'Approva il risultato', kind: 'approvazione', role: '', instructions: 'Verifica nel browser.', model: '', allowedTools: [], contextMode: 'sintesi', reuseResult: false } },
     { id: 'pubblica', position: { x: 0, y: 0 }, data: snip('pubblicazione') },
   );
@@ -311,4 +312,60 @@ test('server locale "intelligente": versione di Node dal progetto, ritentativo a
   assert.match(e4.run.nodes.srv.pendingReason!, /richiede Node >=999 \(package\.json engines\)/);
   assert.equal(e4.run.nodes.srv.service!.pid, undefined);
   e4.cancel();
+});
+
+test('workflow in inglese: eventi, protocollo e testi simulati nella lingua del workflow', async () => {
+  const { agentProtocol, parseDecisionLine } = await import('../engine.ts');
+  // Protocollo: istruzioni nella lingua scelta, parti lette da Regia invariate.
+  const en = agentProtocol('en');
+  const it = agentProtocol('it');
+  assert.match(en, /^# Response protocol/);
+  assert.match(en, /"DECISION:"/);
+  assert.match(it, /"DECISIONE:"/);
+  for (const p of [en, it]) {
+    assert.match(p, /```regia\n\{"esito": "ok" \| "ko" \| "bloccato", "sintesi": .*"decisioni": \[/);
+  }
+  // Le righe di decisione sono riconosciute in entrambe le lingue, anche in grassetto.
+  assert.equal(parseDecisionLine('DECISION: read the tests first'), 'read the tests first');
+  assert.equal(parseDecisionLine('**Decisione:** parto dai test'), 'parto dai test');
+  assert.equal(parseDecisionLine('  **DECISIONE**: modifico un file'), 'modifico un file');
+  assert.equal(parseDecisionLine('The decision: nope'), null);
+
+  const wf: Workflow = {
+    id: 'wf_en', name: 'English', description: '', updatedAt: '',
+    settings: { projectDir, goal: 'Test goal', maxParallel: 1, loadProjectSettings: false, applyGeneralRules: true, language: 'en' },
+    nodes: [{ id: 'analysis', position: { x: 0, y: 0 }, data: phase({ label: 'Analysis', kind: 'analisi', instructions: 'Analyse.', allowedTools: ['Read'] }) }],
+    edges: [],
+  };
+  const eng = startRun(wf, 'prova', 5);
+  const run = eng.run;
+  await waitFor(() => run.status === 'completata');
+  assert.equal(run.events[0].text, 'Run started in dry-run mode (no paid calls).');
+  assert.deepEqual(run.events[0].msg, { key: 'events.runStarted.test', params: undefined });
+  assert.ok(run.events.some((e) => e.text.startsWith('General rules applied to every phase')));
+  assert.ok(run.events.some((e) => e.msg?.key === 'events.phaseStarted.initialLimit' && e.text.startsWith('Analysis: started. Model: sonnet')));
+  assert.ok(run.events.some((e) => e.text === 'Run completed.'));
+  // Il testo simulato dell'agente segue la lingua: "DECISION:" riconosciuto e tolto dal testo della decisione.
+  const declared = run.events.filter((e) => e.kind === 'decisione' && e.source === 'dichiarata').map((e) => e.text);
+  assert.ok(declared.includes('The cause is limited to a single module; there is no need to touch the rest of the project.'), declared.join(' | '));
+  assert.match(run.nodes.analysis.output!, /completed in simulation/);
+  // Nessun testo di Regia in italiano negli eventi generati da Regia.
+  for (const e of run.events.filter((x) => x.msg)) assert.doesNotMatch(e.text, /Esecuzione|avviata|Regole generali/, e.text);
+  assert.match(rulesPrompt(run.rules, 'en'), /^\n\n# General rules\nAlways follow these rules/);
+});
+
+test('motivi della continuazione e risposte di errore localizzabili', async () => {
+  const { planContinuation, RegiaError } = await import('../engine.ts');
+  const wf = bugWf();
+  const eng = startRun(wf, 'prova', 5);
+  await assert.rejects(eng.human('analisi', 'approva'), (e: unknown) => e instanceof RegiaError && e.msg.key === 'api.actionUnavailable' && /non disponibile/.test(e.message));
+  eng.cancel();
+  const wf2 = structuredClone(wf);
+  wf2.nodes[0].data.instructions += ' (modificata)';
+  const plan = planContinuation(wf2, eng.run);
+  const first = plan.toRun[0];
+  assert.equal(first.reasonMsg?.key, 'continuation.configChanged');
+  assert.equal(first.reason, 'configurazione modificata');
+  wf2.settings.language = 'en';
+  assert.equal(planContinuation(wf2, eng.run).toRun[0].reason, 'configuration changed');
 });

@@ -1,0 +1,251 @@
+{
+  "events": {
+    "runStarted": {
+      "test": "Esecuzione avviata in modalità di prova (nessuna chiamata a pagamento).",
+      "real": "Esecuzione avviata in modalità reale."
+    },
+    "continued": {
+      "one": "Continua dall'esecuzione {from}: {count} fase ripresa senza chiamate ({phases}).",
+      "other": "Continua dall'esecuzione {from}: {count} fasi riprese senza chiamate ({phases})."
+    },
+    "continuedNone": "Continua dall'esecuzione {from}: 0 fasi riprese senza chiamate (nessuna).",
+    "budget": "Limite di spesa stimata per l'esecuzione: {amount} USD.",
+    "rules": {
+      "both": "Regole generali applicate a ogni fase: regole personali ({path}) e regole di Regia.",
+      "global": "Regole generali applicate a ogni fase: regole personali ({path}).",
+      "regia": "Regole generali applicate a ogni fase: regole di Regia.",
+      "empty": "Regole generali attive, ma nessun testo di regole trovato.",
+      "off": "Regole generali non applicate (disattivate nelle impostazioni del workflow).",
+      "project": "CLAUDE.md del progetto caricato dalla CLI: {path}."
+    },
+    "runCompleted": "Esecuzione completata.",
+    "runPaused": "L'esecuzione è in pausa: serve un tuo intervento.",
+    "runCancelled": "Esecuzione annullata.",
+    "notStartedBudget": "{label}: non avviata, limite di spesa dell'esecuzione raggiunto.",
+    "reused": "{label}: risultato riusato dall'esecuzione {run} (configurazione, input e file del progetto invariati). Nessuna chiamata effettuata.",
+    "phaseStarted": {
+      "initial": "{label}: avviata. Modello: {model}; strumenti: {tools}.",
+      "initialLimit": "{label}: avviata. Modello: {model}; strumenti: {tools}; limite {limit} USD.",
+      "resumed": "{label}: avviata (ripresa della sessione con feedback). Modello: {model}; strumenti: {tools}.",
+      "resumedLimit": "{label}: avviata (ripresa della sessione con feedback). Modello: {model}; strumenti: {tools}; limite {limit} USD.",
+      "retry": "{label}: avviata (nuovo tentativo). Modello: {model}; strumenti: {tools}.",
+      "retryLimit": "{label}: avviata (nuovo tentativo). Modello: {model}; strumenti: {tools}; limite {limit} USD."
+    },
+    "defaultModel": "predefinito",
+    "noTools": "nessuno",
+    "sessionReady": "{label}: sessione pronta (modello {model}).",
+    "toolFallbackName": "strumento",
+    "toolError": "{name} ha restituito un errore: {content}",
+    "toolNoOutput": "{name}: (nessun output)",
+    "subagentStarted": "Subagente avviato: {description}",
+    "subagentEnded": {
+      "completed": "Subagente completato: {summary}",
+      "completedTokens": {
+        "one": "Subagente completato: {summary} ({count} token riportato dal subagente, già incluso nei totali della fase)",
+        "other": "Subagente completato: {summary} ({count} token riportati dal subagente, già inclusi nei totali della fase)"
+      },
+      "other": "Subagente {status}: {summary}",
+      "otherTokens": {
+        "one": "Subagente {status}: {summary} ({count} token riportato dal subagente, già incluso nei totali della fase)",
+        "other": "Subagente {status}: {summary} ({count} token riportati dal subagente, già inclusi nei totali della fase)"
+      }
+    },
+    "rateLimit": "Limite di utilizzo dell'abbonamento: {status}.",
+    "rateLimitType": "Limite di utilizzo dell'abbonamento: {status} ({type}).",
+    "apiRetry": "Nuovo tentativo di chiamata API in corso.",
+    "apiRetryError": "Nuovo tentativo di chiamata API in corso: {error}.",
+    "usage": {
+      "known": "Consumi ({source}): input {input}, output {output}, cache scritta {cacheWrite}, cache letta {cacheRead}; {cost} USD stimati; turni {turns}; messaggi duplicati ignorati {duplicates}.",
+      "unknown": "Consumi ({source}): input {input}, output {output}, cache scritta {cacheWrite}, cache letta {cacheRead}; costo non disponibile; turni {turns}; messaggi duplicati ignorati {duplicates}."
+    },
+    "phaseCancelled": "{label}: annullata.",
+    "phaseFailed": "{label}: fallita — {error}",
+    "agentBlocked": "{label}: l'agente dichiara di essere bloccato — {summary}",
+    "agentKo": "{label}: esito negativo — {summary}",
+    "noOutcomeBlock": "{label}: l'agente non ha restituito il blocco di esito previsto; uso il testo finale come risultato.",
+    "phaseCompleted": "{label}: completata — {summary}",
+    "awaitingApproval": "{label}: in attesa della tua approvazione.",
+    "humanAction": "Intervento su {label}: {action}",
+    "humanActionFeedback": "Intervento su {label}: {action} — \"{feedback}\"",
+    "decisions": {
+      "delegated": "Ha delegato a un subagente: {description}",
+      "denied": "Strumento negato dalla configurazione: {tool}",
+      "edit": "Ha scelto di modificare {file}",
+      "bash": "Ha scelto di eseguire: {command}"
+    },
+    "tool": {
+      "subagent": "Subagente: {description}"
+    },
+    "activity": {
+      "starting": "Avvio…",
+      "preparing": "Preparazione…",
+      "command": "Avvio: {command}",
+      "deps": "Installazione dipendenze: {command}",
+      "install": "Installazione: {command}",
+      "correction": "Correzione in corso: {phases}",
+      "subagent": "Subagente · {summary}"
+    },
+    "service": {
+      "withLabel": "{label}: {text}",
+      "simNeedsIntervention": "{label}: in un'esecuzione reale servirebbe un intervento: {reason}",
+      "simStart": "{label}: avvio di \"{command}\" in {cwd} (simulato: nessun comando eseguito).",
+      "simReady": "Server di sviluppo pronto (simulato).",
+      "depsMissing": "{label}: node_modules non presente: eseguo \"{command}\".",
+      "depsInstalled": "{label}: dipendenze installate.",
+      "start": "{label}: avvio di \"{command}\" in {cwd}.",
+      "startWithNode": "{label}: avvio di \"{command}\" in {cwd} con Node {version}.",
+      "active": "{label}: server attivo su {url}. Resta attivo fino alla fine dell'esecuzione.",
+      "startFailed": "{label}: avvio non riuscito — {reason}",
+      "exited": "{label}: il server si è chiuso (codice {code}).",
+      "nodeRetry": "{label}: {diag} Riprovo automaticamente con Node {version} ({manager}).",
+      "installNode": "{label}: eseguo \"{command}\" (scarica Node {version}; la versione di sistema non cambia).",
+      "run": "{label}: eseguo \"{command}\".",
+      "repairFailed": "{label}: \"{command}\" non riuscito.",
+      "repairDone": "{label}: \"{command}\" completato. Riavvio il server.",
+      "stopped": {
+        "completed": "{label}: server fermato (esecuzione completata).",
+        "restart": "{label}: server fermato (riavvio).",
+        "startFailed": "{label}: server fermato (avvio non riuscito).",
+        "manual": "{label}: server fermato (richiesta manuale).",
+        "cancelled": "{label}: server fermato (esecuzione annullata)."
+      }
+    }
+  },
+  "interventions": {
+    "budgetReached": "Limite di spesa dell'esecuzione raggiunto prima di avviare la fase.",
+    "declaredKo": "Esito negativo dichiarato: {summary}",
+    "maxFeedbackRounds": "Raggiunto il numero massimo di {count} cicli di correzione.",
+    "serviceFailedLog": "{reason}\n\nUltime righe:\n{log}",
+    "repairFailed": "\"{command}\" non è riuscito (codice {code}).\n\nUltime righe:\n{log}",
+    "error": {
+      "phaseBudget": "limite di spesa della fase raggiunto",
+      "maxTurns": "numero massimo di turni raggiunto",
+      "cancelled": "Annullata"
+    },
+    "service": {
+      "depsInstallFailed": "Installazione delle dipendenze non riuscita (\"{command}\", codice {code}).",
+      "exitedDuringStart": "il comando è terminato durante l'avvio (codice {code})",
+      "noResponse": "{url} non risponde entro {seconds} secondi",
+      "noUrl": "nessun indirizzo locale trovato nell'output entro {seconds} secondi (indicalo nel campo URL della fase)",
+      "withDiagnosis": "{base}. {diag}",
+      "cancelled": "esecuzione annullata",
+      "nodeUnresolved": "{diag} {detail}",
+      "nodeSetVersion": "{diag} Indica la versione nel campo \"Versione di Node\" della fase e riprova.",
+      "depsReinstall": "{diag} Si possono reinstallare con \"{command}\"."
+    }
+  },
+  "agent": {
+    "protocol": "# Protocollo di risposta\n- Quando prendi una decisione rilevante (cosa leggere, cosa modificare, come verificare), scrivi una riga che inizia con \"DECISIONE:\" seguita da una spiegazione breve, una sola frase.\n- Lavora solo nella cartella del progetto e solo con gli strumenti che hai a disposizione.\n- Termina SEMPRE la risposta con questo blocco, in JSON valido:\n```regia\n{\"esito\": \"ok\" | \"ko\" | \"bloccato\", \"sintesi\": \"risultato in 1-3 frasi, utile alla fase successiva\", \"decisioni\": [\"decisione principale e motivo\", \"...\"]}\n```\nUsa \"ko\" se il compito non è riuscito (es. test falliti), \"bloccato\" se non puoi procedere senza un intervento umano (spiega cosa serve nella sintesi).",
+    "goal": "# Obiettivo del workflow\n{goal}",
+    "task": "# Il tuo compito: {label}\n{instructions}",
+    "previousResults": "# Risultati delle fasi precedenti\n{results}",
+    "skippedPhase": "(fase saltata)",
+    "feedback": "Feedback della persona che supervisiona il workflow:\n{feedback}\n\nTieni conto di questo feedback e completa di nuovo il compito \"{label}\".\n\n{protocol}",
+    "continue": "Continua dal punto in cui ti eri fermato.",
+    "role": "Ruolo in questo workflow: {role}",
+    "output": {
+      "decisions": "Decisioni:",
+      "approved": "Approvato dalla persona.",
+      "approvedWith": "Approvato dalla persona: {feedback}",
+      "skipped": "(fase saltata dalla persona)",
+      "serverActive": "Server locale attivo: {url}\nComando: {command}",
+      "simulated": " — simulato"
+    }
+  },
+  "mock": {
+    "decisions": {
+      "feedback": "DECISIONE: Applico il feedback ricevuto limitando la modifica al punto segnalato.",
+      "analysisStart": "DECISIONE: Parto dalla struttura del progetto e dai test esistenti per capire il comportamento atteso.",
+      "analysisEnd": "DECISIONE: La causa è circoscritta a un solo modulo; non serve toccare il resto del progetto.",
+      "implStart": "DECISIONE: Modifico solo la funzione totale(), come indicato dall'analisi.",
+      "implEnd": "DECISIONE: I test passano, non aggiungo altre modifiche.",
+      "test": "DECISIONE: Considero la suite superata perché tutti i 5 test passano.",
+      "review": "DECISIONE: La modifica è minima e coperta dai test; non segnalo problemi bloccanti.",
+      "generic": "DECISIONE: Ho svolto il compito richiesto con il minimo di passaggi."
+    },
+    "fileContent": "…contenuto del file…",
+    "fileUpdated": "File aggiornato",
+    "subagentTask": "Esplora i test esistenti",
+    "subagentSummary": "I test esistenti coprono i casi principali del modulo.",
+    "thinking": "(ragionamento interno: non mostrato)",
+    "crash": "Errore simulato: processo terminato inaspettatamente.",
+    "budgetReached": "Limite di spesa raggiunto ({limit} USD, simulato).",
+    "summary": {
+      "blocked": "Simulazione di blocco: serve una conferma umana prima di procedere.",
+      "resumed": "Feedback applicato con una modifica mirata.",
+      "done": "Fase \"{label}\" completata in simulazione."
+    },
+    "finalDecision": "Esito {outcome} dichiarato al termine della fase {label}.",
+    "workDone": "Lavoro completato."
+  },
+  "api": {
+    "originForbidden": "Origine non consentita",
+    "workflowNotFound": "Workflow non trovato",
+    "presetNotFound": "Preset non trovato",
+    "defaultWorkflowName": "Nuovo workflow",
+    "textMissing": "Testo mancante",
+    "idMismatch": "Id non coerente",
+    "runNotFound": "Esecuzione non trovata",
+    "sourceStillActive": "L'esecuzione di partenza è ancora attiva: annullala o attendi che finisca.",
+    "sourceNotFound": "Esecuzione di partenza non trovata",
+    "sourceOtherWorkflow": "L'esecuzione di partenza appartiene a un altro workflow.",
+    "sourceModeMismatch": "Si può continuare solo nella stessa modalità (prova o reale) dell'esecuzione di partenza.",
+    "invalidMode": "Modalità non valida",
+    "workflowHasErrors": "Il workflow contiene errori",
+    "realDisabled": "Esecuzioni reali disattivate (REGIA_DISABLE_REAL=1).",
+    "confirmReal": "Conferma richiesta per un'esecuzione reale.",
+    "noAuth": "Nessuna autenticazione Claude disponibile.",
+    "runNotActive": "L'esecuzione non è più attiva",
+    "invalidAction": "Azione non valida",
+    "unexpected": "{message}",
+    "phaseNotFound": "Fase inesistente",
+    "actionUnavailable": "Azione \"{action}\" non disponibile per questa fase",
+    "rejectNeedsComment": "Per respingere serve un commento con le correzioni richieste",
+    "noSession": "Nessuna sessione da riprendere",
+    "serverOnly": "Azione disponibile solo per il server locale",
+    "notServer": "La fase non è un server locale",
+    "serverStarting": "Il server si sta già avviando",
+    "noNodeInstall": "Nessuna installazione di Node disponibile",
+    "noPackageJson": "Nessun package.json nella cartella"
+  },
+  "nodeenv": {
+    "source": {
+      "phase": "{value} (impostazione della fase)",
+      "phaseLts": "LTS (impostazione della fase)"
+    },
+    "and": " e ",
+    "noneInstalled": "nessuna",
+    "useVersion": "Il progetto richiede Node {sources}: uso Node {version} ({manager}) solo per questo comando.",
+    "useVersionInsteadOfSystem": "Il progetto richiede Node {sources}: uso Node {version} ({manager}) solo per questo comando, invece di {system} di sistema.",
+    "noCompatible": {
+      "install": "Il progetto richiede Node {sources}, ma nessuna versione installata è compatibile (installate: {installed}). Si può installare Node {version} con \"{command}\": non cambia la versione di sistema, viene usata solo per questo comando.",
+      "manual": "Il progetto richiede Node {sources}, ma nessuna versione installata è compatibile (installate: {installed}). Installa una versione compatibile (ad esempio da nodejs.org o con un gestore di versioni come nvm) e riprova."
+    },
+    "diag": {
+      "node": "La versione di Node in uso non è supportata dal progetto.",
+      "nodeRange": "La versione di Node in uso non è supportata dal progetto (richiesta: {range}).",
+      "deps": "Manca un modulo o un comando: probabilmente le dipendenze non sono installate o sono incomplete.",
+      "port": "La porta è già occupata: probabilmente un altro server (forse una precedente anteprima) è ancora attivo. Chiudilo, oppure indica nel comando una porta diversa.",
+      "permissions": "Permessi insufficienti per avviare il comando o per una porta/cartella che usa."
+    }
+  },
+  "rules": {
+    "default": "- Non eseguire git commit, git push o altre operazioni che pubblicano modifiche, salvo che le istruzioni della fase lo chiedano esplicitamente.\n- Non modificare file fuori dalla cartella del progetto.\n- Non leggere né riportare file con credenziali (.env, chiavi, token) se non è indispensabile al compito.\n",
+    "prompt": {
+      "header": "# Regole generali\nRispetta sempre queste regole, in ogni file, commento, messaggio di commit e testo che produci. Prevalgono sulle istruzioni della fase in caso di conflitto.",
+      "personal": "## Regole personali dell'utente ({path})",
+      "workflow": "## Regole per i workflow"
+    }
+  },
+  "notes": {
+    "unknownCost": "Alcune fasi si sono interrotte senza un risultato finale: il loro costo non è noto e non è incluso nel totale."
+  },
+  "continuation": {
+    "newPhase": "fase nuova",
+    "configChanged": "configurazione modificata",
+    "linksChanged": "collegamenti modificati",
+    "serverRestart": "server locale: va riavviato",
+    "notCompleted": "non completata nell'esecuzione precedente ({status})",
+    "upstreamRerun": "una fase precedente verrà rieseguita"
+  }
+}

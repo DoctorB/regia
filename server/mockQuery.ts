@@ -2,7 +2,9 @@
 // senza chiamate di rete né costi. Le tariffe usate qui sono FITTIZIE e servono solo a far funzionare
 // i grafici: non rappresentano prezzi reali.
 import { randomUUID } from 'node:crypto';
+import type { Translate } from '../shared/i18n.ts';
 import type { PhaseConfig } from '../shared/types.ts';
+import { serverT } from './i18n.ts';
 
 const FAKE_RATES: Record<string, [number, number, number, number]> = {
   // USD per milione di token: input, output, scrittura cache, lettura cache (valori fittizi)
@@ -35,6 +37,8 @@ export interface MockOptions {
   maxBudgetUsd?: number;
   signal: AbortSignal;
   stepMs?: number;
+  /** Lingua del workflow: i testi simulati dell'agente la seguono. */
+  lang?: string;
 }
 
 type Step =
@@ -42,40 +46,40 @@ type Step =
   | { kind: 'tools'; calls: { name: string; input: Record<string, unknown>; result: string }[] }
   | { kind: 'subagent'; description: string; calls: number };
 
-function script(p: PhaseConfig, resumed: boolean): Step[] {
+function script(p: PhaseConfig, resumed: boolean, t: Translate): Step[] {
   if (resumed) {
     return [
-      { kind: 'text', text: 'DECISIONE: Applico il feedback ricevuto limitando la modifica al punto segnalato.' },
-      { kind: 'tools', calls: [{ name: 'Read', input: { file_path: 'src/modulo.js' }, result: '…contenuto del file…' }] },
-      { kind: 'tools', calls: [{ name: 'Edit', input: { file_path: 'src/modulo.js' }, result: 'File aggiornato' }] },
+      { kind: 'text', text: t('mock.decisions.feedback') },
+      { kind: 'tools', calls: [{ name: 'Read', input: { file_path: 'src/modulo.js' }, result: t('mock.fileContent') }] },
+      { kind: 'tools', calls: [{ name: 'Edit', input: { file_path: 'src/modulo.js' }, result: t('mock.fileUpdated') }] },
     ];
   }
   switch (p.kind) {
     case 'analisi':
       return [
-        { kind: 'text', text: 'DECISIONE: Parto dalla struttura del progetto e dai test esistenti per capire il comportamento atteso.' },
+        { kind: 'text', text: t('mock.decisions.analysisStart') },
         { kind: 'tools', calls: [
           { name: 'Glob', input: { pattern: '**/*.js' }, result: 'src/modulo.js\ntest/modulo.test.js' },
           { name: 'Grep', input: { pattern: 'TODO' }, result: 'src/modulo.js:12' },
         ] },
-        ...(p.allowedTools.includes('Agent') ? [{ kind: 'subagent' as const, description: 'Esplora i test esistenti', calls: 2 }] : []),
+        ...(p.allowedTools.includes('Agent') ? [{ kind: 'subagent' as const, description: t('mock.subagentTask'), calls: 2 }] : []),
         { kind: 'tools', calls: [{ name: 'Read', input: { file_path: 'src/modulo.js' }, result: '…' }] },
-        { kind: 'text', text: 'DECISIONE: La causa è circoscritta a un solo modulo; non serve toccare il resto del progetto.' },
+        { kind: 'text', text: t('mock.decisions.analysisEnd') },
       ];
     case 'implementazione':
       return [
-        { kind: 'text', text: 'DECISIONE: Modifico solo la funzione totale(), come indicato dall\'analisi.' },
+        { kind: 'text', text: t('mock.decisions.implStart') },
         { kind: 'tools', calls: [{ name: 'Read', input: { file_path: 'src/modulo.js' }, result: '…' }] },
         { kind: 'tools', calls: [{ name: 'Read', input: { file_path: 'src/modulo.js' }, result: '…' }] },
         { kind: 'tools', calls: [{ name: 'Edit', input: { file_path: 'src/modulo.js' }, result: 'ok' }] },
         { kind: 'tools', calls: [{ name: 'Read', input: { file_path: 'src/modulo.js' }, result: '…' }] },
         { kind: 'tools', calls: [{ name: 'Bash', input: { command: 'npm test' }, result: '# pass 5\n# fail 0' }] },
-        { kind: 'text', text: 'DECISIONE: I test passano, non aggiungo altre modifiche.' },
+        { kind: 'text', text: t('mock.decisions.implEnd') },
       ];
     case 'test':
       return [
         { kind: 'tools', calls: [{ name: 'Bash', input: { command: 'npm test' }, result: '# pass 5\n# fail 0' }] },
-        { kind: 'text', text: 'DECISIONE: Considero la suite superata perché tutti i 5 test passano.' },
+        { kind: 'text', text: t('mock.decisions.test') },
       ];
     case 'revisione':
       return [
@@ -83,12 +87,12 @@ function script(p: PhaseConfig, resumed: boolean): Step[] {
           { name: 'Read', input: { file_path: 'src/modulo.js' }, result: '…' },
           { name: 'Read', input: { file_path: 'test/modulo.test.js' }, result: '…' },
         ] },
-        { kind: 'text', text: 'DECISIONE: La modifica è minima e coperta dai test; non segnalo problemi bloccanti.' },
+        { kind: 'text', text: t('mock.decisions.review') },
       ];
     default:
       return [
         { kind: 'tools', calls: [{ name: p.allowedTools[0] ?? 'Read', input: { file_path: 'README.md' }, result: '…' }] },
-        { kind: 'text', text: 'DECISIONE: Ho svolto il compito richiesto con il minimo di passaggi.' },
+        { kind: 'text', text: t('mock.decisions.generic') },
       ];
   }
 }
@@ -104,6 +108,7 @@ function sleep(ms: number, signal: AbortSignal) {
 
 export async function* mockQuery(o: MockOptions): AsyncGenerator<Record<string, any>> {
   const p = o.phase;
+  const t = serverT(o.lang ?? 'it');
   const alias = tier(p.model || 'sonnet');
   const model = `sim-${alias}`;
   const subModel = 'sim-haiku';
@@ -152,7 +157,7 @@ export async function* mockQuery(o: MockOptions): AsyncGenerator<Record<string, 
   yield { type: 'system', subtype: 'init', apiKeySource: 'none', model, session_id: sessionId, tools: p.allowedTools, cwd: '(simulato)', permissionMode: 'dontAsk' };
   await sleep(stepMs / 2, o.signal);
 
-  const steps = script(p, resumed);
+  const steps = script(p, resumed, t);
   let ctx = ctxBase + (prev ? 6000 : 0);
   for (let i = 0; i < steps.length; i++) {
     const s = steps[i];
@@ -167,7 +172,7 @@ export async function* mockQuery(o: MockOptions): AsyncGenerator<Record<string, 
     ctx += 1100;
     const base = { type: 'assistant', parent_tool_use_id: null, session_id: sessionId, uuid: randomUUID() };
     if (s.kind === 'text') {
-      yield { ...base, message: { id: msgId, model, role: 'assistant', content: [{ type: 'thinking', thinking: '(ragionamento interno: non mostrato)' }, { type: 'text', text: s.text }], usage } };
+      yield { ...base, message: { id: msgId, model, role: 'assistant', content: [{ type: 'thinking', thinking: t('mock.thinking') }, { type: 'text', text: s.text }], usage } };
     } else if (s.kind === 'tools') {
       // Chiamate in parallelo: un messaggio per blocco, tutti con lo stesso id e la stessa usage.
       const ids = s.calls.map(() => `toolu_sim_${randomUUID().slice(0, 10)}`);
@@ -191,18 +196,18 @@ export async function* mockQuery(o: MockOptions): AsyncGenerator<Record<string, 
         const sid = `msg_sim_sub_${randomUUID().slice(0, 10)}`;
         yield { type: 'assistant', parent_tool_use_id: toolId, session_id: sessionId, uuid: randomUUID(), message: { id: sid, model: subModel, role: 'assistant', content: [{ type: 'tool_use', id: `toolu_sub_${k}`, name: 'Read', input: { file_path: 'test/modulo.test.js' } }], usage: su } };
       }
-      yield { type: 'system', subtype: 'task_notification', task_id: `task_${toolId}`, tool_use_id: toolId, status: 'completed', summary: 'I test esistenti coprono i casi principali del modulo.', usage: { total_tokens: subTokens, tool_uses: s.calls }, session_id: sessionId };
-      yield { type: 'user', parent_tool_use_id: null, session_id: sessionId, message: { role: 'user', content: [{ type: 'tool_result', tool_use_id: toolId, content: 'I test esistenti coprono i casi principali del modulo.' }] } };
+      yield { type: 'system', subtype: 'task_notification', task_id: `task_${toolId}`, tool_use_id: toolId, status: 'completed', summary: t('mock.subagentSummary'), usage: { total_tokens: subTokens, tool_uses: s.calls }, session_id: sessionId };
+      yield { type: 'user', parent_tool_use_id: null, session_id: sessionId, message: { role: 'user', content: [{ type: 'tool_result', tool_use_id: toolId, content: t('mock.subagentSummary') }] } };
     }
     if (failFirst && i === 1) {
       // Crash simulato: il result di errore arriva con i valori azzerati, come documentato.
-      const r = result('error_during_execution', 'Errore simulato: processo terminato inaspettatamente.', true);
+      const r = result('error_during_execution', t('mock.crash'), true);
       yield { ...r, total_cost_usd: 0, modelUsage: {}, usage: { input_tokens: 0, output_tokens: 0, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 } };
       return;
     }
     const limit = budgetHit ? spent() * 0.5 : o.maxBudgetUsd;
     if (limit !== undefined && spent() > limit) {
-      yield result('error_max_budget_usd', `Limite di spesa raggiunto (${limit.toFixed(4)} USD, simulato).`, true);
+      yield result('error_max_budget_usd', t('mock.budgetReached', { limit: limit.toFixed(4) }), true);
       return;
     }
   }
@@ -211,9 +216,10 @@ export async function* mockQuery(o: MockOptions): AsyncGenerator<Record<string, 
   turns++;
   const esito = blockFirst ? 'bloccato' : 'ok';
   const sintesi = blockFirst
-    ? 'Simulazione di blocco: serve una conferma umana prima di procedere.'
-    : resumed ? 'Feedback applicato con una modifica mirata.' : `Fase "${p.label}" completata in simulazione.`;
-  const finalText = `Lavoro completato.\n\n\`\`\`regia\n${JSON.stringify({ esito, sintesi, decisioni: [`Esito ${esito} dichiarato al termine della fase ${p.label}.`] }, null, 1)}\n\`\`\``;
+    ? t('mock.summary.blocked')
+    : resumed ? t('mock.summary.resumed') : t('mock.summary.done', { label: p.label });
+  const decisione = t('mock.finalDecision', { outcome: esito, label: p.label });
+  const finalText = `${t('mock.workDone')}\n\n\`\`\`regia\n${JSON.stringify({ esito, sintesi, decisioni: [decisione] }, null, 1)}\n\`\`\``;
   const fid = `msg_sim_${randomUUID().slice(0, 12)}`;
   const usage = { input_tokens: 20, output_tokens: 1, cache_creation_input_tokens: 400, cache_read_input_tokens: ctx };
   mainInput += 20; mainCC += 400; mainCR += ctx; mainOutput += 260;

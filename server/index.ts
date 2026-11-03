@@ -2,13 +2,15 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import express, { type NextFunction, type Request, type Response } from 'express';
-import type { HumanAction, Run, RunMode, Workflow } from '../shared/types.ts';
-import { getEngine, planContinuation, startRun } from './engine.ts';
+import { msg, type Msg } from '../shared/i18n.ts';
+import type { ApiErrorBody, HumanAction, Run, RunMode, ValidationIssue, Workflow } from '../shared/types.ts';
+import { RegiaError, getEngine, planContinuation, startRun } from './engine.ts';
 import { envInfo } from './env.ts';
 import { computeInsights } from './insights.ts';
 import { folderInfo } from './folder.ts';
 import { withLayout } from '../shared/layout.ts';
 import { killAllServices } from './service.ts';
+import { languages, mergedDict, serverT, systemLanguage } from './i18n.ts';
 import { ensureRegiaRules, getRules, saveRegiaRules } from './rules.ts';
 import {
   ROOT, deleteWorkflow, getRun, getWorkflow, initStore, listRuns, listTemplates, listWorkflows, saveWorkflow,
@@ -27,11 +29,27 @@ app.use(express.json({ limit: '2mb' }));
 app.use('/api', (req, res, next) => {
   const origin = req.headers.origin;
   if (origin && !/^http:\/\/(127\.0\.0\.1|localhost):(4317|5173|\d+)$/.test(origin)) {
-    res.status(403).json({ error: 'Origine non consentita' });
+    sendError(res, 403, msg('api.originForbidden'));
     return;
   }
   next();
 });
+
+/**
+ * Risposta di errore dell'API: testo nella lingua del server (riserva) più il messaggio localizzabile,
+ * che l'interfaccia mostra nella lingua scelta.
+ */
+function sendError(res: Response, status: number, m: Msg, issues?: ValidationIssue[]) {
+  const body: ApiErrorBody = { error: serverT(systemLanguage())(m.key, m.params), msg: m };
+  if (issues) body.issues = issues;
+  res.status(status).json(body);
+}
+
+/** Errore lanciato da un'esecuzione: messaggio localizzabile se presente, altrimenti solo il testo. */
+function sendThrown(res: Response, status: number, e: Error) {
+  const body: ApiErrorBody = { error: e.message, msg: e instanceof RegiaError ? e.msg : msg('api.unexpected', { message: e.message }) };
+  res.status(status).json(body);
+}
 
 const h = (fn: (req: Request, res: Response) => unknown) => (req: Request, res: Response, next: NextFunction) =>
   Promise.resolve(fn(req, res)).catch(next);
@@ -41,22 +59,28 @@ app.get('/api/env', h(async (req, res) => res.json(await envInfo(req.query.refre
 app.get('/api/workflows', (_req, res) => res.json(listWorkflows()));
 app.get('/api/workflows/:id', (req, res) => {
   const wf = getWorkflow(req.params.id);
-  if (!wf) return void res.status(404).json({ error: 'Workflow non trovato' });
+  if (!wf) return void sendError(res, 404, msg('api.workflowNotFound'));
   res.json(wf);
 });
-app.get('/api/templates', (_req, res) => res.json(listTemplates()));
+app.get('/api/templates', (req, res) => res.json(listTemplates(String(req.query.lang ?? 'it'))));
+
+// Traduzioni: elenco delle lingue disponibili e dizionario di una lingua (con le lingue di riserva applicate).
+app.get('/api/i18n', (_req, res) => res.json(languages()));
+app.get('/api/i18n/:lang', (req, res) => res.json(mergedDict(req.params.lang)));
 
 /** Crea un workflow, vuoto o da un preset. */
 app.post('/api/workflows', (req, res) => {
-  const body = req.body as { name?: string; projectDir?: string; goal?: string; templateId?: string };
-  const tpl = body.templateId ? listTemplates().find((t) => t.id === body.templateId) : undefined;
-  if (body.templateId && !tpl) return void res.status(400).json({ error: 'Preset non trovato' });
+  const body = req.body as { name?: string; projectDir?: string; goal?: string; templateId?: string; language?: string };
+  const language = body.language && languages().some((l) => l.code === body.language) ? body.language : systemLanguage();
+  const t = serverT(language);
+  const tpl = body.templateId ? listTemplates(language).find((t) => t.id === body.templateId) : undefined;
+  if (body.templateId && !tpl) return void sendError(res, 400, msg('api.presetNotFound'));
   const wf: Workflow = {
     id: `wf_${randomUUID().slice(0, 8)}`,
-    name: body.name?.trim() || tpl?.name || 'Nuovo workflow',
+    name: body.name?.trim() || tpl?.name || t('api.defaultWorkflowName'),
     description: tpl?.description ?? '',
     settings: {
-      maxParallel: 1, loadProjectSettings: true, applyGeneralRules: true, runBudgetUsd: 2,
+      maxParallel: 1, loadProjectSettings: true, applyGeneralRules: true, runBudgetUsd: 2, language,
       ...tpl?.settings,
       projectDir: body.projectDir?.trim() ?? '',
       goal: body.goal?.trim() ?? '',
@@ -71,7 +95,7 @@ app.post('/api/workflows', (req, res) => {
 app.get('/api/rules', (req, res) => res.json(getRules(req.query.projectDir as string | undefined)));
 app.put('/api/rules', (req, res) => {
   const text = (req.body as { text?: unknown }).text;
-  if (typeof text !== 'string') return void res.status(400).json({ error: 'Testo mancante' });
+  if (typeof text !== 'string') return void sendError(res, 400, msg('api.textMissing'));
   saveRegiaRules(text);
   res.json(getRules());
 });
@@ -79,7 +103,7 @@ app.put('/api/rules', (req, res) => {
 app.get('/api/folder-info', h(async (req, res) => res.json(await folderInfo(String(req.query.path ?? '')))));
 app.put('/api/workflows/:id', (req, res) => {
   const wf = req.body as Workflow;
-  if (wf.id !== req.params.id) return void res.status(400).json({ error: 'Id non coerente' });
+  if (wf.id !== req.params.id) return void sendError(res, 400, msg('api.idMismatch'));
   res.json(saveWorkflow(wf));
 });
 app.delete('/api/workflows/:id', (req, res) => {
@@ -91,50 +115,50 @@ app.post('/api/validate', (req, res) => res.json(validateWorkflow(req.body.workf
 app.get('/api/runs', (req, res) => res.json(listRuns(req.query.workflowId as string | undefined)));
 app.get('/api/runs/:id', (req, res) => {
   const run = getEngine(req.params.id)?.run ?? getRun(req.params.id);
-  if (!run) return void res.status(404).json({ error: 'Esecuzione non trovata' });
+  if (!run) return void sendError(res, 404, msg('api.runNotFound'));
   res.json(run);
 });
 /** Esecuzione di partenza valida per "continua": stesso workflow, stessa modalità, non più attiva. */
-function continuationSource(runId: string, workflowId: string, mode?: RunMode): { run: Run } | { error: string } {
-  if (getEngine(runId)) return { error: "L'esecuzione di partenza è ancora attiva: annullala o attendi che finisca." };
+function continuationSource(runId: string, workflowId: string, mode?: RunMode): { run: Run } | { error: Msg } {
+  if (getEngine(runId)) return { error: msg('api.sourceStillActive') };
   const run = getRun(runId);
-  if (!run) return { error: 'Esecuzione di partenza non trovata' };
-  if (run.workflowId !== workflowId) return { error: "L'esecuzione di partenza appartiene a un altro workflow." };
-  if (mode && run.mode !== mode) return { error: "Si può continuare solo nella stessa modalità (prova o reale) dell'esecuzione di partenza." };
+  if (!run) return { error: msg('api.sourceNotFound') };
+  if (run.workflowId !== workflowId) return { error: msg('api.sourceOtherWorkflow') };
+  if (mode && run.mode !== mode) return { error: msg('api.sourceModeMismatch') };
   return { run };
 }
 
 app.get('/api/runs/:id/continuation', (req, res) => {
   const wf = getWorkflow(String(req.query.workflowId ?? ''));
-  if (!wf) return void res.status(404).json({ error: 'Workflow non trovato' });
+  if (!wf) return void sendError(res, 404, msg('api.workflowNotFound'));
   const r = continuationSource(req.params.id, wf.id);
-  if ('error' in r) return void res.status(400).json({ error: r.error });
+  if ('error' in r) return void sendError(res, 400, r.error);
   res.json({ ...planContinuation(wf, r.run), mode: r.run.mode });
 });
 
 app.get('/api/runs/:id/insights', (req, res) => {
   const run = getEngine(req.params.id)?.run ?? getRun(req.params.id);
-  if (!run) return void res.status(404).json({ error: 'Esecuzione non trovata' });
+  if (!run) return void sendError(res, 404, msg('api.runNotFound'));
   res.json(computeInsights(run));
 });
 
 app.post('/api/runs', h(async (req, res) => {
   const { workflowId, mode, confirmReal, continueFrom } = req.body as { workflowId: string; mode: RunMode; confirmReal?: boolean; continueFrom?: string };
   const wf = getWorkflow(workflowId);
-  if (!wf) return void res.status(404).json({ error: 'Workflow non trovato' });
-  if (mode !== 'prova' && mode !== 'reale') return void res.status(400).json({ error: 'Modalità non valida' });
+  if (!wf) return void sendError(res, 404, msg('api.workflowNotFound'));
+  if (mode !== 'prova' && mode !== 'reale') return void sendError(res, 400, msg('api.invalidMode'));
   const issues = validateWorkflow(wf, mode);
-  if (issues.some((i) => i.level === 'errore')) return void res.status(400).json({ error: 'Il workflow contiene errori', issues });
+  if (issues.some((i) => i.level === 'errore')) return void sendError(res, 400, msg('api.workflowHasErrors'), issues);
   if (mode === 'reale') {
     const env = await envInfo();
-    if (!env.realRunsEnabled) return void res.status(403).json({ error: 'Esecuzioni reali disattivate (REGIA_DISABLE_REAL=1).' });
-    if (!confirmReal) return void res.status(400).json({ error: 'Conferma richiesta per un\'esecuzione reale.' });
-    if (!env.auth.loggedIn && !env.auth.apiKeyEnv) return void res.status(400).json({ error: 'Nessuna autenticazione Claude disponibile.' });
+    if (!env.realRunsEnabled) return void sendError(res, 403, msg('api.realDisabled'));
+    if (!confirmReal) return void sendError(res, 400, msg('api.confirmReal'));
+    if (!env.auth.loggedIn && !env.auth.apiKeyEnv) return void sendError(res, 400, msg('api.noAuth'));
   }
   let from: Run | undefined;
   if (continueFrom) {
     const r = continuationSource(continueFrom, wf.id, mode);
-    if ('error' in r) return void res.status(400).json({ error: r.error });
+    if ('error' in r) return void sendError(res, 400, r.error);
     from = r.run;
   }
   const eng = startRun(wf, mode, wf.settings.runBudgetUsd, from);
@@ -156,31 +180,31 @@ app.get('/api/runs/:id/stream', (req, res) => {
 
 app.post('/api/runs/:id/action', h(async (req, res) => {
   const eng = getEngine(req.params.id);
-  if (!eng) return void res.status(409).json({ error: 'L\'esecuzione non è più attiva' });
+  if (!eng) return void sendError(res, 409, msg('api.runNotActive'));
   const { nodeId, action, feedback } = req.body as { nodeId: string; action: HumanAction; feedback?: string };
   // Le riprese possono durare minuti: rispondi subito, gli aggiornamenti arrivano via stream.
   const p = eng.human(nodeId, action, feedback);
   const early = await Promise.race([p.then(() => null, (e: Error) => e), new Promise((r) => setTimeout(() => r(null), 50))]);
-  if (early instanceof Error) return void res.status(400).json({ error: early.message });
+  if (early instanceof Error) return void sendThrown(res, 400, early);
   p.catch(() => undefined);
   res.json({ ok: true });
 }));
 
 app.post('/api/runs/:id/service/:nodeId', h(async (req, res) => {
   const eng = getEngine(req.params.id);
-  if (!eng) return void res.status(409).json({ error: "L'esecuzione non è più attiva" });
+  if (!eng) return void sendError(res, 409, msg('api.runNotActive'));
   const action = (req.body as { action?: string }).action;
-  if (action !== 'ferma' && action !== 'riavvia') return void res.status(400).json({ error: 'Azione non valida' });
+  if (action !== 'ferma' && action !== 'riavvia') return void sendError(res, 400, msg('api.invalidAction'));
   const p = eng.serviceAction(req.params.nodeId, action);
   const early = await Promise.race([p.then(() => null, (e: Error) => e), new Promise((r) => setTimeout(() => r(null), 50))]);
-  if (early instanceof Error) return void res.status(400).json({ error: early.message });
+  if (early instanceof Error) return void sendThrown(res, 400, early);
   p.catch(() => undefined);
   res.json({ ok: true });
 }));
 
 app.post('/api/runs/:id/cancel', (req, res) => {
   const eng = getEngine(req.params.id);
-  if (!eng) return void res.status(409).json({ error: 'L\'esecuzione non è più attiva' });
+  if (!eng) return void sendError(res, 409, msg('api.runNotActive'));
   eng.cancel();
   res.json({ ok: true });
 });
@@ -192,7 +216,7 @@ if (fs.existsSync(dist)) {
 }
 
 app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
-  res.status(500).json({ error: err.message });
+  sendThrown(res, 500, err);
 });
 
 // Alla chiusura di Regia si fermano tutti i server avviati dalle fasi "server locale".

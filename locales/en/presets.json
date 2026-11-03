@@ -1,0 +1,48 @@
+{
+  "presets": {
+    "analisi": {
+      "label": "Analysis",
+      "role": "Code analyst: reads and summarizes, does not modify files.",
+      "instructions": "Analyze the project and work out what needs to be done to reach the goal. List the files involved."
+    },
+    "implementazione": {
+      "label": "Implementation",
+      "role": "Developer: applies small, focused changes.",
+      "instructions": "Implement the changes identified by the analysis. Keep the project's style."
+    },
+    "test": {
+      "label": "Test",
+      "role": "Tester: runs the tests and reports the outcome without modifying the code.",
+      "instructions": "Run the project's test suite and report the outcome. If it fails, summarize the cause."
+    },
+    "revisione": {
+      "label": "Review",
+      "role": "Reviewer: checks the correctness and readability of the changes.",
+      "instructions": "Review the changes made and report concrete problems. Do not modify files."
+    },
+    "approvazione": {
+      "label": "Human approval",
+      "role": "",
+      "instructions": "Check the outcome of the previous phases and approve, or reject with a comment."
+    },
+    "server": {
+      "label": "Local preview",
+      "role": "",
+      "instructions": "Server started by Regia for checking in the browser."
+    },
+    "personalizzata": {
+      "label": "Phase",
+      "role": "Development assistant.",
+      "instructions": ""
+    }
+  },
+  "snippets": {
+    "pubblicazione": {
+      "label": "Publishing",
+      "hint": "Commit, push and any releases or GitHub Actions. Place it after an approval.",
+      "phaseLabel": "Publishing",
+      "role": "Release manager: publishes the approved work in a verifiable way.",
+      "instructions": "This phase is authorized to commit and push. 1) Check git status and git diff: include only the files related to the goal, report and leave out the rest. 2) Commit with a descriptive message that follows the repository's style (look at git log). 3) Push to the current branch; never force push and never switch branch. 4) If the project has a release or a GitHub Action to trigger (e.g. gh workflow run, npm publish) and the goal requires it, run it and report the outcome and links. In the summary, give the commit hash, branch, and the outcome of the push and actions. Outcome \"ko\" if a step fails."
+    }
+  }
+}

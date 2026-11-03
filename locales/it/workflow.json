@@ -1,0 +1,154 @@
+{
+  "validate": {
+    "noName": "Il workflow non ha un nome.",
+    "empty": "Il diagramma è vuoto: aggiungi almeno una fase.",
+    "duplicateId": "Identificativo di fase duplicato: {id}",
+    "duplicateLabel": "Più fasi si chiamano \"{label}\": nel pannello eventi sarà difficile distinguerle.",
+    "edgeMissingNode": "Collegamento {id} verso una fase inesistente.",
+    "selfLoop": "Una fase è collegata a se stessa.",
+    "duplicateEdge": "Collegamento duplicato tra le stesse fasi.",
+    "cycle": "Il diagramma contiene un ciclo: le fasi devono formare un grafo aciclico.",
+    "noProjectDir": "Cartella del progetto non impostata (Impostazioni workflow).",
+    "projectDirNotAbsolute": "La cartella del progetto deve essere un percorso assoluto.",
+    "projectDirMissing": "La cartella del progetto non esiste: {dir}",
+    "runBudgetInvalid": "Il limite di spesa per esecuzione deve essere maggiore di zero.",
+    "noRunBudget": "Nessun limite di spesa per esecuzione: consigliato impostarlo prima di un'esecuzione reale.",
+    "maxParallelRange": "Le fasi in parallelo devono essere tra 1 e 8.",
+    "phaseNoName": "Fase senza nome.",
+    "notConnected": "La fase \"{name}\" non è collegata a nessun'altra.",
+    "serverNoCommand": "La fase \"{name}\" non ha un comando da avviare.",
+    "invalidUrl": "URL non valido in \"{name}\" (es. http://localhost:5173).",
+    "subdirNotRelative": "La sottocartella di \"{name}\" deve essere un percorso relativo dentro il progetto.",
+    "invalidNodeVersion": "Versione di Node non valida in \"{name}\" (es. 24, 22.23, >=22.23.4).",
+    "readyTimeoutRange": "Il tempo di attesa di \"{name}\" deve essere tra 5 e 900 secondi.",
+    "serverNoSuccessor": "Il server \"{name}\" non ha fasi successive: verrà fermato appena l'esecuzione termina. Aggiungi un'approvazione dopo per avere il tempo di verificarlo.",
+    "approvalNoPredecessor": "L'approvazione \"{name}\" deve avere almeno una fase precedente da approvare.",
+    "noInstructions": "La fase \"{name}\" non ha istruzioni.",
+    "noTools": "La fase \"{name}\" non ha strumenti: potrà solo rispondere a testo.",
+    "unknownTool": "Strumento sconosciuto \"{tool}\" in \"{name}\".",
+    "readOnlyKindWrites": {
+      "analisi": "La fase \"{name}\" è di tipo analisi ma può modificare file o eseguire comandi.",
+      "revisione": "La fase \"{name}\" è di tipo revisione ma può modificare file o eseguire comandi."
+    },
+    "invalidMaxTurns": "Numero massimo di turni non valido in \"{name}\".",
+    "noMaxTurns": "La fase \"{name}\" non ha un limite di turni.",
+    "invalidBudget": "Limite di spesa non valido in \"{name}\".",
+    "invalidModel": "Nome modello non valido in \"{name}\"."
+  },
+  "insights": {
+    "corrections": {
+      "title": {
+        "one": "{count} ciclo di correzione richiesto in approvazione",
+        "other": "{count} cicli di correzione richiesti in approvazione"
+      },
+      "evidence": "Costo stimato dei passaggi rifatti: {cost}. Fasi coinvolte: {phases}.",
+      "evidenceSim": "Costo stimato dei passaggi rifatti: {cost} (dati simulati). Fasi coinvolte: {phases}.",
+      "evidenceShare": "Costo stimato dei passaggi rifatti: {cost} ({pct} del totale). Fasi coinvolte: {phases}.",
+      "evidenceShareSim": "Costo stimato dei passaggi rifatti: {cost} ({pct} del totale) (dati simulati). Fasi coinvolte: {phases}.",
+      "suggestion": "Riporta nelle istruzioni della fase di implementazione i criteri che hai usato per respingere, oppure aggiungi una revisione automatica mirata a quei criteri prima dell'approvazione.",
+      "tradeoff": "Criteri più rigidi allungano le istruzioni (più input a ogni chiamata) e una revisione in più costa anche quando il lavoro è già corretto."
+    },
+    "top": {
+      "title": "\"{phase}\" concentra {pct} della spesa stimata",
+      "evidence": "{cost} su {total}; input+cache {context} token, output {output}.",
+      "evidenceSim": "{cost} su {total} (dati simulati); input+cache {context} token, output {output}.",
+      "suggestion": "È la fase su cui un intervento ha più effetto: vedi i suggerimenti specifici sotto per questa fase.",
+      "tradeoff": "Nessuno di per sé: è un'indicazione di priorità."
+    },
+    "model": {
+      "title": "\"{phase}\": prova un modello meno costoso ({model})",
+      "evidence": {
+        "test": "Fase di tipo test, modello {models}; {cost} ({pct} del totale).",
+        "testSim": "Fase di tipo test, modello {models}; {cost} ({pct} del totale) (dati simulati).",
+        "testRo": "Fase di tipo test, senza strumenti di scrittura, modello {models}; {cost} ({pct} del totale).",
+        "testRoSim": "Fase di tipo test, senza strumenti di scrittura, modello {models}; {cost} ({pct} del totale) (dati simulati).",
+        "revisione": "Fase di tipo revisione, modello {models}; {cost} ({pct} del totale).",
+        "revisioneSim": "Fase di tipo revisione, modello {models}; {cost} ({pct} del totale) (dati simulati).",
+        "revisioneRo": "Fase di tipo revisione, senza strumenti di scrittura, modello {models}; {cost} ({pct} del totale).",
+        "revisioneRoSim": "Fase di tipo revisione, senza strumenti di scrittura, modello {models}; {cost} ({pct} del totale) (dati simulati).",
+        "analisi": "Fase di tipo analisi, modello {models}; {cost} ({pct} del totale).",
+        "analisiSim": "Fase di tipo analisi, modello {models}; {cost} ({pct} del totale) (dati simulati).",
+        "analisiRo": "Fase di tipo analisi, senza strumenti di scrittura, modello {models}; {cost} ({pct} del totale).",
+        "analisiRoSim": "Fase di tipo analisi, senza strumenti di scrittura, modello {models}; {cost} ({pct} del totale) (dati simulati)."
+      },
+      "suggestion": "Imposta il modello \"{model}\" per questa fase e confronta le due esecuzioni (esito, decisioni, tempi).",
+      "tradeoff": {
+        "test": "Eseguire i test e riportarne l'esito richiede poco ragionamento, ma la diagnosi delle cause di un fallimento può essere meno precisa.",
+        "revisione": "Una revisione con un modello più piccolo può non accorgersi di problemi sottili (logica, casi limite). Tienilo se la revisione è il tuo controllo di qualità principale.",
+        "analisi": "L'analisi può essere meno approfondita e indicare meno file o cause: verifica che la fase successiva non debba poi rifare il lavoro."
+      }
+    },
+    "ctx": {
+      "title": {
+        "relHigh": "\"{phase}\": molto più contesto delle altre fasi",
+        "fullCtx": "\"{phase}\": riceve il testo completo delle fasi precedenti"
+      },
+      "evidence": {
+        "base": "{context} token di input/cache contro {output} di output.",
+        "baseSim": "{context} token di input/cache contro {output} di output (dati simulati).",
+        "ratio": "{context} token di input/cache ({ratio}× la mediana delle fasi) contro {output} di output.",
+        "ratioSim": "{context} token di input/cache ({ratio}× la mediana delle fasi) contro {output} di output (dati simulati)."
+      },
+      "suggestion": {
+        "base": "Indica nelle istruzioni i file o le cartelle da guardare, così l'agente legge meno.",
+        "baseProjectSettings": "Indica nelle istruzioni i file o le cartelle da guardare, così l'agente legge meno. Se il CLAUDE.md del progetto è lungo e non serve a questa fase, valuta di non caricarlo.",
+        "full": "Passa i risultati delle fasi precedenti in modalità \"sintesi\" invece che \"completo\". Indica nelle istruzioni i file o le cartelle da guardare, così l'agente legge meno.",
+        "fullProjectSettings": "Passa i risultati delle fasi precedenti in modalità \"sintesi\" invece che \"completo\". Indica nelle istruzioni i file o le cartelle da guardare, così l'agente legge meno. Se il CLAUDE.md del progetto è lungo e non serve a questa fase, valuta di non caricarlo."
+      },
+      "tradeoff": "Con meno contesto l'agente può non vedere informazioni utili e sbagliare o chiedere un altro passaggio: restringi gradualmente."
+    },
+    "rep": {
+      "title": "\"{phase}\": chiamate identiche ripetute",
+      "evidence": {
+        "one": "{calls} con gli stessi parametri.",
+        "other": "{calls}, ciascuna con gli stessi parametri."
+      },
+      "suggestion": "Chiedi nelle istruzioni di non rileggere file già letti se non sono cambiati e di riassumere ciò che serve; imposta un limite di turni adeguato.",
+      "tradeoff": "Rileggere un file dopo una modifica può essere legittimo (verifica): non vietarlo del tutto."
+    },
+    "turns": {
+      "title": "\"{phase}\": vicino al limite di turni",
+      "evidence": "Turni usati: {used} su un massimo di {max}.",
+      "suggestion": "Spezza il compito in due fasi più piccole o rendi le istruzioni più specifiche, invece di alzare soltanto il limite.",
+      "tradeoff": "Più fasi significano più avvii di sessione e contesto ricaricato: conviene solo se i passaggi sono davvero separabili."
+    },
+    "retry": {
+      "title": {
+        "one": "\"{phase}\": {count} tentativo aggiuntivo dopo errori o blocchi",
+        "other": "\"{phase}\": {count} tentativi aggiuntivi dopo errori o blocchi"
+      },
+      "evidence": "Costo stimato dei tentativi aggiuntivi: {cost}.",
+      "evidenceSim": "Costo stimato dei tentativi aggiuntivi: {cost} (dati simulati).",
+      "evidenceCauses": "Costo stimato dei tentativi aggiuntivi: {cost}. Cause: {causes}.",
+      "evidenceCausesSim": "Costo stimato dei tentativi aggiuntivi: {cost} (dati simulati). Cause: {causes}.",
+      "suggestion": "Se la causa è ricorrente (limite di turni o di spesa, strumento mancante, informazione assente), correggi la configurazione invece di ritentare; \"Riprendi la sessione\" riusa il contesto già costruito invece di ricominciare.",
+      "tradeoff": "Riprendere una sessione porta con sé anche eventuali errori di impostazione dell'agente; ripartire da capo costa di più ma è più pulito."
+    },
+    "reuse": {
+      "title": "\"{phase}\": candidato al riuso del risultato",
+      "evidence": "Fase in sola lettura, {cost}.",
+      "evidenceSim": "Fase in sola lettura, {cost} (dati simulati).",
+      "suggestion": "Attiva \"Riusa il risultato se nulla è cambiato\": nelle esecuzioni successive, se istruzioni, input e file del progetto sono identici, il risultato precedente viene riusato senza chiamate.",
+      "tradeoff": "L'impronta dei file si basa su percorso, dimensione e data di modifica: cambiamenti fuori dalla cartella del progetto (dipendenze, servizi esterni) non vengono rilevati."
+    },
+    "merge": {
+      "title": "\"{first}\" e \"{second}\" sono due fasi in sola lettura consecutive",
+      "evidence": "Stesso modello, nessuna modifica ai file tra le due: la seconda ricarica il contesto del progetto.",
+      "suggestion": "Valuta di unirle in un'unica fase con istruzioni in due punti.",
+      "tradeoff": "Una fase unica è meno leggibile nel diagramma e un errore costringe a rifare entrambe le parti."
+    },
+    "cache": {
+      "title": "La cache viene scritta più di quanto venga riletta",
+      "evidence": "Cache scritta {written} token, letta {read} token. La scrittura in cache costa più dell'input normale.",
+      "evidenceSim": "Cache scritta {written} token, letta {read} token (dati simulati). La scrittura in cache costa più dell'input normale.",
+      "suggestion": "Succede con molte fasi brevi, ognuna con un contesto nuovo. Meno fasi più corpose, o fasi che condividono lo stesso modello e lo stesso prompt di sistema, riutilizzano meglio la cache.",
+      "tradeoff": "Accorpare le fasi riduce la granularità di controllo e la possibilità di usare modelli diversi per compiti diversi."
+    },
+    "budget": {
+      "title": "Nessun limite di spesa per esecuzione",
+      "evidence": "Questa esecuzione è costata circa {cost} (stima del SDK).",
+      "suggestion": "Imposta un limite nelle impostazioni del workflow, ad esempio {suggested} (1,5× il valore osservato), e limiti per fase sulle fasi più costose.",
+      "tradeoff": "Un limite troppo basso interrompe una fase a metà: il lavoro parziale resta nei file ma va completato con un nuovo tentativo."
+    }
+  }
+}

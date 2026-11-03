@@ -1,13 +1,15 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   ArrowRight, CircleAlert, CircleCheck, FolderGit2, FolderOpen, Loader2, Play, Recycle, ScrollText, ShieldCheck, TriangleAlert, Workflow as WorkflowIcon,
 } from 'lucide-react';
 import type { AppliedRules, ContinuationPlan, FolderInfo, RulesInfo, RunMode, WorkflowTemplate } from '../../../shared/types.ts';
 import { api } from '../api.ts';
+import { useI18n } from '../i18n.tsx';
 import { Field, KindTile, Modal } from '../ui.tsx';
 
 /** Stato di una cartella di progetto: esistenza, git, modifiche non salvate, CLAUDE.md. */
 export function FolderStatus({ path }: { path: string }) {
+  const { t } = useI18n();
   const [info, setInfo] = useState<FolderInfo | null>(null);
   useEffect(() => {
     setInfo(null);
@@ -15,37 +17,38 @@ export function FolderStatus({ path }: { path: string }) {
     const t = setTimeout(() => api.folderInfo(path.trim()).then(setInfo).catch(() => setInfo(null)), 350);
     return () => clearTimeout(t);
   }, [path]);
-  if (!path.trim()) return <div className="folder-status muted"><FolderOpen />Indica il percorso assoluto della cartella del progetto.</div>;
-  if (!info) return <div className="folder-status muted"><Loader2 className="spin" />Controllo della cartella…</div>;
-  if (!info.exists) return <div className="folder-status tone-bad"><CircleAlert />Cartella non trovata: serve un percorso assoluto esistente.</div>;
-  if (!info.isDirectory) return <div className="folder-status tone-bad"><CircleAlert />Il percorso indica un file, non una cartella.</div>;
+  if (!path.trim()) return <div className="folder-status muted"><FolderOpen />{t('folder.hint')}</div>;
+  if (!info) return <div className="folder-status muted"><Loader2 className="spin" />{t('folder.checking')}</div>;
+  if (!info.exists) return <div className="folder-status tone-bad"><CircleAlert />{t('folder.notFound')}</div>;
+  if (!info.isDirectory) return <div className="folder-status tone-bad"><CircleAlert />{t('folder.isFile')}</div>;
   const g = info.git;
   return (
     <div className="folder-status">
-      <div className="tone-good"><CircleCheck />Cartella trovata{info.claudeMd ? ' · contiene CLAUDE.md' : ''}</div>
+      <div className="tone-good"><CircleCheck />{t('folder.found')}{info.claudeMd ? t('folder.hasClaudeMd') : ''}</div>
       {g?.isRepo ? (
         g.pendingChanges
-          ? <div className="tone-warn"><TriangleAlert />Git ({g.branch}): {g.pendingChanges} file modificati. Fai commit o stash prima di un'esecuzione reale, così potrai annullare le modifiche degli agenti.</div>
-          : <div className="tone-good"><FolderGit2 />Git ({g.branch}) pulito: potrai rivedere tutto con git diff.</div>
+          ? <div className="tone-warn"><TriangleAlert />{t('folder.gitDirty', { branch: g.branch, count: g.pendingChanges })}</div>
+          : <div className="tone-good"><FolderGit2 />{t('folder.gitClean', { branch: g.branch })}</div>
       ) : (
-        <div className="tone-warn"><TriangleAlert />Non è un repository git: le modifiche degli agenti non si potranno annullare facilmente.</div>
+        <div className="tone-warn"><TriangleAlert />{t('folder.notRepo')}</div>
       )}
     </div>
   );
 }
 
-function TemplateCard({ t, on, onClick }: { t?: WorkflowTemplate; on: boolean; onClick: () => void }) {
+function TemplateCard({ tpl, on, onClick }: { tpl?: WorkflowTemplate; on: boolean; onClick: () => void }) {
+  const { t } = useI18n();
   return (
     <button role="radio" aria-checked={on} className={`tpl ${on ? 'on' : ''}`} onClick={onClick}>
       <div className="tpl-top">
-        <strong>{t?.name ?? 'Vuoto'}</strong>
+        <strong>{tpl?.name ?? t('setup.emptyTemplate')}</strong>
         {on && <CircleCheck className="tpl-check" />}
       </div>
-      <span className="tpl-desc">{t?.description ?? 'Nessuna fase: componi il diagramma da zero.'}</span>
-      {t && (
+      <span className="tpl-desc">{tpl?.description ?? t('setup.emptyTemplateDesc')}</span>
+      {tpl && (
         <div className="tpl-flow">
-          {t.nodes.map((n, i) => (
-            <span key={n.id} className="tpl-step"><KindTile kind={n.data.kind} size="sm" />{i < t.nodes.length - 1 && <ArrowRight className="tpl-arrow" />}</span>
+          {tpl.nodes.map((n, i) => (
+            <span key={n.id} className="tpl-step"><KindTile kind={n.data.kind} size="sm" />{i < tpl.nodes.length - 1 && <ArrowRight className="tpl-arrow" />}</span>
           ))}
         </div>
       )}
@@ -61,41 +64,51 @@ export function NewWorkflowDialog({ onCancel, onCreated, inline = false }: { onC
   const [goal, setGoal] = useState('');
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
-  useEffect(() => { api.templates().then((t) => { setTemplates(t); setTpl(t[0]?.id ?? ''); }); }, []);
-  const chosen = templates.find((t) => t.id === tpl);
+  const { t, lang } = useI18n();
+  const picked = useRef(false);
+  // Preset nella lingua corrente: si ricaricano quando cambia la lingua, mantenendo la scelta già fatta.
+  useEffect(() => {
+    api.templates(lang).then((list) => {
+      setTemplates(list);
+      const keep = picked.current;
+      setTpl((cur) => (keep && (cur === '' || list.some((x) => x.id === cur)) ? cur : list[0]?.id ?? ''));
+      picked.current = true;
+    });
+  }, [lang]);
+  const chosen = templates.find((x) => x.id === tpl);
 
   async function create() {
     setBusy(true); setErr('');
     try {
-      const wf = await api.createWorkflow({ templateId: tpl || undefined, name, projectDir: dir, goal });
+      const wf = await api.createWorkflow({ templateId: tpl || undefined, name, projectDir: dir, goal, language: lang });
       onCreated(wf.id);
     } catch (e) { setErr((e as Error).message); } finally { setBusy(false); }
   }
 
   const form = (
     <div className="newwf">
-      <div className="step"><span className="step-n">1</span><h3>Scegli da dove partire</h3></div>
-      <div className="tpl-grid" role="radiogroup" aria-label="Preset">
-        {templates.map((t) => <TemplateCard key={t.id} t={t} on={tpl === t.id} onClick={() => setTpl(t.id)} />)}
+      <div className="step"><span className="step-n">1</span><h3>{t('setup.step1')}</h3></div>
+      <div className="tpl-grid" role="radiogroup" aria-label={t('setup.presets')}>
+        {templates.map((x) => <TemplateCard key={x.id} tpl={x} on={tpl === x.id} onClick={() => setTpl(x.id)} />)}
         <TemplateCard on={tpl === ''} onClick={() => setTpl('')} />
       </div>
-      <div className="step"><span className="step-n">2</span><h3>Progetto e obiettivo</h3></div>
+      <div className="step"><span className="step-n">2</span><h3>{t('setup.step2')}</h3></div>
       <div className="newwf-fields">
-        <Field label="Cartella del progetto"><input id="nw-dir" value={dir} onChange={(e) => setDir(e.target.value)} placeholder="C:\percorso\del\progetto" /></Field>
+        <Field label={t('setup.projectDir')}><input id="nw-dir" value={dir} onChange={(e) => setDir(e.target.value)} placeholder={t('setup.projectDirPlaceholder')} /></Field>
         <FolderStatus path={dir} />
-        <Field label="Obiettivo" hint="Cosa va fatto e quando il lavoro è finito: più è preciso, meno passaggi servono.">
-          <textarea id="nw-goal" rows={4} value={goal} onChange={(e) => setGoal(e.target.value)} placeholder={chosen?.goalHint ?? 'Cosa devono ottenere gli agenti.'} />
+        <Field label={t('setup.goal')} hint={t('setup.goalHint')}>
+          <textarea id="nw-goal" rows={4} value={goal} onChange={(e) => setGoal(e.target.value)} placeholder={chosen?.goalHint ?? t('setup.goalPlaceholder')} />
         </Field>
-        <Field label="Nome"><input id="nw-name" value={name} onChange={(e) => setName(e.target.value)} placeholder={chosen?.name ?? 'Nuovo workflow'} /></Field>
+        <Field label={t('setup.name')}><input id="nw-name" value={name} onChange={(e) => setName(e.target.value)} placeholder={chosen?.name ?? t('setup.namePlaceholder')} /></Field>
       </div>
       {err && <div className="callout tone-bad"><CircleAlert /><span>{err}</span></div>}
     </div>
   );
   const actions = (
     <>
-      <span className="muted small grow">Potrai modificare tutto nell'editor. Prova sempre prima con "Prova": è gratis.</span>
-      {onCancel && <button className="btn ghost" onClick={onCancel}>Annulla</button>}
-      <button className="btn primary" disabled={busy} onClick={create}>Crea workflow<ArrowRight /></button>
+      <span className="muted small grow">{t('setup.footnote')}</span>
+      {onCancel && <button className="btn ghost" onClick={onCancel}>{t('common.cancel')}</button>}
+      <button className="btn primary" disabled={busy} onClick={create}>{t('setup.create')}<ArrowRight /></button>
     </>
   );
 
@@ -106,8 +119,8 @@ export function NewWorkflowDialog({ onCancel, onCreated, inline = false }: { onC
           <div className="welcome-hero">
             <span className="brand-mark lg" aria-hidden><WorkflowIcon /></span>
             <div>
-              <h1>Benvenuto in Regia</h1>
-              <p>Disegna il percorso, lascia lavorare gli agenti, intervieni quando serve. Crea il tuo primo workflow partendo da un preset.</p>
+              <h1>{t('welcome.title')}</h1>
+              <p>{t('welcome.text')}</p>
             </div>
           </div>
           <div className="card pad-lg">{form}<div className="form-actions">{actions}</div></div>
@@ -115,34 +128,35 @@ export function NewWorkflowDialog({ onCancel, onCreated, inline = false }: { onC
       </section>
     );
   }
-  return <Modal title="Nuovo workflow" icon={<span className="kind-tile kind-workflow"><WorkflowIcon /></span>} onClose={onCancel ?? (() => undefined)} footer={actions} wide>{form}</Modal>;
+  return <Modal title={t('setup.title')} icon={<span className="kind-tile kind-workflow"><WorkflowIcon /></span>} onClose={onCancel ?? (() => undefined)} footer={actions} wide>{form}</Modal>;
 }
 
 export function RulesDialog({ projectDir, onClose }: { projectDir?: string; onClose: () => void }) {
   const [info, setInfo] = useState<RulesInfo | null>(null);
   const [text, setText] = useState('');
   const [saved, setSaved] = useState('');
+  const { t } = useI18n();
   useEffect(() => { api.rules(projectDir).then((r) => { setInfo(r); setText(r.regia.text); setSaved(r.regia.text); }); }, [projectDir]);
   const save = async () => { const r = await api.saveRules(text); setSaved(r.regia.text); };
   return (
-    <Modal title="Regole generali" icon={<span className="kind-tile kind-workflow"><ShieldCheck /></span>} onClose={onClose} wide
-      footer={<><span className="muted small grow">Ogni esecuzione salva le regole che ha usato.</span><button className="btn ghost" onClick={onClose}>Chiudi</button></>}>
-      <p className="lead">Aggiunte alle istruzioni di <strong>ogni fase</strong> nei workflow con "Applica le regole generali" attivo. Prevalgono sulle istruzioni della fase.</p>
-      {!info ? <p className="muted">Caricamento…</p> : (
+    <Modal title={t('rules.title')} icon={<span className="kind-tile kind-workflow"><ShieldCheck /></span>} onClose={onClose} wide
+      footer={<><span className="muted small grow">{t('rules.footnote')}</span><button className="btn ghost" onClick={onClose}>{t('common.close')}</button></>}>
+      <p className="lead">{t('rules.leadBefore')}<strong>{t('rules.leadStrong')}</strong>{t('rules.leadAfter')}</p>
+      {!info ? <p className="muted">{t('common.loading')}</p> : (
         <div className="rules">
           <div className="rule-block">
-            <div className="rule-head"><strong>Regole personali</strong><code>{info.global.path}</code><span className="tag">sola lettura</span></div>
-            {info.global.exists ? <pre className="code-block">{info.global.text.trim() || '(file vuoto)'}</pre> : <p className="muted">File non presente.</p>}
+            <div className="rule-head"><strong>{t('rules.personal')}</strong><code>{info.global.path}</code><span className="tag">{t('rules.readOnly')}</span></div>
+            {info.global.exists ? <pre className="code-block">{info.global.text.trim() || t('rules.emptyFile')}</pre> : <p className="muted">{t('rules.fileMissing')}</p>}
           </div>
           <div className="rule-block">
-            <div className="rule-head"><strong>Regole di Regia</strong><code>{info.regia.path}</code></div>
+            <div className="rule-head"><strong>{t('rules.regia')}</strong><code>{info.regia.path}</code></div>
             <textarea id="rules-regia" className="mono" rows={6} value={text} onChange={(e) => setText(e.target.value)} />
-            <div className="row-end"><button className={`btn sm ${text !== saved ? 'primary' : 'ghost'}`} disabled={text === saved} onClick={save}>{text !== saved ? 'Salva regole' : 'Salvate'}</button></div>
+            <div className="row-end"><button className={`btn sm ${text !== saved ? 'primary' : 'ghost'}`} disabled={text === saved} onClick={save}>{text !== saved ? t('rules.save') : t('rules.saved')}</button></div>
           </div>
           {info.project && (
             <div className="rule-block">
-              <div className="rule-head"><strong>CLAUDE.md del progetto</strong><code>{info.project.path}</code><span className="tag">se attivo nel workflow</span></div>
-              {info.project.exists ? <pre className="code-block">{info.project.text.trim() || '(file vuoto)'}</pre> : <p className="muted">Il progetto non ha un CLAUDE.md.</p>}
+              <div className="rule-head"><strong>{t('rules.projectClaudeMd')}</strong><code>{info.project.path}</code><span className="tag">{t('rules.ifEnabled')}</span></div>
+              {info.project.exists ? <pre className="code-block">{info.project.text.trim() || t('rules.emptyFile')}</pre> : <p className="muted">{t('rules.noProjectClaudeMd')}</p>}
             </div>
           )}
         </div>
@@ -153,18 +167,19 @@ export function RulesDialog({ projectDir, onClose }: { projectDir?: string; onCl
 
 /** Regole fotografate all'avvio di un'esecuzione. */
 export function AppliedRulesView({ rules }: { rules?: AppliedRules }) {
+  const { t } = useI18n();
   if (!rules) return null;
-  const parts = [rules.global ? 'personali' : null, rules.regia ? 'Regia' : null, rules.projectPath ? 'progetto' : null].filter(Boolean).join(' + ');
+  const parts = [rules.global ? t('rules.partPersonal') : null, rules.regia ? 'Regia' : null, rules.projectPath ? t('rules.partProject') : null].filter(Boolean).join(' + ');
   return (
     <details className="disclosure">
       <summary>
-        <ScrollText /><span>Regole applicate</span>
-        <span className={`pill ${rules.applied ? 'tone-good' : 'tone-bad'}`}>{rules.applied ? parts || 'nessun testo' : 'disattivate'}</span>
+        <ScrollText /><span>{t('rules.applied')}</span>
+        <span className={`pill ${rules.applied ? 'tone-good' : 'tone-bad'}`}>{rules.applied ? parts || t('rules.noText') : t('rules.disabled')}</span>
       </summary>
       <div className="disclosure-body">
-        {rules.global && <><div className="rule-head"><strong>Personali</strong><code>{rules.globalPath}</code></div><pre className="code-block">{rules.global}</pre></>}
+        {rules.global && <><div className="rule-head"><strong>{t('rules.personalShort')}</strong><code>{rules.globalPath}</code></div><pre className="code-block">{rules.global}</pre></>}
         {rules.regia && <><div className="rule-head"><strong>Regia</strong></div><pre className="code-block">{rules.regia}</pre></>}
-        {rules.projectPath && <p className="small">CLAUDE.md del progetto caricato dalla CLI: <code>{rules.projectPath}</code></p>}
+        {rules.projectPath && <p className="small">{t('rules.projectLoaded')} <code>{rules.projectPath}</code></p>}
       </div>
     </details>
   );
@@ -172,6 +187,7 @@ export function AppliedRulesView({ rules }: { rules?: AppliedRules }) {
 
 /** Nuova esecuzione che riprende le fasi già completate e invariate di un'esecuzione precedente. */
 export function ContinueDialog({ runId, workflowId, onCancel, onStarted }: { runId: string; workflowId: string; onCancel: () => void; onStarted: (id: string) => void }) {
+  const { t, tm } = useI18n();
   const [plan, setPlan] = useState<(ContinuationPlan & { mode: RunMode }) | null>(null);
   const [err, setErr] = useState('');
   const [ok, setOk] = useState(false);
@@ -184,28 +200,28 @@ export function ContinueDialog({ runId, workflowId, onCancel, onStarted }: { run
     try { const r = await api.startRun(workflowId, plan.mode, real, runId); onStarted(r.id); } catch (e) { setErr((e as Error).message); } finally { setBusy(false); }
   }
   return (
-    <Modal title="Continua dall'esecuzione" icon={<span className="kind-tile kind-workflow"><Recycle /></span>} onClose={onCancel}
+    <Modal title={t('continue.title')} icon={<span className="kind-tile kind-workflow"><Recycle /></span>} onClose={onCancel}
       footer={<>
-        {real && plan && <label className="check grow"><input type="checkbox" checked={ok} onChange={(e) => setOk(e.target.checked)} />Avvia con agenti reali</label>}
+        {real && plan && <label className="check grow"><input type="checkbox" checked={ok} onChange={(e) => setOk(e.target.checked)} />{t('continue.realConfirm')}</label>}
         {!real && <span className="grow" />}
-        <button className="btn ghost" onClick={onCancel}>Annulla</button>
-        <button className={`btn ${real ? 'warn' : 'primary'}`} disabled={!plan || busy || plan.toRun.length === 0 || (real && !ok)} onClick={start}><Play />Avvia</button>
+        <button className="btn ghost" onClick={onCancel}>{t('common.cancel')}</button>
+        <button className={`btn ${real ? 'warn' : 'primary'}`} disabled={!plan || busy || plan.toRun.length === 0 || (real && !ok)} onClick={start}><Play />{t('common.start')}</button>
       </>}>
-      <p className="lead">Nuova esecuzione {real ? 'reale' : 'di prova'} con il workflow salvato. Le fasi già completate e invariate vengono riprese senza rifarle.</p>
-      {!plan && !err && <p className="muted">Calcolo…</p>}
+      <p className="lead">{real ? t('continue.leadReal') : t('continue.leadTest')}</p>
+      {!plan && !err && <p className="muted">{t('continue.computing')}</p>}
       {plan && (
         <div className="plan">
           <div className="plan-col">
-            <h4><Recycle />Riprese <span className="count">{plan.reused.length}</span></h4>
-            {plan.reused.length ? <ul>{plan.reused.map((r) => <li key={r.nodeId}>{r.label}</li>)}</ul> : <p className="muted small">Nessuna: verrà eseguito tutto.</p>}
+            <h4><Recycle />{t('continue.reused')} <span className="count">{plan.reused.length}</span></h4>
+            {plan.reused.length ? <ul>{plan.reused.map((r) => <li key={r.nodeId}>{r.label}</li>)}</ul> : <p className="muted small">{t('continue.noneReused')}</p>}
           </div>
           <div className="plan-col run">
-            <h4><Play />Da eseguire <span className="count">{plan.toRun.length}</span></h4>
-            {plan.toRun.length ? <ul>{plan.toRun.map((r) => <li key={r.nodeId}><strong>{r.label}</strong><small>{r.reason}</small></li>)}</ul> : <p className="muted small">Nessuna: il workflow non è cambiato.</p>}
+            <h4><Play />{t('continue.toRun')} <span className="count">{plan.toRun.length}</span></h4>
+            {plan.toRun.length ? <ul>{plan.toRun.map((r) => <li key={r.nodeId}><strong>{r.label}</strong><small>{tm(r.reasonMsg, r.reason)}</small></li>)}</ul> : <p className="muted small">{t('continue.noneToRun')}</p>}
           </div>
         </div>
       )}
-      <p className="hint">Se respingi una nuova approvazione, l'implementazione ripresa riparte dalla sua sessione originale con il tuo commento.</p>
+      <p className="hint">{t('continue.hint')}</p>
       {err && <div className="callout tone-bad"><CircleAlert /><span>{err}</span></div>}
     </Modal>
   );

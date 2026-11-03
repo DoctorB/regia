@@ -6,7 +6,7 @@ Regia is a local app for designing development workflows as a diagram, running t
 
 ![Regia during a run](docs/img/05-anteprima-locale.png)
 
-> The user interface is in Italian. The documentation is available in [English](docs/manual.md) and [Italian](docs/manuale.md).
+> The interface is available in English and Italian (switch it from the languages menu at the top right). The documentation is available in [English](docs/manual.md) and [Italian](docs/manuale.md).
 
 ## What it does
 
@@ -19,6 +19,7 @@ Regia is a local app for designing development workflows as a diagram, running t
 - **Continue**: add phases to finished work without re-running everything.
 - **General rules**: your personal rules and Regia's own rules are applied to every agent.
 - **Trial mode**: explore everything with simulated agents, at no cost.
+- **Languages**: Italian and English included; interface, messages and agent instructions come from JSON files, so a new language needs no code changes.
 
 ## Quick start
 

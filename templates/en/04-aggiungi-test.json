@@ -1,0 +1,30 @@
+{
+  "id": "aggiungi-test",
+  "name": "Add tests",
+  "description": "Finds the uncovered parts, writes the missing tests without touching production code, runs them and asks for your approval.",
+  "goalHint": "Name the module or folder to cover and the test framework in use, if you know it.",
+  "settings": { "runBudgetUsd": 2, "maxParallel": 1, "loadProjectSettings": true, "applyGeneralRules": true },
+  "nodes": [
+    { "id": "copertura", "position": { "x": 0, "y": 120 }, "data": {
+      "label": "What is missing", "kind": "analisi", "role": "Test analyst: finds behaviours that are not covered.",
+      "instructions": "Compare the code named in the goal with the existing tests. List the uncovered behaviours, in order of importance, with the cases to test (including edge cases). State the framework and conventions of the existing tests. Do not modify files.",
+      "model": "sonnet", "allowedTools": ["Read", "Glob", "Grep"], "maxTurns": 15, "maxBudgetUsd": 0.5, "contextMode": "sintesi", "reuseResult": true } },
+    { "id": "scrittura", "position": { "x": 300, "y": 120 }, "data": {
+      "label": "Writing the tests", "kind": "implementazione", "role": "Test developer: writes clear tests following the existing conventions.",
+      "instructions": "Write the tests for the listed cases, following the existing framework and conventions. Do not modify production code: if a test reveals a bug, leave it failing and report it in the summary. Run the new tests once.",
+      "model": "sonnet", "allowedTools": ["Read", "Glob", "Grep", "Edit", "Write", "Bash"], "maxTurns": 30, "maxBudgetUsd": 1, "contextMode": "completo", "reuseResult": false } },
+    { "id": "esecuzione", "position": { "x": 600, "y": 120 }, "data": {
+      "label": "Suite run", "kind": "test", "role": "Tester: runs the whole suite and reports the outcome.",
+      "instructions": "Run the whole test suite. Report passed and failed tests; for each failure say whether it concerns the new tests (possible bug found) or the existing ones (regression). Do not modify files.",
+      "model": "haiku", "allowedTools": ["Read", "Glob", "Bash"], "maxTurns": 8, "maxBudgetUsd": 0.3, "contextMode": "sintesi", "reuseResult": false } },
+    { "id": "approvazione", "position": { "x": 900, "y": 120 }, "data": {
+      "label": "Approval", "kind": "approvazione", "role": "",
+      "instructions": "Check the added tests (git diff) and the outcome. Approve, or reject saying what to change.",
+      "model": "", "allowedTools": [], "contextMode": "sintesi", "reuseResult": false } }
+  ],
+  "edges": [
+    { "id": "e1", "source": "copertura", "target": "scrittura" },
+    { "id": "e2", "source": "scrittura", "target": "esecuzione" },
+    { "id": "e3", "source": "esecuzione", "target": "approvazione" }
+  ]
+}

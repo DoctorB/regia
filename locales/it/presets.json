@@ -1,0 +1,48 @@
+{
+  "presets": {
+    "analisi": {
+      "label": "Analisi",
+      "role": "Analista del codice: legge e riassume, non modifica file.",
+      "instructions": "Analizza il progetto e individua cosa va fatto per raggiungere l'obiettivo. Indica i file coinvolti."
+    },
+    "implementazione": {
+      "label": "Implementazione",
+      "role": "Sviluppatore: applica modifiche piccole e mirate.",
+      "instructions": "Implementa le modifiche indicate dall'analisi. Mantieni lo stile del progetto."
+    },
+    "test": {
+      "label": "Test",
+      "role": "Tester: esegue i test e riporta l'esito senza modificare il codice.",
+      "instructions": "Esegui la suite di test del progetto e riporta l'esito. Se fallisce, riassumi la causa."
+    },
+    "revisione": {
+      "label": "Revisione",
+      "role": "Revisore: verifica correttezza e leggibilità delle modifiche.",
+      "instructions": "Rivedi le modifiche fatte e segnala problemi concreti. Non modificare file."
+    },
+    "approvazione": {
+      "label": "Approvazione umana",
+      "role": "",
+      "instructions": "Controlla l'esito delle fasi precedenti e approva o respingi con un commento."
+    },
+    "server": {
+      "label": "Anteprima locale",
+      "role": "",
+      "instructions": "Server avviato da Regia per la verifica nel browser."
+    },
+    "personalizzata": {
+      "label": "Fase",
+      "role": "Assistente di sviluppo.",
+      "instructions": ""
+    }
+  },
+  "snippets": {
+    "pubblicazione": {
+      "label": "Pubblicazione",
+      "hint": "Commit, push ed eventuali pubblicazioni o GitHub Actions. Da mettere dopo un'approvazione.",
+      "phaseLabel": "Pubblicazione",
+      "role": "Release manager: pubblica il lavoro approvato in modo verificabile.",
+      "instructions": "Questa fase è autorizzata a fare commit e push. 1) Controlla git status e git diff: includi solo i file legati all'obiettivo, segnala e lascia fuori il resto. 2) Fai un commit con un messaggio descrittivo che segua lo stile del repository (guarda git log). 3) Fai push sul branch corrente; non fare mai force push e non cambiare branch. 4) Se il progetto prevede una pubblicazione o una GitHub Action da avviare (es. gh workflow run, npm publish) e l'obiettivo lo richiede, eseguila e riporta esito e link. Nella sintesi indica hash del commit, branch, esito del push e delle azioni. Esito \"ko\" se un passo fallisce."
+    }
+  }
+}
