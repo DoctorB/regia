@@ -1,5 +1,7 @@
 # Regia — dettagli tecnici
 
+*[Read in English](technical-details.md)*
+
 Approfondimenti per chi vuole sapere come Regia conta i consumi, quali regole applica agli agenti, come gestisce i server locali e quali limiti ha. Per l'uso quotidiano basta il [manuale](manuale.md).
 
 ## Server locale
@@ -10,6 +12,8 @@ Fase gestita da Regia, senza agenti e senza costi: esegue un comando nella carte
 - **Dipendenze**: se manca `node_modules` le installa con il gestore indicato dal lockfile, senza modificarlo (`npm ci`, `pnpm install --frozen-lockfile`, `yarn install --frozen-lockfile`, `bun install --frozen-lockfile`).
 
 Se l'avvio non riesce, la fase legge l'output e riconosce le cause comuni. Per un messaggio "versione di Node non supportata" ricava la versione richiesta e, se è installata, riprova da sola una volta; altrimenti propone di installarla. Per moduli o comandi mancanti propone **Installa le dipendenze e riprova**. Segnala anche porta occupata e permessi insufficienti. Negli altri casi mostra l'output utile a capire perché.
+
+I log scritti in JSON (Astro, Vite e altri quando non sono collegati a un terminale) vengono trasformati in righe leggibili, e dall'output si estrae l'indirizzo tenendo solo caratteri validi in un URL.
 
 Il server viene fermato (insieme ai processi figli) quando l'esecuzione termina o viene annullata, e quando Regia si chiude. Dopo una correzione chiesta in un'approvazione successiva viene riavviato, così si verifica la versione aggiornata; con "Continua" viene sempre riavviato. In modalità di prova è simulato e nessun comando viene eseguito. Prima di un'esecuzione reale il dialogo di conferma elenca i comandi che verranno avviati.
 

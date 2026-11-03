@@ -1,5 +1,7 @@
 # Manuale di Regia
 
+*[Read in English](manual.md)*
+
 Regia fa lavorare agenti AI su un tuo progetto seguendo un percorso che disegni tu: analisi, implementazione, test, revisione, anteprima nel browser, approvazione, pubblicazione. Mentre lavorano, vedi sul diagramma cosa stanno facendo, cosa decidono, quanto consumano, e intervieni quando serve.
 
 Le immagini di questo manuale sono prese in **modalità di prova**: agenti simulati, nessun costo.
