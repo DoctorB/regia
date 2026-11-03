@@ -1,0 +1,90 @@
+{
+  "theme": {
+    "title": "Tema",
+    "system": "Come il sistema",
+    "light": "Chiaro",
+    "dark": "Scuro"
+  },
+  "manage": {
+    "title": "Gestisci workflow",
+    "openManager": "Gestisci workflow…",
+    "search": "Cerca per nome, gruppo o cartella",
+    "clearSearch": "Cancella ricerca",
+    "count": {
+      "one": "{count} workflow",
+      "other": "{count} workflow"
+    },
+    "noResults": "Nessun workflow corrisponde alla ricerca.",
+    "ungrouped": "Senza gruppo",
+    "current": "aperto",
+    "open": "Apri",
+    "rename": "Rinomina",
+    "name": "Nome del workflow",
+    "moveOne": "Sposta in un gruppo",
+    "move": "Sposta",
+    "duplicate": "Duplica",
+    "delete": "Elimina",
+    "select": "Seleziona {name}",
+    "selectAll": "Seleziona tutti",
+    "selectGroup": "Seleziona tutto il gruppo",
+    "clearSelection": "Annulla selezione",
+    "selected": {
+      "one": "{count} selezionato",
+      "other": "{count} selezionati"
+    },
+    "runs": {
+      "one": "{count} esecuzione",
+      "other": "{count} esecuzioni"
+    },
+    "group": "Gruppo",
+    "groupName": "Nome del gruppo",
+    "groupPlaceholder": "es. nome del progetto",
+    "groupHint": "Raggruppa i workflow nel menu, ad esempio per progetto. Vuoto: senza gruppo.",
+    "groupHintNew": "Di base il nome della cartella del progetto.",
+    "renameGroup": "Rinomina il gruppo",
+    "removeGroup": "Togli il gruppo (i workflow restano)",
+    "moveTitle": {
+      "one": "Sposta il workflow",
+      "other": "Sposta {count} workflow"
+    },
+    "deleteTitle": {
+      "one": "Elimina il workflow",
+      "other": "Elimina {count} workflow"
+    },
+    "deleteLead": {
+      "one": "Questo workflow verrà eliminato:",
+      "other": "Questi {count} workflow verranno eliminati:"
+    },
+    "deleteConfirm": {
+      "one": "Elimina",
+      "other": "Elimina {count}"
+    },
+    "andMore": {
+      "one": "e un altro",
+      "other": "e altri {count}"
+    },
+    "deleteRuns": {
+      "one": "Elimina anche la sua esecuzione salvata",
+      "other": "Elimina anche le {count} esecuzioni salvate"
+    },
+    "deleteWarn": "Le esecuzioni salvate restano consultabili. L'eliminazione del workflow non si può annullare.",
+    "deleteWarnRuns": "Workflow ed esecuzioni verranno eliminati definitivamente. Le esecuzioni ancora in corso non vengono toccate.",
+    "toast": {
+      "deleted": {
+        "one": "Workflow eliminato",
+        "other": "{count} workflow eliminati"
+      },
+      "duplicated": "Creata una copia di \"{name}\"",
+      "moved": {
+        "one": "Spostato in \"{group}\"",
+        "other": "{count} workflow spostati in \"{group}\""
+      },
+      "ungrouped": {
+        "one": "Tolto dal gruppo",
+        "other": "{count} workflow tolti dal gruppo"
+      },
+      "groupRenamed": "Gruppo rinominato",
+      "groupRemoved": "Gruppo \"{name}\" tolto: i workflow restano, senza gruppo"
+    }
+  }
+}

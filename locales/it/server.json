@@ -206,7 +206,9 @@
     "notServer": "La fase non è un server locale",
     "serverStarting": "Il server si sta già avviando",
     "noNodeInstall": "Nessuna installazione di Node disponibile",
-    "noPackageJson": "Nessun package.json nella cartella"
+    "noPackageJson": "Nessun package.json nella cartella",
+    "copySuffix": "(copia)",
+    "groupMissing": "Gruppo da rinominare non indicato."
   },
   "nodeenv": {
     "source": {

@@ -120,6 +120,8 @@ export interface Workflow {
   id: string;
   name: string;
   description: string;
+  /** Gruppo (es. il progetto) in cui il workflow compare nell'elenco. Vuoto = senza gruppo. */
+  group?: string;
   settings: WorkflowSettings;
   nodes: WorkflowNode[];
   edges: WorkflowEdge[];

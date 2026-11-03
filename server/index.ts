@@ -13,7 +13,7 @@ import { killAllServices } from './service.ts';
 import { languages, mergedDict, serverT, systemLanguage } from './i18n.ts';
 import { ensureRegiaRules, getRules, saveRegiaRules } from './rules.ts';
 import {
-  ROOT, deleteWorkflow, getRun, getWorkflow, initStore, listRuns, listTemplates, listWorkflows, saveWorkflow,
+  ROOT, deleteRunsOf, deleteWorkflow, getRun, getWorkflow, initStore, listRuns, listTemplates, listWorkflows, saveWorkflow,
 } from './store.ts';
 import { validateWorkflow } from './validate.ts';
 
@@ -70,7 +70,7 @@ app.get('/api/i18n/:lang', (req, res) => res.json(mergedDict(req.params.lang)));
 
 /** Crea un workflow, vuoto o da un preset. */
 app.post('/api/workflows', (req, res) => {
-  const body = req.body as { name?: string; projectDir?: string; goal?: string; templateId?: string; language?: string };
+  const body = req.body as { name?: string; projectDir?: string; goal?: string; templateId?: string; language?: string; group?: string };
   const language = body.language && languages().some((l) => l.code === body.language) ? body.language : systemLanguage();
   const t = serverT(language);
   const tpl = body.templateId ? listTemplates(language).find((t) => t.id === body.templateId) : undefined;
@@ -79,6 +79,7 @@ app.post('/api/workflows', (req, res) => {
     id: `wf_${randomUUID().slice(0, 8)}`,
     name: body.name?.trim() || tpl?.name || t('api.defaultWorkflowName'),
     description: tpl?.description ?? '',
+    group: cleanGroup(body.group),
     settings: {
       maxParallel: 1, loadProjectSettings: true, applyGeneralRules: true, runBudgetUsd: 2, language,
       ...tpl?.settings,
@@ -106,10 +107,38 @@ app.put('/api/workflows/:id', (req, res) => {
   if (wf.id !== req.params.id) return void sendError(res, 400, msg('api.idMismatch'));
   res.json(saveWorkflow(wf));
 });
+/** Elimina un workflow; con ?runs=1 anche le sue esecuzioni salvate (quelle ancora attive restano). */
 app.delete('/api/workflows/:id', (req, res) => {
-  deleteWorkflow(req.params.id);
-  res.json({ ok: true });
+  const id = req.params.id;
+  const removedRuns = req.query.runs === '1' ? deleteRunsOf(id, (runId) => Boolean(getEngine(runId))) : 0;
+  deleteWorkflow(id);
+  res.json({ ok: true, removedRuns });
 });
+
+/** Copia di un workflow, con nome "(copia)" e nessuna esecuzione. */
+app.post('/api/workflows/:id/duplicate', (req, res) => {
+  const src = getWorkflow(req.params.id);
+  if (!src) return void sendError(res, 404, msg('api.workflowNotFound'));
+  const t = serverT(String(req.query.lang ?? src.settings.language ?? 'it'));
+  const copy: Workflow = { ...structuredClone(src), id: `wf_${randomUUID().slice(0, 8)}`, name: `${src.name} ${t('api.copySuffix')}`, updatedAt: '' };
+  res.json(saveWorkflow(copy));
+});
+
+/** Rinomina un gruppo per tutti i suoi workflow; con "to" vuoto il gruppo viene tolto (i workflow restano). */
+app.post('/api/workflow-groups/rename', (req, res) => {
+  const { from, to } = req.body as { from?: string; to?: string };
+  const src = cleanGroup(from);
+  if (!src) return void sendError(res, 400, msg('api.groupMissing'));
+  const dest = cleanGroup(to);
+  let n = 0;
+  for (const w of listWorkflows()) if (cleanGroup(w.group) === src) { saveWorkflow({ ...w, group: dest }); n++; }
+  res.json({ ok: true, updated: n });
+});
+
+function cleanGroup(g: unknown): string | undefined {
+  const s = typeof g === 'string' ? g.trim().replace(/s+/g, ' ').slice(0, 80) : '';
+  return s || undefined;
+}
 app.post('/api/validate', (req, res) => res.json(validateWorkflow(req.body.workflow as Workflow, req.body.mode)));
 
 app.get('/api/runs', (req, res) => res.json(listRuns(req.query.workflowId as string | undefined)));

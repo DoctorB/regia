@@ -1,0 +1,90 @@
+{
+  "theme": {
+    "title": "Theme",
+    "system": "Match system",
+    "light": "Light",
+    "dark": "Dark"
+  },
+  "manage": {
+    "title": "Manage workflows",
+    "openManager": "Manage workflows…",
+    "search": "Search by name, group or folder",
+    "clearSearch": "Clear search",
+    "count": {
+      "one": "{count} workflow",
+      "other": "{count} workflows"
+    },
+    "noResults": "No workflow matches the search.",
+    "ungrouped": "Ungrouped",
+    "current": "open",
+    "open": "Open",
+    "rename": "Rename",
+    "name": "Workflow name",
+    "moveOne": "Move to a group",
+    "move": "Move",
+    "duplicate": "Duplicate",
+    "delete": "Delete",
+    "select": "Select {name}",
+    "selectAll": "Select all",
+    "selectGroup": "Select the whole group",
+    "clearSelection": "Clear selection",
+    "selected": {
+      "one": "{count} selected",
+      "other": "{count} selected"
+    },
+    "runs": {
+      "one": "{count} run",
+      "other": "{count} runs"
+    },
+    "group": "Group",
+    "groupName": "Group name",
+    "groupPlaceholder": "e.g. project name",
+    "groupHint": "Groups workflows in the menu, for example by project. Empty: ungrouped.",
+    "groupHintNew": "Defaults to the project folder name.",
+    "renameGroup": "Rename the group",
+    "removeGroup": "Remove the group (workflows are kept)",
+    "moveTitle": {
+      "one": "Move the workflow",
+      "other": "Move {count} workflows"
+    },
+    "deleteTitle": {
+      "one": "Delete the workflow",
+      "other": "Delete {count} workflows"
+    },
+    "deleteLead": {
+      "one": "This workflow will be deleted:",
+      "other": "These {count} workflows will be deleted:"
+    },
+    "deleteConfirm": {
+      "one": "Delete",
+      "other": "Delete {count}"
+    },
+    "andMore": {
+      "one": "and one more",
+      "other": "and {count} more"
+    },
+    "deleteRuns": {
+      "one": "Also delete its saved run",
+      "other": "Also delete the {count} saved runs"
+    },
+    "deleteWarn": "Saved runs remain available. Deleting a workflow cannot be undone.",
+    "deleteWarnRuns": "Workflows and runs will be permanently deleted. Runs still in progress are not touched.",
+    "toast": {
+      "deleted": {
+        "one": "Workflow deleted",
+        "other": "{count} workflows deleted"
+      },
+      "duplicated": "Created a copy of \"{name}\"",
+      "moved": {
+        "one": "Moved to \"{group}\"",
+        "other": "{count} workflows moved to \"{group}\""
+      },
+      "ungrouped": {
+        "one": "Removed from its group",
+        "other": "{count} workflows removed from their group"
+      },
+      "groupRenamed": "Group renamed",
+      "groupRemoved": "Group \"{name}\" removed: its workflows are kept, ungrouped"
+    }
+  }
+}

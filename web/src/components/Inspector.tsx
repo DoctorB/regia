@@ -141,7 +141,7 @@ export function PhaseInspector({ cfg, issues, onChange, onDelete }: { cfg: Phase
   );
 }
 
-export function WorkflowSettingsForm({ wf, onChange, onShowRules }: { wf: Workflow; onChange: (w: Workflow) => void; onShowRules: () => void }) {
+export function WorkflowSettingsForm({ wf, groups = [], onChange, onShowRules }: { wf: Workflow; groups?: string[]; onChange: (w: Workflow) => void; onShowRules: () => void }) {
   const { t, languages } = useI18n();
   const s = wf.settings;
   const set = <K extends keyof Workflow['settings']>(k: K, v: Workflow['settings'][K]) => onChange({ ...wf, settings: { ...s, [k]: v } });
@@ -163,6 +163,10 @@ export function WorkflowSettingsForm({ wf, onChange, onShowRules }: { wf: Workfl
           <textarea rows={5} value={s.goal} onChange={(e) => set('goal', e.target.value)} />
         </Field>
         <Field label={t('settings.project.description')}><textarea rows={2} value={wf.description} onChange={(e) => onChange({ ...wf, description: e.target.value })} /></Field>
+        <Field label={t('manage.group')} hint={t('manage.groupHint')}>
+          <input list="settings-groups" value={wf.group ?? ''} onChange={(e) => onChange({ ...wf, group: e.target.value || undefined })} placeholder={t('manage.groupPlaceholder')} />
+          <datalist id="settings-groups">{groups.map((g) => <option key={g} value={g} />)}</datalist>
+        </Field>
       </Section>
 
       <Section title={t('settings.run.title')}>

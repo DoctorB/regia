@@ -56,12 +56,19 @@ function TemplateCard({ tpl, on, onClick }: { tpl?: WorkflowTemplate; on: boolea
   );
 }
 
-export function NewWorkflowDialog({ onCancel, onCreated, inline = false }: { onCancel?: () => void; onCreated: (id: string) => void; inline?: boolean }) {
+export function NewWorkflowDialog({ onCancel, onCreated, inline = false, groups = [] }: { onCancel?: () => void; onCreated: (id: string) => void; inline?: boolean; groups?: string[] }) {
   const [templates, setTemplates] = useState<WorkflowTemplate[]>([]);
   const [tpl, setTpl] = useState<string>('');
   const [name, setName] = useState('');
   const [dir, setDir] = useState('');
   const [goal, setGoal] = useState('');
+  // Gruppo: di base il nome della cartella del progetto, finché non lo cambi a mano.
+  const [group, setGroup] = useState('');
+  const [groupTouched, setGroupTouched] = useState(false);
+  useEffect(() => {
+    if (groupTouched) return;
+    setGroup(dir.trim().replace(/[\\/]+$/, '').split(/[\\/]/).pop() ?? '');
+  }, [dir, groupTouched]);
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
   const { t, lang } = useI18n();
@@ -80,7 +87,7 @@ export function NewWorkflowDialog({ onCancel, onCreated, inline = false }: { onC
   async function create() {
     setBusy(true); setErr('');
     try {
-      const wf = await api.createWorkflow({ templateId: tpl || undefined, name, projectDir: dir, goal, language: lang });
+      const wf = await api.createWorkflow({ templateId: tpl || undefined, name, projectDir: dir, goal, language: lang, group });
       onCreated(wf.id);
     } catch (e) { setErr((e as Error).message); } finally { setBusy(false); }
   }
@@ -99,7 +106,13 @@ export function NewWorkflowDialog({ onCancel, onCreated, inline = false }: { onC
         <Field label={t('setup.goal')} hint={t('setup.goalHint')}>
           <textarea id="nw-goal" rows={4} value={goal} onChange={(e) => setGoal(e.target.value)} placeholder={chosen?.goalHint ?? t('setup.goalPlaceholder')} />
         </Field>
-        <Field label={t('setup.name')}><input id="nw-name" value={name} onChange={(e) => setName(e.target.value)} placeholder={chosen?.name ?? t('setup.namePlaceholder')} /></Field>
+        <div className="grid2">
+          <Field label={t('setup.name')}><input id="nw-name" value={name} onChange={(e) => setName(e.target.value)} placeholder={chosen?.name ?? t('setup.namePlaceholder')} /></Field>
+          <Field label={t('manage.group')} hint={t('manage.groupHintNew')}>
+            <input id="nw-group" list="nw-groups" value={group} onChange={(e) => { setGroup(e.target.value); setGroupTouched(true); }} placeholder={t('manage.groupPlaceholder')} />
+            <datalist id="nw-groups">{groups.map((g) => <option key={g} value={g} />)}</datalist>
+          </Field>
+        </div>
       </div>
       {err && <div className="callout tone-bad"><CircleAlert /><span>{err}</span></div>}
     </div>

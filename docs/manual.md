@@ -150,7 +150,13 @@ Each run stores the rules it used.
 
 ---
 
-## 10. Common problems
+## 10. Organizing workflows, theme and language
+
+- **Groups**: each workflow can belong to a group, for example its project. When you create one, the suggested group is the project folder name; you can also change it in the workflow settings. The menu with the workflow name, at the top left, lists workflows by group and has a search (Enter opens the first result).
+- **Manage workflows…** (from the same menu): search, collapsible groups, and for each workflow open, rename, move to a group, duplicate, delete. Use the checkboxes to move or delete several workflows at once. A group can be renamed or removed (its workflows are kept, ungrouped). Deleting a workflow keeps its runs unless you choose to delete them; runs still in progress are never touched.
+- **Theme**: button at the top right, Match system / Light / Dark. **Language**: the button next to it. Both choices are remembered.
+
+## 11. Common problems
 
 | Problem | What to do |
 |---|---|

@@ -206,7 +206,9 @@
     "notServer": "The phase is not a local server",
     "serverStarting": "The server is already starting",
     "noNodeInstall": "No Node installation available",
-    "noPackageJson": "No package.json in the folder"
+    "noPackageJson": "No package.json in the folder",
+    "copySuffix": "(copy)",
+    "groupMissing": "No group to rename was given."
   },
   "nodeenv": {
     "source": {

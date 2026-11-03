@@ -5,7 +5,8 @@
     "start": "Start",
     "loading": "Loading…",
     "untitled": "Untitled",
-    "defaultModel": "default"
+    "defaultModel": "default",
+    "save": "Save"
   },
   "kinds": {
     "analisi": {
@@ -65,8 +66,7 @@
   },
   "app": {
     "loadError": "Error: {message}",
-    "confirmDiscard": "There are unsaved changes. Continue and lose them?",
-    "confirmDelete": "Delete the workflow \"{name}\"? Saved runs are kept."
+    "confirmDiscard": "There are unsaved changes. Continue and lose them?"
   },
   "toast": {
     "relayouted": "Diagram rearranged top to bottom: save to keep the new layout.",
@@ -79,13 +79,11 @@
     "rules": "Rules",
     "rulesTitle": "General rules",
     "language": "Language",
-    "workflows": "Workflows",
     "phases": {
       "one": "{count} phase",
       "other": "{count} phases"
     },
     "newWorkflow": "New workflow…",
-    "deleteWorkflow": "Delete this workflow",
     "save": "Save",
     "saveTitle": "Save (Ctrl+S)",
     "saved": "Saved",

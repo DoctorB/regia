@@ -5,16 +5,38 @@
     "start": "Avvia",
     "loading": "Caricamento…",
     "untitled": "Senza nome",
-    "defaultModel": "predefinito"
+    "defaultModel": "predefinito",
+    "save": "Salva"
   },
   "kinds": {
-    "analisi": { "label": "Analisi", "hint": "Legge il codice e individua cosa fare" },
-    "implementazione": { "label": "Implementazione", "hint": "Modifica il codice" },
-    "test": { "label": "Test", "hint": "Esegue i test e riporta l'esito" },
-    "revisione": { "label": "Revisione", "hint": "Controlla le modifiche" },
-    "approvazione": { "label": "Approvazione umana", "hint": "Si ferma finché non decidi tu" },
-    "server": { "label": "Server locale", "hint": "Avvia l'anteprima nel browser" },
-    "personalizzata": { "label": "Personalizzata", "hint": "Agente con istruzioni libere" }
+    "analisi": {
+      "label": "Analisi",
+      "hint": "Legge il codice e individua cosa fare"
+    },
+    "implementazione": {
+      "label": "Implementazione",
+      "hint": "Modifica il codice"
+    },
+    "test": {
+      "label": "Test",
+      "hint": "Esegue i test e riporta l'esito"
+    },
+    "revisione": {
+      "label": "Revisione",
+      "hint": "Controlla le modifiche"
+    },
+    "approvazione": {
+      "label": "Approvazione umana",
+      "hint": "Si ferma finché non decidi tu"
+    },
+    "server": {
+      "label": "Server locale",
+      "hint": "Avvia l'anteprima nel browser"
+    },
+    "personalizzata": {
+      "label": "Personalizzata",
+      "hint": "Agente con istruzioni libere"
+    }
   },
   "status": {
     "in_attesa": "In attesa",
@@ -44,8 +66,7 @@
   },
   "app": {
     "loadError": "Errore: {message}",
-    "confirmDiscard": "Ci sono modifiche non salvate. Continuare e perderle?",
-    "confirmDelete": "Eliminare il workflow \"{name}\"? Le esecuzioni salvate restano."
+    "confirmDiscard": "Ci sono modifiche non salvate. Continuare e perderle?"
   },
   "toast": {
     "relayouted": "Diagramma ridisposto dall'alto verso il basso: salva per mantenere la nuova disposizione.",
@@ -58,10 +79,11 @@
     "rules": "Regole",
     "rulesTitle": "Regole generali",
     "language": "Lingua",
-    "workflows": "Workflow",
-    "phases": { "one": "{count} fase", "other": "{count} fasi" },
+    "phases": {
+      "one": "{count} fase",
+      "other": "{count} fasi"
+    },
     "newWorkflow": "Nuovo workflow…",
-    "deleteWorkflow": "Elimina questo workflow",
     "save": "Salva",
     "saveTitle": "Salva (Ctrl+S)",
     "saved": "Salvato",
@@ -71,8 +93,14 @@
     "noRuns": "Nessuna esecuzione per questo workflow",
     "compare": "Confronta",
     "needTwoRuns": "Servono almeno due esecuzioni",
-    "errors": { "one": "{count} errore", "other": "{count} errori" },
-    "warnings": { "one": "{count} avviso", "other": "{count} avvisi" },
+    "errors": {
+      "one": "{count} errore",
+      "other": "{count} errori"
+    },
+    "warnings": {
+      "one": "{count} avviso",
+      "other": "{count} avvisi"
+    },
     "valid": "Valido",
     "checkTitle": "Controllo del workflow",
     "noIssues": "Nessun problema: puoi avviare.",
@@ -115,15 +143,24 @@
     "apiKeyNote": "Con la chiave API il consumo è fatturato a token: il costo effettivo si verifica nella Console."
   },
   "canvas": {
-    "tools": { "one": "{count} strumento", "other": "{count} strumenti" },
-    "turns": { "one": "{count} turno", "other": "{count} turni" },
+    "tools": {
+      "one": "{count} strumento",
+      "other": "{count} strumenti"
+    },
+    "turns": {
+      "one": "{count} turno",
+      "other": "{count} turni"
+    },
     "freeTurns": "turni liberi",
     "maxBudget": "max ${amount}",
     "reuse": "riuso",
     "noCommand": "nessun comando",
     "waitsForYou": "Si ferma finché non decidi",
     "tokens": "{n} tok",
-    "attempts": { "one": "{count} tentativo", "other": "{count} tentativi" },
+    "attempts": {
+      "one": "{count} tentativo",
+      "other": "{count} tentativi"
+    },
     "toolbar": "Strumenti del diagramma",
     "zoomIn": "Ingrandisci",
     "zoomOut": "Riduci",

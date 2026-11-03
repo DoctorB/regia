@@ -83,6 +83,17 @@ export function deleteWorkflow(id: string) {
   fs.rmSync(path.join(WF_DIR, `${id}.json`), { force: true });
 }
 
+/** Elimina le esecuzioni salvate di un workflow, tranne quelle indicate (es. attive). Restituisce quante. */
+export function deleteRunsOf(workflowId: string, keep: (runId: string) => boolean = () => false): number {
+  let n = 0;
+  for (const r of listRuns(workflowId)) {
+    if (keep(r.id)) continue;
+    fs.rmSync(path.join(RUN_DIR, `${r.id}.json`), { force: true });
+    n++;
+  }
+  return n;
+}
+
 export function saveRun(run: Run) {
   assertId(run.id);
   writeJsonAtomic(path.join(RUN_DIR, `${run.id}.json`), run);

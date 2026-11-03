@@ -113,12 +113,28 @@ export function Toasts() {
 }
 
 // ---------- Componenti ----------
+/** Finestre aperte, dalla più vecchia alla più recente: Esc chiude solo l'ultima. */
+const modalStack: symbol[] = [];
+
+// ---------- Tema ----------
+export type ThemeChoice = 'system' | 'light' | 'dark';
+const THEME_KEY = 'regia.theme';
+export function readTheme(): ThemeChoice {
+  try { const v = localStorage.getItem(THEME_KEY); return v === 'light' || v === 'dark' ? v : 'system'; } catch { return 'system'; }
+}
+export function applyTheme(choice: ThemeChoice) {
+  if (choice === 'system') delete document.documentElement.dataset.theme;
+  else document.documentElement.dataset.theme = choice;
+  try { if (choice === 'system') localStorage.removeItem(THEME_KEY); else localStorage.setItem(THEME_KEY, choice); } catch { /* non disponibile */ }
+}
 export function Modal({ title, icon, onClose, children, footer, wide = false }: { title: string; icon?: ReactNode; onClose: () => void; children: ReactNode; footer?: ReactNode; wide?: boolean }) {
   const { t } = useI18n();
   useEffect(() => {
-    const k = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    const id = Symbol('modal');
+    modalStack.push(id);
+    const k = (e: KeyboardEvent) => { if (e.key === 'Escape' && modalStack.at(-1) === id) onClose(); };
     window.addEventListener('keydown', k);
-    return () => window.removeEventListener('keydown', k);
+    return () => { window.removeEventListener('keydown', k); modalStack.splice(modalStack.indexOf(id), 1); };
   }, [onClose]);
   return (
     <div className="modal-back" onMouseDown={onClose}>

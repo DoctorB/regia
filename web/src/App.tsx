@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ReactFlowProvider } from '@xyflow/react';
 import {
   Activity, Check, ChevronDown, CircleAlert, CircleCheck, FilePlus2, FlaskConical, GitCompare, KeyRound, Languages, PenLine, Play, Rocket, Save, ScrollText, ShieldAlert,
-  Trash2, TriangleAlert, Workflow as WorkflowIcon,
+  LayoutList, Monitor, Moon, Search, Sun, TriangleAlert, Workflow as WorkflowIcon,
 } from 'lucide-react';
 import {
   WRITE_TOOLS, isAgentKind, type EnvInfo, type PhaseConfig, type PhaseKind, type Run, type RunSummary, type ValidationIssue, type Workflow,
@@ -15,8 +15,9 @@ import { Canvas } from './components/Canvas.tsx';
 import { Compare } from './components/Compare.tsx';
 import { PhaseInspector, WorkflowSettingsForm } from './components/Inspector.tsx';
 import { RunPanel } from './components/RunPanel.tsx';
+import { WorkflowManager, groupNames, grouped } from './components/WorkflowManager.tsx';
 import { ContinueDialog, FolderStatus, NewWorkflowDialog, RulesDialog } from './components/Setup.tsx';
-import { KindTile, Modal, Toasts, kindHint, kindLabel, toast } from './ui.tsx';
+import { KindTile, Modal, Toasts, applyTheme, kindHint, kindLabel, readTheme, toast, type ThemeChoice } from './ui.tsx';
 
 type View = 'editor' | 'run' | 'compare';
 
@@ -41,6 +42,32 @@ function usePopover() {
 }
 
 /** Scelta della lingua dell'interfaccia. */
+function ThemeSwitch() {
+  const { t } = useI18n();
+  const pop = usePopover();
+  const [choice, setChoice] = useState<ThemeChoice>(readTheme);
+  const opts: [ThemeChoice, typeof Sun][] = [['system', Monitor], ['light', Sun], ['dark', Moon]];
+  const Current = opts.find(([c]) => c === choice)![1];
+  return (
+    <div className="popover-wrap" ref={pop.ref}>
+      <button className="icon-btn" onClick={() => pop.setOpen(!pop.open)} aria-expanded={pop.open} aria-haspopup="menu" title={t('theme.title')} aria-label={t('theme.title')}>
+        <Current />
+      </button>
+      {pop.open && (
+        <div className="popover menu lang-pop" role="menu">
+          <div className="menu-label">{t('theme.title')}</div>
+          {opts.map(([c, Icon]) => (
+            <button key={c} role="menuitemradio" aria-checked={c === choice} className={`menu-item ${c === choice ? 'on' : ''}`}
+              onClick={() => { pop.setOpen(false); setChoice(c); applyTheme(c); }}>
+              <Icon /><span className="menu-main">{t(`theme.${c}`)}</span>{c === choice && <Check />}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function LanguageSwitch() {
   const { t, lang, languages, setLang } = useI18n();
   const pop = usePopover();
@@ -85,6 +112,8 @@ export function App() {
   const [continueFrom, setContinueFrom] = useState<string | null>(null);
   const esRef = useRef<EventSource | null>(null);
   const wfMenu = usePopover();
+  const [wfQuery, setWfQuery] = useState('');
+  const [manager, setManager] = useState(false);
   const issuesPop = usePopover();
 
   const dirty = wf ? JSON.stringify(wf) !== saved : false;
@@ -200,17 +229,39 @@ export function App() {
     toast(t('toast.created'), 'good');
   }
 
-  async function removeWorkflow() {
-    wfMenu.setOpen(false);
-    if (!wf || !confirm(t('app.confirmDelete', { name: wf.name }))) return;
-    await api.deleteWorkflow(wf.id);
-    setRun(null);
-    setView('editor');
-    await loadWorkflows();
+  /** Dopo una modifica dalla gestione workflow: aggiorna l'elenco senza perdere le modifiche in corso. */
+  async function afterManage(deleted?: string[]) {
+    const list = await api.workflows();
+    setWorkflows(list);
+    if (!wf) return;
+    if (deleted?.includes(wf.id)) {
+      setRun(null); setView('editor');
+      select(list[0] ?? null);
+      return;
+    }
+    const fresh = list.find((w) => w.id === wf.id);
+    if (!fresh) return;
+    if (!dirty) select(fresh);
+    else {
+      // Modifiche non salvate: si aggiornano solo nome e gruppo cambiati dalla gestione.
+      setWf({ ...wf, name: fresh.name, group: fresh.group });
+      setSaved(JSON.stringify({ ...JSON.parse(saved), name: fresh.name, group: fresh.group, updatedAt: fresh.updatedAt }));
+    }
+  }
+
+  function openFromManager(id: string) {
+    const w = workflows.find((x) => x.id === id);
+    if (!w) return;
+    if (w.id !== wf?.id) {
+      if (!confirmDiscard()) return;
+      select(w); setView('editor'); setRun(null);
+    }
+    setManager(false);
   }
 
   function switchWorkflow(w: Workflow) {
     wfMenu.setOpen(false);
+    setWfQuery('');
     if (w.id === wf?.id || !confirmDiscard()) return;
     select(w); setView('editor'); setRun(null);
   }
@@ -229,8 +280,8 @@ export function App() {
   if (!wf || !shownWf) {
     return (
       <div className="app">
-        <header className="topbar simple">{brand}<span className="grow" /><LanguageSwitch /><button className="btn ghost" onClick={() => setRulesDialog(true)}><ScrollText />{t('topbar.rules')}</button></header>
-        <NewWorkflowDialog inline onCreated={onCreated} />
+        <header className="topbar simple">{brand}<span className="grow" /><ThemeSwitch /><LanguageSwitch /><button className="btn ghost" onClick={() => setRulesDialog(true)}><ScrollText />{t('topbar.rules')}</button></header>
+        <NewWorkflowDialog inline groups={[]} onCreated={onCreated} />
         {rulesDialog && <RulesDialog onClose={() => setRulesDialog(false)} />}
         <Toasts />
       </div>
@@ -248,16 +299,27 @@ export function App() {
               <span className="wf-name">{wf.name || t('common.untitled')}</span><ChevronDown />
             </button>
             {wfMenu.open && (
-              <div className="popover menu" role="menu">
-                <div className="menu-label">{t('topbar.workflows')}</div>
-                {workflows.map((w) => (
-                  <button key={w.id} role="menuitem" className={`menu-item ${w.id === wf.id ? 'on' : ''}`} onClick={() => switchWorkflow(w)}>
-                    <span className="menu-main">{w.name}</span><span className="menu-sub">{t('topbar.phases', { count: w.nodes.length })} · {fmtTime(w.updatedAt)}</span>
-                  </button>
-                ))}
+              <div className="popover menu wf-pop" role="menu">
+                <label className="search sm">
+                  <Search /><input autoFocus value={wfQuery} onChange={(e) => setWfQuery(e.target.value)} placeholder={t('manage.search')} aria-label={t('manage.search')}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { const first = grouped(workflows, wfQuery)[0]?.[1][0]; if (first) switchWorkflow(first); } }} />
+                </label>
+                <div className="wf-pop-list">
+                  {grouped(workflows, wfQuery).map(([g, list]) => (
+                    <div key={g || '__none'}>
+                      <div className="menu-label">{g || t('manage.ungrouped')}</div>
+                      {list.map((w) => (
+                        <button key={w.id} role="menuitem" className={`menu-item ${w.id === wf.id ? 'on' : ''}`} onClick={() => switchWorkflow(w)}>
+                          <span className="menu-main">{w.name}</span><span className="menu-sub">{t('topbar.phases', { count: w.nodes.length })} · {fmtTime(w.updatedAt)}</span>
+                        </button>
+                      ))}
+                    </div>
+                  ))}
+                  {grouped(workflows, wfQuery).length === 0 && <p className="muted small pad">{t('manage.noResults')}</p>}
+                </div>
                 <div className="menu-sep" />
-                <button role="menuitem" className="menu-item" onClick={() => { wfMenu.setOpen(false); if (confirmDiscard()) setNewDialog(true); }}><FilePlus2 />{t('topbar.newWorkflow')}</button>
-                <button role="menuitem" className="menu-item danger" onClick={removeWorkflow}><Trash2 />{t('topbar.deleteWorkflow')}</button>
+                <button role="menuitem" className="menu-item" onClick={() => { wfMenu.setOpen(false); setWfQuery(''); if (confirmDiscard()) setNewDialog(true); }}><FilePlus2 />{t('topbar.newWorkflow')}</button>
+                <button role="menuitem" className="menu-item" onClick={() => { wfMenu.setOpen(false); setWfQuery(''); setManager(true); }}><LayoutList />{t('manage.openManager')}</button>
               </div>
             )}
           </div>
@@ -294,6 +356,7 @@ export function App() {
               </div>
             )}
           </div>
+          <ThemeSwitch />
           <LanguageSwitch />
           <button className="icon-btn" onClick={() => setRulesDialog(true)} title={t('topbar.rulesTitle')} aria-label={t('topbar.rulesTitle')}><ScrollText /></button>
           <button className="btn" disabled={busy || errCount > 0} onClick={() => start('prova')} title={t('topbar.testTitle')}><FlaskConical />{t('topbar.test')}</button>
@@ -352,7 +415,7 @@ export function App() {
               ? <PhaseInspector key={selNode.id} cfg={selNode.data} issues={issues.filter((i) => i.nodeId === selNode.id)}
                   onChange={(c) => setWf({ ...wf, nodes: wf.nodes.map((n) => (n.id === selNode.id ? { ...n, data: c } : n)) })}
                   onDelete={() => { setWf({ ...wf, nodes: wf.nodes.filter((n) => n.id !== selNode.id), edges: wf.edges.filter((e) => e.source !== selNode.id && e.target !== selNode.id) }); setSelected(null); }} />
-              : <WorkflowSettingsForm wf={wf} onChange={setWf} onShowRules={() => setRulesDialog(true)} />}
+              : <WorkflowSettingsForm wf={wf} groups={groupNames(workflows)} onChange={setWf} onShowRules={() => setRulesDialog(true)} />}
           </aside>
         )}
         {view === 'run' && run && (
@@ -365,7 +428,8 @@ export function App() {
       </div>
 
       {continueFrom && <ContinueDialog runId={continueFrom} workflowId={wf.id} onCancel={() => setContinueFrom(null)} onStarted={(id) => { setContinueFrom(null); openRun(id); }} />}
-      {newDialog && <NewWorkflowDialog onCancel={() => setNewDialog(false)} onCreated={onCreated} />}
+      {newDialog && <NewWorkflowDialog groups={groupNames(workflows)} onCancel={() => setNewDialog(false)} onCreated={onCreated} />}
+      {manager && <WorkflowManager workflows={workflows} currentId={wf.id} onOpen={openFromManager} onChanged={afterManage} onClose={() => setManager(false)} />}
       {rulesDialog && <RulesDialog projectDir={wf.settings.projectDir} onClose={() => setRulesDialog(false)} />}
       {realDialog && <RealRunDialog env={env} wf={wf} busy={busy} onCancel={() => setRealDialog(false)} onConfirm={() => start('reale')} />}
       <Toasts />

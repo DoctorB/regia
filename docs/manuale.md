@@ -152,7 +152,13 @@ Ogni esecuzione salva le regole che ha usato.
 
 ---
 
-## 10. Problemi comuni
+## 10. Organizzare i workflow, tema e lingua
+
+- **Gruppi**: ogni workflow può stare in un gruppo, ad esempio il progetto. Alla creazione il gruppo proposto è il nome della cartella del progetto; si cambia anche dalle impostazioni del workflow. Il menu con il nome del workflow, in alto a sinistra, mostra i workflow per gruppo e ha una ricerca (Invio apre il primo risultato).
+- **Gestisci workflow…** (dallo stesso menu): ricerca, gruppi comprimibili, e per ogni workflow apri, rinomina, sposta in un gruppo, duplica, elimina. Con le caselle puoi spostare o eliminare più workflow insieme. Un gruppo si rinomina o si toglie (i suoi workflow restano, senza gruppo). Eliminando un workflow le sue esecuzioni restano, a meno di scegliere di eliminarle; quelle ancora in corso non vengono mai toccate.
+- **Tema**: pulsante in alto a destra, Come il sistema / Chiaro / Scuro. **Lingua**: il pulsante accanto. Entrambe le scelte vengono ricordate.
+
+## 11. Problemi comuni
 
 | Problema | Cosa fare |
 |---|---|
