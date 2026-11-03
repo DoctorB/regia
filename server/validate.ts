@@ -72,11 +72,16 @@ export function validateWorkflow(wf: Workflow, mode: 'prova' | 'reale' = 'prova'
     if (!d.label?.trim()) err(msg('validate.phaseNoName'), n.id);
     if (wf.nodes.length > 1 && !hasIn.has(n.id) && !hasOut.has(n.id)) warn(msg('validate.notConnected', { name }), n.id);
     if (d.kind === 'server') {
-      if (!d.command?.trim()) err(msg('validate.serverNoCommand', { name }), n.id);
+      const check = d.readyCheck ?? 'url';
+      if (!d.command?.trim()) {
+        if (!d.url?.trim()) err(msg('validate.serverNoCommand', { name }), n.id);
+        else if (check !== 'url') err(msg('validate.externalNeedsUrl', { name }), n.id);
+      }
+      if (d.command?.trim() && check === 'output' && !d.readyPattern?.trim()) err(msg('validate.readyPatternMissing', { name }), n.id);
       if (d.url?.trim() && !/^https?:\/\/[^\s]+$/i.test(d.url.trim())) err(msg('validate.invalidUrl', { name }), n.id);
       if (d.subdir?.trim() && (path.isAbsolute(d.subdir.trim()) || d.subdir.includes('..'))) err(msg('validate.subdirNotRelative', { name }), n.id);
       if (d.nodeVersion?.trim() && !/^(v?\d+(\.\d+){0,2}|lts.*|[<>=^~].+)$/i.test(d.nodeVersion.trim())) err(msg('validate.invalidNodeVersion', { name }), n.id);
-      if (d.readyTimeoutSec !== undefined && !(d.readyTimeoutSec >= 5 && d.readyTimeoutSec <= 900)) err(msg('validate.readyTimeoutRange', { name }), n.id);
+      if (d.readyTimeoutSec !== undefined && !(d.readyTimeoutSec >= 5 && d.readyTimeoutSec <= 3600)) err(msg('validate.readyTimeoutRange', { name }), n.id);
       if (!wf.edges.some((e) => e.source === n.id)) warn(msg('validate.serverNoSuccessor', { name }), n.id);
       continue;
     }

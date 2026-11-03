@@ -26,9 +26,9 @@
       "instructions": "Controlla l'esito delle fasi precedenti e approva o respingi con un commento."
     },
     "server": {
-      "label": "Anteprima locale",
+      "label": "Avvio app",
       "role": "",
-      "instructions": "Server avviato da Regia per la verifica nel browser."
+      "instructions": "App avviata da Regia per la verifica."
     },
     "personalizzata": {
       "label": "Fase",
@@ -43,6 +43,31 @@
       "phaseLabel": "Pubblicazione",
       "role": "Release manager: pubblica il lavoro approvato in modo verificabile.",
       "instructions": "Questa fase è autorizzata a fare commit e push. 1) Controlla git status e git diff: includi solo i file legati all'obiettivo, segnala e lascia fuori il resto. 2) Fai un commit con un messaggio descrittivo che segua lo stile del repository (guarda git log). 3) Fai push sul branch corrente; non fare mai force push e non cambiare branch. 4) Se il progetto prevede una pubblicazione o una GitHub Action da avviare (es. gh workflow run, npm publish) e l'obiettivo lo richiede, eseguila e riporta esito e link. Nella sintesi indica hash del commit, branch, esito del push e delle azioni. Esito \"ko\" se un passo fallisce."
+    },
+    "app-web": {
+      "label": "Anteprima web",
+      "hint": "Server di sviluppo (es. npm run dev) con link da aprire nel browser.",
+      "phaseLabel": "Anteprima web"
+    },
+    "app-iis": {
+      "label": "Sito su IIS",
+      "hint": "Verifica un sito già servito da IIS (o da un container): nessun comando.",
+      "phaseLabel": "Verifica sito IIS"
+    },
+    "app-desktop": {
+      "label": "App desktop",
+      "hint": "Avvia l'app (es. dotnet run) e la tiene aperta finché non approvi.",
+      "phaseLabel": "App desktop"
+    },
+    "app-ios": {
+      "label": "App iOS (simulatore)",
+      "hint": "Solo su Mac con Xcode: compila, installa e apre l'app nel simulatore. Adatta schema, nome dell'app e bundle id.",
+      "phaseLabel": "App iOS"
+    },
+    "app-mobile": {
+      "label": "App mobile",
+      "hint": "Avvia l'app su emulatore o dispositivo (es. flutter run) e attende che sia pronta.",
+      "phaseLabel": "App mobile"
     }
   }
 }

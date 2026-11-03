@@ -26,6 +26,8 @@ npm start
 
 Open **http://127.0.0.1:4317** and keep the terminal open while you use Regia. Closing it also stops any run in progress.
 
+**Systems**: Windows, macOS and Linux. iOS apps need a Mac with Xcode (see [iOS apps on a Mac](#ios-apps-on-a-mac)).
+
 **Requirements**: Node.js 20 or later. Real runs need [Claude Code](https://docs.claude.com/en/docs/claude-code) with an active login (check with `claude auth status`), or the `ANTHROPIC_API_KEY` environment variable. You don't need to open Claude Code: Regia uses its credentials.
 
 ---
@@ -61,7 +63,7 @@ Open **http://127.0.0.1:4317** and keep the terminal open while you use Regia. C
 |---|---|
 | Analysis, Implementation, Test, Review, Custom | Work done by an agent |
 | **Human approval** | The workflow waits until you approve or reject |
-| **Local server** | Regia starts the project's dev server (e.g. `npm run dev`) so you can see the result in the browser |
+| **Run app** | Regia starts the app so you can check it: web, desktop, mobile, or it checks a site already served by IIS |
 | **Publishing** (ready-made phase) | Commit, push and any releases or GitHub Actions. Place it after an approval |
 
 ---
@@ -86,11 +88,34 @@ When the workflow stops, the **Status** tab shows what is needed:
 - **Approval**: read the summaries of the previous phases and check the project (`git diff`), then **Approve** or **Reject with comment**: the phase that produced the work resumes where it left off with your comment, and tests and review run again.
 - **Failed or blocked phase**: **Retry from scratch**, **Resume session** (with a message for the agent), **Skip phase** or **Cancel run**.
 
-### Browser preview
+### Checking the app: web, desktop, mobile
 
 ![Local preview](img/05-anteprima-locale.png)
 
-The **Local server** phase starts the project's server and puts the link in the approval request: open it, check, then approve. Stop and restart are one click away. Regia picks the Node version the project requires (`.nvmrc`, `engines`), installs dependencies if missing and, if the right Node version is not installed, offers to install it. The server is shut down when the run ends.
+Regia is not tied to a technology: agents work with the project's own tools (npm, dotnet, msbuild, gradle, flutter, Xcode, docker…) through the Bash tool. The **Run app** phase lets you see the result before approving. It runs any command in the project folder and waits until the app is ready, according to the criterion chosen in **Ready when**:
+
+| Criterion | Examples |
+|---|---|
+| **An address responds** | Web dev server (`npm run dev`, `dotnet watch`), API, container. **With no command** it only checks a site that is already running, for example on **IIS**: Regia neither starts nor stops it |
+| **A text appears in the output** | Mobile app on an emulator or device (`flutter run` → "Flutter run key commands"), build in watch mode |
+| **The program stays open** | Desktop app (`dotnet run`, `npm run electron`, `python app.py`): the window stays open until you approve |
+| **The command succeeds** | Build, install on a device (`gradlew installDebug`), iOS app in the simulator (`xcodebuild` + `xcrun simctl`), local deploy to IIS (`msdeploy`, PowerShell script) |
+
+In the palette, among the **ready to use** phases, you'll find **Web preview**, **Site on IIS**, **Desktop app**, **iOS app (simulator)** and **Mobile app** already set up: just adjust command and address.
+
+The approval request shows the link (if any), the status, the last output lines and the Stop / Restart buttons. The app is closed when the run ends; after a correction requested in an approval it is restarted, so you check the updated version.
+
+For Node projects (with a `package.json`) Regia does more: it picks the required Node version (`.nvmrc`, `engines`), installs dependencies if missing and, if the right version is not installed, offers to install it.
+
+### iOS apps on a Mac
+
+On a Mac with **Xcode** (and its command line tools: `xcode-select --install`) Regia also orchestrates iOS apps: Regia is installed and started just as on Windows.
+
+- **Agents**: they build and run tests with `xcodebuild` through Bash; enable Bash in the phases that need it. Builds are slow: raise the maximum turns and the spending limit of those phases.
+- **Ready-made iOS app (simulator) phase**: builds for the simulator, boots it, installs and opens the app, with the "The command succeeds" criterion (waits up to 15 minutes). Before using it, adjust three values in the command: the **scheme** (`-scheme App`), the **app name** (`App.app`) and the **bundle id** (`com.example.App`); change the simulator too if needed (`iPhone 16`, list them with `xcrun simctl list devices`). For a CocoaPods workspace add `-workspace AppName.xcworkspace`.
+- **Other frameworks**: Flutter → `flutter run -d "iPhone 16"` with expected text `Flutter run key commands`; React Native → `npx react-native run-ios` with "The command succeeds"; Expo → `npx expo run:ios` with expected text `Logs for your project`.
+- **After the phase** add an **Approval**: check the app in the simulator and decide.
+- **Physical device, TestFlight, App Store**: you need an Apple Developer account, certificates and profiles already set up on the Mac; Regia and the agents use the existing ones and don't create them. The first time, macOS may ask for permissions for Xcode or the simulator: accept them by hand.
 
 ---
 
@@ -171,7 +196,7 @@ Agent phases can use Claude Code **skills**: procedures written in a `SKILL.md` 
 |---|---|
 | "Run" is disabled | The workflow has errors (badge at the top) |
 | No login detected | Run `claude` once and sign in, or set `ANTHROPIC_API_KEY` before `npm start` |
-| The local server does not start | Read the reason in the intervention request: Node version, dependencies, port in use. Use the suggested buttons or fix the command in the phase |
+| The app does not start or is never ready | Read the reason in the intervention request: command exited with an error, expected text never appeared, address not responding, Node version, dependencies, port in use. Use the suggested buttons or fix the command or the "Ready when" criterion in the phase |
 | The run shows as "Interrupted" | Regia was closed while it was active: open it and use **Continue…** |
 | Spending is close to the limit | Raise the limit in the workflow settings or check the Optimize tab |
 

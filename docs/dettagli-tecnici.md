@@ -4,18 +4,27 @@
 
 Approfondimenti per chi vuole sapere come Regia conta i consumi, quali regole applica agli agenti, come gestisce i server locali e quali limiti ha. Per l'uso quotidiano basta il [manuale](manuale.md).
 
-## Server locale
+## Avvio app
 
-Fase gestita da Regia, senza agenti e senza costi: esegue un comando nella cartella del progetto (es. `npm run dev`, eventualmente in una sottocartella), attende che l'indirizzo risponda (quello indicato, oppure il primo indirizzo locale stampato dal server) e tiene il server attivo fino alla fine dell'esecuzione. Nel diagramma e nella richiesta di approvazione successiva compaiono il link, lo stato, le ultime righe di output e i pulsanti Ferma / Riavvia. Prima dell'avvio la fase prepara l'ambiente:
+Fase gestita da Regia, senza agenti e senza costi. Esegue un comando nella cartella del progetto (o in una sottocartella) con la shell di sistema, quindi va bene qualsiasi strumento. Poi attende che l'app sia pronta secondo il criterio scelto:
+
+- **url**: l'indirizzo indicato, oppure il primo indirizzo locale stampato, riceve una risposta HTTP qualsiasi (anche 401 o 500). Il certificato non viene verificato, così funzionano i certificati di sviluppo (IIS Express, `dotnet dev-certs`): è solo un controllo di raggiungibilità. **Senza comando** la fase verifica soltanto un servizio già attivo (IIS, container, ambiente di test) e non lo avvia né lo ferma.
+- **output**: una riga dell'output contiene il testo atteso (senza distinzione di maiuscole), oppure corrisponde a `/espressione regolare/`.
+- **process**: il programma è ancora aperto dopo qualche secondo. Per queste fasi e per **output** la finestra non viene nascosta. Un lanciatore che termina subito con codice 0 (es. `start app.exe`) è considerato riuscito.
+- **exit**: il comando termina con codice 0 entro l'attesa massima (predefinita 600 secondi, massimo 3600).
+
+**Sistemi**: su Windows il comando parte con `cmd.exe` e l'app viene chiusa con `taskkill /T`; su macOS e Linux con `/bin/sh` in un gruppo di processi a parte, chiuso con un segnale al gruppo. La fase pronta "App iOS (simulatore)" usa `xcodebuild` e `xcrun simctl`, quindi funziona solo su macOS con Xcode.
+
+Nel diagramma e nella richiesta di approvazione successiva compaiono il link (se c'è), lo stato, le ultime righe di output e i pulsanti Ferma / Riavvia. Solo per i progetti Node (presenza di `package.json`, o versione di Node indicata nella fase) prima dell'avvio la fase prepara anche l'ambiente:
 
 - **Versione di Node**: legge `.nvmrc` / `.node-version` e `engines.node` del package.json (o il campo "Versione di Node" della fase) e sceglie la versione compatibile più recente tra quelle installate (nvm, nvm-windows, fnm, volta, sistema). La usa solo per quel comando, mettendola in testa al PATH: la versione di sistema non cambia. Se nessuna è compatibile non avvia nulla e propone **Installa Node e riprova**, mostrando il comando esatto (es. `nvm install 24.22.2`, versione scelta dall'elenco ufficiale di nodejs.org preferendo le LTS). L'installazione parte solo con il tuo clic.
 - **Dipendenze**: se manca `node_modules` le installa con il gestore indicato dal lockfile, senza modificarlo (`npm ci`, `pnpm install --frozen-lockfile`, `yarn install --frozen-lockfile`, `bun install --frozen-lockfile`).
 
-Se l'avvio non riesce, la fase legge l'output e riconosce le cause comuni. Per un messaggio "versione di Node non supportata" ricava la versione richiesta e, se è installata, riprova da sola una volta; altrimenti propone di installarla. Per moduli o comandi mancanti propone **Installa le dipendenze e riprova**. Segnala anche porta occupata e permessi insufficienti. Negli altri casi mostra l'output utile a capire perché.
+Se l'avvio non riesce, la fase legge l'output e riconosce le cause comuni. Nei progetti Node, per un messaggio "versione di Node non supportata" ricava la versione richiesta e, se è installata, riprova da sola una volta; altrimenti propone di installarla. Per moduli o comandi mancanti propone **Installa le dipendenze e riprova**. Segnala anche porta occupata e permessi insufficienti. Negli altri casi mostra l'output utile a capire perché.
 
 I log scritti in JSON (Astro, Vite e altri quando non sono collegati a un terminale) vengono trasformati in righe leggibili, e dall'output si estrae l'indirizzo tenendo solo caratteri validi in un URL.
 
-Il server viene fermato (insieme ai processi figli) quando l'esecuzione termina o viene annullata, e quando Regia si chiude. Dopo una correzione chiesta in un'approvazione successiva viene riavviato, così si verifica la versione aggiornata; con "Continua" viene sempre riavviato. In modalità di prova è simulato e nessun comando viene eseguito. Prima di un'esecuzione reale il dialogo di conferma elenca i comandi che verranno avviati.
+L'app viene fermata (insieme ai processi figli) quando l'esecuzione termina o viene annullata, e quando Regia si chiude. Dopo una correzione chiesta in un'approvazione successiva viene riavviato, così si verifica la versione aggiornata; con "Continua" viene sempre riavviato. In modalità di prova è simulata e nessun comando viene eseguito. Prima di un'esecuzione reale il dialogo di conferma elenca i comandi che verranno avviati e gli indirizzi che verranno verificati.
 
 ## Interventi
 
@@ -90,7 +99,7 @@ Hook, plugin e impostazioni personali di `~/.claude` non vengono caricati; le re
 
 ## Modalità di prova
 
-"Prova" esegue il workflow con agenti simulati: nessuna chiamata di rete e nessun costo, tariffe fittizie. I messaggi simulati hanno la stessa forma di quelli del SDK (ID duplicati per strumenti in parallelo, subagenti, sessioni riprese con totali ripristinati, crash con valori azzerati), quindi la contabilità segue lo stesso percorso del codice reale. Nelle istruzioni di una fase si può scrivere `[simula-errore]`, `[simula-blocco]` o `[simula-budget]` per provare gli interventi. Il server locale è simulato e nessun comando viene eseguito.
+"Prova" esegue il workflow con agenti simulati: nessuna chiamata di rete e nessun costo, tariffe fittizie. I messaggi simulati hanno la stessa forma di quelli del SDK (ID duplicati per strumenti in parallelo, subagenti, sessioni riprese con totali ripristinati, crash con valori azzerati), quindi la contabilità segue lo stesso percorso del codice reale. Nelle istruzioni di una fase si può scrivere `[simula-errore]`, `[simula-blocco]` o `[simula-budget]` per provare gli interventi. La fase Avvio app è simulata e nessun comando viene eseguito.
 
 ## Lingue
 
@@ -128,7 +137,7 @@ server/            API Express + SSE, motore di esecuzione, contabilità, simula
   validate.ts      validazione del diagramma
   rules.ts         regole generali (personali, di Regia, del progetto)
   folder.ts        controllo della cartella di progetto (git, modifiche in sospeso)
-  service.ts       processi della fase server locale (avvio, indirizzo, arresto)
+  service.ts       processi della fase Avvio app (avvio, indirizzo, raggiungibilità, arresto)
   nodeenv.ts       versione di Node richiesta dal progetto, installazioni, diagnosi degli errori
   skills.ts        ricerca delle skill e plugin temporaneo per fase
 shared/types.ts    modello dati comune

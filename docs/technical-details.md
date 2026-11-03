@@ -4,18 +4,27 @@
 
 For readers who want to know how Regia counts usage, which rules it applies to agents, how it manages local servers and what its limits are. For everyday use, the [manual](manual.md) is enough.
 
-## Local server
+## Run app
 
-A phase run by Regia itself, with no agent and no cost: it runs a command in the project folder (e.g. `npm run dev`, optionally in a subfolder), waits until the address responds (the one you set, or the first local address the server prints) and keeps the server running until the run ends. The link, status, latest output lines and Ferma / Riavvia (stop / restart) buttons appear on the diagram and in the following approval request. Before starting, the phase prepares the environment:
+A phase run by Regia itself, with no agent and no cost. It runs a command in the project folder (or a subfolder) with the system shell, so any tool works. Then it waits until the app is ready according to the chosen criterion:
+
+- **url**: the address you set, or the first local address printed, gets any HTTP response (401 or 500 included). The certificate is not verified, so development certificates work (IIS Express, `dotnet dev-certs`): it is only a reachability check. **With no command** the phase only checks a service that is already running (IIS, container, test environment) and neither starts nor stops it.
+- **output**: an output line contains the expected text (case-insensitive), or matches `/regular expression/`.
+- **process**: the program is still open after a few seconds. For these phases and for **output** the window is not hidden. A launcher that exits right away with code 0 (e.g. `start app.exe`) counts as success.
+- **exit**: the command exits with code 0 within the maximum wait (default 600 seconds, up to 3600).
+
+**Systems**: on Windows the command runs through `cmd.exe` and the app is closed with `taskkill /T`; on macOS and Linux through `/bin/sh` in its own process group, closed by signalling the group. The ready-made "iOS app (simulator)" phase uses `xcodebuild` and `xcrun simctl`, so it only works on macOS with Xcode.
+
+The diagram and the following approval request show the link (if any), the status, the last output lines and the Stop / Restart buttons. For Node projects only (a `package.json` is present, or a Node version is set on the phase) the phase also prepares the environment before starting:
 
 - **Node version**: it reads `.nvmrc` / `.node-version` and `engines.node` in package.json (or the phase's "Versione di Node" field) and picks the most recent compatible version among those installed (nvm, nvm-windows, fnm, volta, system). It uses it for that command only, by putting it first in the PATH: the system version does not change. If none is compatible, it starts nothing and offers **Installa Node e riprova** (install Node and retry), showing the exact command (e.g. `nvm install 24.22.2`, a version chosen from the official nodejs.org list, preferring LTS). Installation only starts when you click.
 - **Dependencies**: if `node_modules` is missing, it installs them with the package manager implied by the lockfile, without modifying it (`npm ci`, `pnpm install --frozen-lockfile`, `yarn install --frozen-lockfile`, `bun install --frozen-lockfile`).
 
-If startup fails, the phase reads the output and recognizes common causes. For an "unsupported Node version" message it extracts the required version and, if that version is installed, retries once on its own; otherwise it offers to install it. For missing modules or commands it offers **Installa le dipendenze e riprova** (install dependencies and retry). It also reports ports already in use and insufficient permissions. In other cases it shows the output needed to understand why.
+If startup fails, the phase reads the output and recognizes common causes. In Node projects, for an "unsupported Node version" message it extracts the required version and, if that version is installed, retries once on its own; otherwise it offers to install it. For missing modules or commands it offers **Installa le dipendenze e riprova** (install dependencies and retry). It also reports ports already in use and insufficient permissions. In other cases it shows the output needed to understand why.
 
 Logs written as JSON (Astro, Vite and others when not attached to a terminal) are turned into readable lines, and only valid URL characters are kept when extracting the address.
 
-The server (together with its child processes) is stopped when the run ends or is cancelled, and when Regia closes. After a correction requested in a later approval it is restarted, so you check the updated version; with "Continue" it is always restarted. In trial mode it is simulated and no command runs. Before a real run, the confirmation dialog lists the commands that will be started.
+The app (together with its child processes) is stopped when the run ends or is cancelled, and when Regia closes. After a correction requested in a later approval it is restarted, so you check the updated version; with "Continue" it is always restarted. In trial mode it is simulated and no command runs. Before a real run, the confirmation dialog lists the commands that will be started.
 
 ## Interventions
 
@@ -90,7 +99,7 @@ Hooks, plugins and personal settings from `~/.claude` are not loaded; personal r
 
 ## Trial mode
 
-"Prova" (trial run) runs the workflow with simulated agents: no network calls and no cost, fictitious rates. Simulated messages have the same shape as the SDK's (duplicate IDs for parallel tool calls, subagents, resumed sessions with restored totals, crashes with zeroed values), so usage accounting follows the same code path as real runs. In a phase's instructions you can write `[simula-errore]`, `[simula-blocco]` or `[simula-budget]` to try the interventions (error, block, budget). The local server is simulated and no command runs.
+"Prova" (trial run) runs the workflow with simulated agents: no network calls and no cost, fictitious rates. Simulated messages have the same shape as the SDK's (duplicate IDs for parallel tool calls, subagents, resumed sessions with restored totals, crashes with zeroed values), so usage accounting follows the same code path as real runs. In a phase's instructions you can write `[simula-errore]`, `[simula-blocco]` or `[simula-budget]` to try the interventions (error, block, budget). The Run app phase is simulated and no command runs.
 
 ## Languages
 
@@ -128,7 +137,7 @@ server/            Express API + SSE, execution engine, usage accounting, simula
   validate.ts      diagram validation
   rules.ts         general rules (personal, Regia, project)
   folder.ts        project folder check (git, pending changes)
-  service.ts       local server phase processes (start, address, shutdown)
+  service.ts       Run app phase processes (start, address, reachability, shutdown)
   nodeenv.ts       Node version required by the project, installations, error diagnosis
   skills.ts        skill discovery and temporary per-phase plugin
 shared/types.ts    shared data model

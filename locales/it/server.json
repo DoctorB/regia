@@ -85,32 +85,40 @@
       "deps": "Installazione dipendenze: {command}",
       "install": "Installazione: {command}",
       "correction": "Correzione in corso: {phases}",
-      "subagent": "Subagente · {summary}"
+      "subagent": "Subagente · {summary}",
+      "checking": "Verifica di {url}…"
     },
     "service": {
       "withLabel": "{label}: {text}",
       "simNeedsIntervention": "{label}: in un'esecuzione reale servirebbe un intervento: {reason}",
       "simStart": "{label}: avvio di \"{command}\" in {cwd} (simulato: nessun comando eseguito).",
-      "simReady": "Server di sviluppo pronto (simulato).",
+      "simReady": "App pronta (simulato).",
       "depsMissing": "{label}: node_modules non presente: eseguo \"{command}\".",
       "depsInstalled": "{label}: dipendenze installate.",
       "start": "{label}: avvio di \"{command}\" in {cwd}.",
       "startWithNode": "{label}: avvio di \"{command}\" in {cwd} con Node {version}.",
-      "active": "{label}: server attivo su {url}. Resta attivo fino alla fine dell'esecuzione.",
+      "active": "{label}: app attiva su {url}. Resta attiva fino alla fine dell'esecuzione.",
       "startFailed": "{label}: avvio non riuscito — {reason}",
-      "exited": "{label}: il server si è chiuso (codice {code}).",
+      "exited": "{label}: l'app si è chiusa (codice {code}).",
       "nodeRetry": "{label}: {diag} Riprovo automaticamente con Node {version} ({manager}).",
       "installNode": "{label}: eseguo \"{command}\" (scarica Node {version}; la versione di sistema non cambia).",
       "run": "{label}: eseguo \"{command}\".",
       "repairFailed": "{label}: \"{command}\" non riuscito.",
-      "repairDone": "{label}: \"{command}\" completato. Riavvio il server.",
+      "repairDone": "{label}: \"{command}\" completato. Riavvio l'app.",
       "stopped": {
-        "completed": "{label}: server fermato (esecuzione completata).",
-        "restart": "{label}: server fermato (riavvio).",
-        "startFailed": "{label}: server fermato (avvio non riuscito).",
-        "manual": "{label}: server fermato (richiesta manuale).",
-        "cancelled": "{label}: server fermato (esecuzione annullata)."
-      }
+        "completed": "{label}: app fermata (esecuzione completata).",
+        "restart": "{label}: app fermata (riavvio).",
+        "startFailed": "{label}: app fermata (avvio non riuscito).",
+        "manual": "{label}: app fermata (richiesta manuale).",
+        "cancelled": "{label}: app fermata (esecuzione annullata)."
+      },
+      "simDone": "Comando completato con codice 0 (simulato).",
+      "simLaunched": "App avviata (simulato).",
+      "simCheck": "{label}: verifica di {url} (simulata: nessuna richiesta inviata).",
+      "checking": "{label}: verifica di {url}. Regia non avvia né ferma questo servizio.",
+      "reachable": "{label}: {url} risponde.",
+      "activeNoUrl": "{label}: app avviata. Resta aperta fino alla fine dell'esecuzione.",
+      "done": "{label}: comando completato."
     },
     "skillsAvailable": "{label}: skill disponibili ({count}): {skills}.",
     "skillsMissing": "{label}: skill non trovate, la fase prosegue senza: {skills}.",
@@ -131,12 +139,15 @@
       "depsInstallFailed": "Installazione delle dipendenze non riuscita (\"{command}\", codice {code}).",
       "exitedDuringStart": "il comando è terminato durante l'avvio (codice {code})",
       "noResponse": "{url} non risponde entro {seconds} secondi",
-      "noUrl": "nessun indirizzo locale trovato nell'output entro {seconds} secondi (indicalo nel campo URL della fase)",
+      "noUrl": "nessun indirizzo locale trovato nell'output entro {seconds} secondi (indicalo nel campo Indirizzo della fase)",
       "withDiagnosis": "{base}. {diag}",
       "cancelled": "esecuzione annullata",
       "nodeUnresolved": "{diag} {detail}",
       "nodeSetVersion": "{diag} Indica la versione nel campo \"Versione di Node\" della fase e riprova.",
-      "depsReinstall": "{diag} Si possono reinstallare con \"{command}\"."
+      "depsReinstall": "{diag} Si possono reinstallare con \"{command}\".",
+      "noOutput": "il testo \"{pattern}\" non è comparso nell'output entro {seconds} secondi",
+      "exitCode": "il comando è terminato con codice {code}",
+      "notFinished": "il comando non è terminato entro {seconds} secondi"
     }
   },
   "agent": {
@@ -153,8 +164,13 @@
       "approved": "Approvato dalla persona.",
       "approvedWith": "Approvato dalla persona: {feedback}",
       "skipped": "(fase saltata dalla persona)",
-      "serverActive": "Server locale attivo: {url}\nComando: {command}",
-      "simulated": " — simulato"
+      "simulated": " — simulato",
+      "service": {
+        "external": "Servizio verificato: {url} risponde.",
+        "done": "Comando completato: {command}",
+        "activeUrl": "App attiva: {url}\nComando: {command}",
+        "active": "App avviata e aperta per la verifica.\nComando: {command}"
+      }
     }
   },
   "mock": {
@@ -208,9 +224,9 @@
     "actionUnavailable": "Azione \"{action}\" non disponibile per questa fase",
     "rejectNeedsComment": "Per respingere serve un commento con le correzioni richieste",
     "noSession": "Nessuna sessione da riprendere",
-    "serverOnly": "Azione disponibile solo per il server locale",
-    "notServer": "La fase non è un server locale",
-    "serverStarting": "Il server si sta già avviando",
+    "serverOnly": "Azione disponibile solo per le fasi Avvio app",
+    "notServer": "La fase non è una fase Avvio app",
+    "serverStarting": "L'app si sta già avviando",
     "noNodeInstall": "Nessuna installazione di Node disponibile",
     "noPackageJson": "Nessun package.json nella cartella",
     "copySuffix": "(copia)",

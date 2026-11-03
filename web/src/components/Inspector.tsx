@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { FileCode2, Lock, PencilLine, ScrollText, Sparkles, Trash2, TriangleAlert, CircleAlert, X } from 'lucide-react';
-import { KNOWN_TOOLS, WRITE_TOOLS, type PhaseConfig, type PhaseKind, type SkillInfo, type ValidationIssue, type Workflow, type WorkflowSettings } from '../../../shared/types.ts';
+import { AppWindow, CircleCheck, Globe, TextSearch, FileCode2, Lock, PencilLine, ScrollText, Sparkles, Trash2, TriangleAlert, CircleAlert, X } from 'lucide-react';
+import { KNOWN_TOOLS, READY_CHECKS, WRITE_TOOLS, type PhaseConfig, type PhaseKind, type SkillInfo, type ValidationIssue, type Workflow, type WorkflowSettings } from '../../../shared/types.ts';
 import { useI18n } from '../i18n.tsx';
 import { Field, KIND_META, KindTile, Section, Switch, kindLabel } from '../ui.tsx';
 import { FolderStatus } from './Setup.tsx';
@@ -131,6 +131,7 @@ export function PhaseInspector({ cfg, settings, issues, onChange, onDelete }: { 
   const human = cfg.kind === 'approvazione';
   const server = cfg.kind === 'server';
   const agent = !human && !server;
+  const check = cfg.readyCheck ?? 'url';
   const known = ['', ...MODELS.map((m) => m.id)];
   const custom = Boolean(cfg.model) && !known.includes(cfg.model);
   const modelHint = (id: string) => t(`inspector.models.${id}`);
@@ -151,13 +152,34 @@ export function PhaseInspector({ cfg, settings, issues, onChange, onDelete }: { 
 
       {server && (
         <Section title={t('inspector.server.title')}>
-          <Field label={t('inspector.server.command')}><input id="srv-cmd" className="mono" value={cfg.command ?? ''} onChange={(e) => set('command', e.target.value)} placeholder="npm run dev" /></Field>
-          <Field label={t('inspector.server.url')} hint={t('inspector.server.urlHint')}><input id="srv-url" value={cfg.url ?? ''} onChange={(e) => set('url', e.target.value)} placeholder="http://localhost:5173" /></Field>
+          <Field label={t('inspector.server.readyCheck')}>
+            <div className="ready-picker" role="radiogroup" aria-label={t('inspector.server.readyCheck')}>
+              {READY_CHECKS.map((c) => (
+                <button key={c} role="radio" aria-checked={check === c} className={`ready-opt ${check === c ? 'on' : ''}`} onClick={() => set('readyCheck', c)}>
+                  <span className="ready-icon">{c === 'url' ? <Globe /> : c === 'output' ? <TextSearch /> : c === 'process' ? <AppWindow /> : <CircleCheck />}</span>
+                  <span className="ready-text"><strong>{t(`inspector.server.ready.${c}.label`)}</strong><small>{t(`inspector.server.ready.${c}.hint`)}</small></span>
+                </button>
+              ))}
+            </div>
+          </Field>
+          <Field label={t('inspector.server.command')} hint={check === 'url' ? `${t('inspector.server.commandHint')} ${t('inspector.server.commandHintUrl')}` : t('inspector.server.commandHint')}>
+            <input id="srv-cmd" className="mono" value={cfg.command ?? ''} onChange={(e) => set('command', e.target.value)} placeholder={check === 'process' ? 'dotnet run' : check === 'output' ? 'flutter run' : check === 'exit' ? 'msbuild /t:Build' : t('inspector.server.commandPlaceholderUrl')} />
+          </Field>
+          {check === 'output' && (
+            <Field label={t('inspector.server.pattern')} hint={t('inspector.server.patternHint')}>
+              <input id="srv-pattern" className="mono" value={cfg.readyPattern ?? ''} onChange={(e) => set('readyPattern', e.target.value)} placeholder="Flutter run key commands" />
+            </Field>
+          )}
+          <Field label={t('inspector.server.url')} hint={check === 'url' ? t('inspector.server.urlHint') : t('inspector.server.urlHintOther')}>
+            <input id="srv-url" value={cfg.url ?? ''} onChange={(e) => set('url', e.target.value)} placeholder={check === 'url' ? 'http://localhost:5173' : ''} />
+          </Field>
           <div className="grid2">
             <Field label={t('inspector.server.subdir')}><input id="srv-sub" value={cfg.subdir ?? ''} onChange={(e) => set('subdir', e.target.value)} placeholder={t('inspector.server.subdirPlaceholder')} /></Field>
-            <Field label={t('inspector.server.wait')}><Num id="srv-wait" value={cfg.readyTimeoutSec} onChange={(v) => set('readyTimeoutSec', v)} min={5} placeholder="90" /></Field>
+            <Field label={t('inspector.server.wait')}><Num id="srv-wait" value={cfg.readyTimeoutSec} onChange={(v) => set('readyTimeoutSec', v)} min={5} placeholder={check === 'exit' ? '600' : '90'} /></Field>
           </div>
-          <Field label={t('inspector.server.node')} hint={t('inspector.server.nodeHint')}><input id="srv-node" value={cfg.nodeVersion ?? ''} onChange={(e) => set('nodeVersion', e.target.value)} placeholder={t('inspector.server.nodePlaceholder')} /></Field>
+          {Boolean(cfg.command?.trim()) && (
+            <Field label={t('inspector.server.node')} hint={t('inspector.server.nodeHint')}><input id="srv-node" value={cfg.nodeVersion ?? ''} onChange={(e) => set('nodeVersion', e.target.value)} placeholder={t('inspector.server.nodePlaceholder')} /></Field>
+          )}
           <p className="hint">{t('inspector.server.hint')}</p>
         </Section>
       )}

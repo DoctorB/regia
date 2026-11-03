@@ -85,32 +85,40 @@
       "deps": "Installing dependencies: {command}",
       "install": "Installing: {command}",
       "correction": "Correction in progress: {phases}",
-      "subagent": "Subagent · {summary}"
+      "subagent": "Subagent · {summary}",
+      "checking": "Checking {url}…"
     },
     "service": {
       "withLabel": "{label}: {text}",
       "simNeedsIntervention": "{label}: a real run would need your intervention: {reason}",
       "simStart": "{label}: starting \"{command}\" in {cwd} (simulated: no command run).",
-      "simReady": "Development server ready (simulated).",
+      "simReady": "App ready (simulated).",
       "depsMissing": "{label}: node_modules not found: running \"{command}\".",
       "depsInstalled": "{label}: dependencies installed.",
       "start": "{label}: starting \"{command}\" in {cwd}.",
       "startWithNode": "{label}: starting \"{command}\" in {cwd} with Node {version}.",
-      "active": "{label}: server running at {url}. It stays up until the end of the run.",
+      "active": "{label}: app running at {url}. It stays up until the end of the run.",
       "startFailed": "{label}: start failed — {reason}",
-      "exited": "{label}: the server exited (code {code}).",
+      "exited": "{label}: the app exited (code {code}).",
       "nodeRetry": "{label}: {diag} Retrying automatically with Node {version} ({manager}).",
       "installNode": "{label}: running \"{command}\" (downloads Node {version}; the system version does not change).",
       "run": "{label}: running \"{command}\".",
       "repairFailed": "{label}: \"{command}\" failed.",
-      "repairDone": "{label}: \"{command}\" completed. Restarting the server.",
+      "repairDone": "{label}: \"{command}\" completed. Restarting the app.",
       "stopped": {
-        "completed": "{label}: server stopped (run completed).",
-        "restart": "{label}: server stopped (restart).",
-        "startFailed": "{label}: server stopped (start failed).",
-        "manual": "{label}: server stopped (manual request).",
-        "cancelled": "{label}: server stopped (run cancelled)."
-      }
+        "completed": "{label}: app stopped (run completed).",
+        "restart": "{label}: app stopped (restart).",
+        "startFailed": "{label}: app stopped (start failed).",
+        "manual": "{label}: app stopped (manual request).",
+        "cancelled": "{label}: app stopped (run cancelled)."
+      },
+      "simDone": "Command completed with code 0 (simulated).",
+      "simLaunched": "App launched (simulated).",
+      "simCheck": "{label}: checking {url} (simulated: no request sent).",
+      "checking": "{label}: checking {url}. Regia neither starts nor stops this service.",
+      "reachable": "{label}: {url} is responding.",
+      "activeNoUrl": "{label}: app launched. It stays open until the end of the run.",
+      "done": "{label}: command completed."
     },
     "skillsAvailable": "{label}: skills available ({count}): {skills}.",
     "skillsMissing": "{label}: skills not found, the phase continues without them: {skills}.",
@@ -131,12 +139,15 @@
       "depsInstallFailed": "Dependency installation failed (\"{command}\", code {code}).",
       "exitedDuringStart": "the command exited during startup (code {code})",
       "noResponse": "{url} did not respond within {seconds} seconds",
-      "noUrl": "no local address found in the output within {seconds} seconds (enter it in the phase's URL field)",
+      "noUrl": "no local address found in the output within {seconds} seconds (enter it in the phase's Address field)",
       "withDiagnosis": "{base}. {diag}",
       "cancelled": "run cancelled",
       "nodeUnresolved": "{diag} {detail}",
       "nodeSetVersion": "{diag} Enter the version in the phase's \"Node version\" field and try again.",
-      "depsReinstall": "{diag} They can be reinstalled with \"{command}\"."
+      "depsReinstall": "{diag} They can be reinstalled with \"{command}\".",
+      "noOutput": "the text \"{pattern}\" did not appear in the output within {seconds} seconds",
+      "exitCode": "the command exited with code {code}",
+      "notFinished": "the command did not finish within {seconds} seconds"
     }
   },
   "agent": {
@@ -153,8 +164,13 @@
       "approved": "Approved by the reviewer.",
       "approvedWith": "Approved by the reviewer: {feedback}",
       "skipped": "(phase skipped by the reviewer)",
-      "serverActive": "Local server running: {url}\nCommand: {command}",
-      "simulated": " — simulated"
+      "simulated": " — simulated",
+      "service": {
+        "external": "Service checked: {url} is responding.",
+        "done": "Command completed: {command}",
+        "activeUrl": "App running: {url}\nCommand: {command}",
+        "active": "App launched and open for review.\nCommand: {command}"
+      }
     }
   },
   "mock": {
@@ -208,9 +224,9 @@
     "actionUnavailable": "Action \"{action}\" is not available for this phase",
     "rejectNeedsComment": "To reject, add a comment describing the corrections needed",
     "noSession": "No session to resume",
-    "serverOnly": "Action available only for the local server",
-    "notServer": "The phase is not a local server",
-    "serverStarting": "The server is already starting",
+    "serverOnly": "Action available only for Run app phases",
+    "notServer": "The phase is not a Run app phase",
+    "serverStarting": "The app is already starting",
     "noNodeInstall": "No Node installation available",
     "noPackageJson": "No package.json in the folder",
     "copySuffix": "(copy)",

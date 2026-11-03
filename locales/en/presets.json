@@ -26,9 +26,9 @@
       "instructions": "Check the outcome of the previous phases and approve, or reject with a comment."
     },
     "server": {
-      "label": "Local preview",
+      "label": "Run app",
       "role": "",
-      "instructions": "Server started by Regia for checking in the browser."
+      "instructions": "App started by Regia for review."
     },
     "personalizzata": {
       "label": "Phase",
@@ -43,6 +43,31 @@
       "phaseLabel": "Publishing",
       "role": "Release manager: publishes the approved work in a verifiable way.",
       "instructions": "This phase is authorized to commit and push. 1) Check git status and git diff: include only the files related to the goal, report and leave out the rest. 2) Commit with a descriptive message that follows the repository's style (look at git log). 3) Push to the current branch; never force push and never switch branch. 4) If the project has a release or a GitHub Action to trigger (e.g. gh workflow run, npm publish) and the goal requires it, run it and report the outcome and links. In the summary, give the commit hash, branch, and the outcome of the push and actions. Outcome \"ko\" if a step fails."
+    },
+    "app-web": {
+      "label": "Web preview",
+      "hint": "Development server (e.g. npm run dev) with a link to open in the browser.",
+      "phaseLabel": "Web preview"
+    },
+    "app-iis": {
+      "label": "Site on IIS",
+      "hint": "Checks a site already served by IIS (or a container): no command.",
+      "phaseLabel": "Check IIS site"
+    },
+    "app-desktop": {
+      "label": "Desktop app",
+      "hint": "Starts the app (e.g. dotnet run) and keeps it open until you approve.",
+      "phaseLabel": "Desktop app"
+    },
+    "app-ios": {
+      "label": "iOS app (simulator)",
+      "hint": "Mac with Xcode only: builds, installs and opens the app in the simulator. Adjust scheme, app name and bundle id.",
+      "phaseLabel": "iOS app"
+    },
+    "app-mobile": {
+      "label": "Mobile app",
+      "hint": "Starts the app on an emulator or device (e.g. flutter run) and waits until it is ready.",
+      "phaseLabel": "Mobile app"
     }
   }
 }

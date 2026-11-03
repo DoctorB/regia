@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { query } from '@anthropic-ai/claude-agent-sdk';
 import type {
-  Attempt, ContinuationPlan, ServiceState, DeclaredOutcome, EventKind, HumanAction, NodeRunState, Run, RunEvent, RunMode, Workflow, WorkflowNode,
+  Attempt, ContinuationPlan, ServiceState, DeclaredOutcome, EventKind, HumanAction, NodeRunState, ReadyCheck, Run, RunEvent, RunMode, Workflow, WorkflowNode,
 } from '../shared/types.ts';
 import { emptyTotals } from '../shared/types.ts';
 import { msg, type Msg, type Params, type Translate } from '../shared/i18n.ts';
@@ -600,7 +600,12 @@ export class RunEngine {
     this.stopService(n.id, 'restart');
     const cwd = d.subdir?.trim() ? path.resolve(this.wf.settings.projectDir, d.subdir.trim()) : this.wf.settings.projectDir;
     const command = (d.command ?? '').trim();
-    const timeoutSec = d.readyTimeoutSec ?? 90;
+    const check: ReadyCheck = d.readyCheck ?? 'url';
+    // Senza comando la fase verifica soltanto un servizio già attivo (sito su IIS, container, ambiente di test).
+    const external = !command;
+    const timeoutSec = d.readyTimeoutSec ?? (check === 'exit' ? 600 : 90);
+    // La preparazione di Node (versione, dipendenze, diagnosi) vale solo per i progetti Node.
+    const nodeProject = !external && (Boolean(d.nodeVersion?.trim()) || fs.existsSync(path.join(cwd, 'package.json')));
     const fix = this.serviceFixes.get(n.id) ?? {};
     this.serviceFixes.set(n.id, fix);
     const a = this.newAttempt(n.id, reason);
@@ -609,7 +614,7 @@ export class RunEngine {
     st.pendingActions = undefined;
     this.setPending(st, undefined);
     st.activity = this.t('events.activity.preparing');
-    const svc: ServiceState = { command, cwd, url: d.url?.trim() || undefined, status: 'avvio', startedAt: new Date().toISOString(), log: [] };
+    const svc: ServiceState = { command, cwd, url: d.url?.trim() || undefined, status: 'avvio', startedAt: new Date().toISOString(), log: [], readyCheck: external ? 'url' : check, external: external || undefined };
     st.service = svc;
     this.running.add(n.id);
     const sim = this.run.mode === 'prova';
@@ -626,10 +631,17 @@ export class RunEngine {
       if (ok) {
         a.status = 'ok';
         st.status = 'completata';
-        st.output = this.t('agent.output.serverActive', { url: svc.url, command })
-          + (svc.pid ? ' (PID ' + svc.pid + ')' : '') + (svc.node ? ', Node ' + svc.node : '') + (sim ? this.t('agent.output.simulated') : '');
+        const out = external ? msg('agent.output.service.external', { url: svc.url })
+          : svc.status === 'completato' ? msg('agent.output.service.done', { command })
+          : svc.url ? msg('agent.output.service.activeUrl', { url: svc.url, command })
+          : msg('agent.output.service.active', { command });
+        st.output = this.tx(out)
+          + (svc.pid && svc.status !== 'completato' ? ' (PID ' + svc.pid + ')' : '') + (svc.node ? ', Node ' + svc.node : '') + (sim ? this.t('agent.output.simulated') : '');
         a.resultText = st.output;
-        ev(msg('events.service.active', { url: svc.url }));
+        ev(external ? msg('events.service.reachable', { url: svc.url })
+          : svc.status === 'completato' ? msg('events.service.done')
+          : svc.url ? msg('events.service.active', { url: svc.url })
+          : msg('events.service.activeNoUrl'));
       } else {
         const reasonText = failure ? this.tx(failure) : '';
         a.status = 'errore';
@@ -647,30 +659,60 @@ export class RunEngine {
     };
 
     // 1. Versione di Node richiesta dal progetto (.nvmrc / .node-version / engines, o quella dedotta da un errore precedente).
-    const res = await resolveNode(cwd, d.nodeVersion?.trim() || fix.range, this.lang);
-    if (res.ok) {
-      svc.node = res.version;
-      if (res.note) ev(msg('events.service.withLabel', { text: this.tx(res.note) }));
-    } else if (sim) {
-      ev(msg('events.service.simNeedsIntervention', { reason: res.message }));
-    } else {
-      fix.install = res.install;
-      return finish(false, res.msg, res.install ? ['installa_node', 'riprova', 'salta', 'annulla'] : ['riprova', 'salta', 'annulla']);
+    let env: NodeJS.ProcessEnv = process.env;
+    if (nodeProject) {
+      const res = await resolveNode(cwd, d.nodeVersion?.trim() || fix.range, this.lang);
+      if (res.ok) {
+        svc.node = res.version;
+        if (res.note) ev(msg('events.service.withLabel', { text: this.tx(res.note) }));
+      } else if (sim) {
+        ev(msg('events.service.simNeedsIntervention', { reason: res.message }));
+      } else {
+        fix.install = res.install;
+        return finish(false, res.msg, res.install ? ['installa_node', 'riprova', 'salta', 'annulla'] : ['riprova', 'salta', 'annulla']);
+      }
+      env = envWithNode(res.ok ? res.dir : undefined);
     }
-    const env = envWithNode(res.ok ? res.dir : undefined);
 
     if (sim) {
+      await new Promise((r) => setTimeout(r, Number(process.env.REGIA_MOCK_SPEED ?? 600)));
+      if (external) {
+        ev(msg('events.service.simCheck', { url: svc.url }));
+        svc.status = 'simulato';
+        return finish(true);
+      }
       st.activity = this.t('events.activity.command', { command });
       ev(msg('events.service.simStart', { command, cwd }));
-      await new Promise((r) => setTimeout(r, Number(process.env.REGIA_MOCK_SPEED ?? 600)));
-      svc.url = svc.url ?? 'http://localhost:5173/';
-      for (const l of ['> ' + command, this.t('events.service.simReady'), '  Local:   ' + svc.url]) pushLog(svc.log, l);
-      svc.status = 'simulato';
+      pushLog(svc.log, '> ' + command);
+      if (check === 'url') {
+        svc.url = svc.url ?? 'http://localhost:5173/';
+        for (const l of [this.t('events.service.simReady'), '  Local:   ' + svc.url]) pushLog(svc.log, l);
+      } else if (check === 'output') {
+        pushLog(svc.log, d.readyPattern?.replace(/^\/(.*)\/[a-z]*$/, '$1') || this.t('events.service.simReady'));
+      } else {
+        pushLog(svc.log, check === 'exit' ? this.t('events.service.simDone') : this.t('events.service.simLaunched'));
+      }
+      svc.status = check === 'exit' ? 'completato' : 'simulato';
       return finish(true);
     }
 
-    // 2. Dipendenze mancanti: installazione automatica senza modificare il lockfile.
-    const deps = depsPlan(cwd);
+    // Servizio esterno: nessun processo da avviare, solo la verifica dell'indirizzo.
+    if (external) {
+      const url = svc.url!;
+      st.activity = this.t('events.activity.checking', { url });
+      ev(msg('events.service.checking', { url }));
+      this.nodeChanged(n.id);
+      const ctrl = new AbortController();
+      this.controllers.set(n.id, ctrl);
+      const ok = await waitForUrl(url, timeoutSec * 1000, () => true, ctrl.signal);
+      this.controllers.delete(n.id);
+      svc.status = ok ? 'attivo' : 'errore';
+      if (this.run.status === 'annullata') return finish(false, msg('interventions.service.cancelled'));
+      return ok ? finish(true) : finish(false, msg('interventions.service.noResponse', { url, seconds: timeoutSec }));
+    }
+
+    // 2. Dipendenze mancanti (progetti Node): installazione automatica senza modificare il lockfile.
+    const deps = nodeProject ? depsPlan(cwd) : null;
     if (deps && needsDeps(cwd)) {
       st.activity = this.t('events.activity.deps', { command: deps.display });
       ev(msg('events.service.depsMissing', { command: deps.display }));
@@ -685,71 +727,97 @@ export class RunEngine {
       ev(msg('events.service.depsInstalled'));
     }
 
-    // 3. Avvio e attesa dell'indirizzo.
+    // 3. Avvio e attesa, secondo il criterio scelto.
     st.activity = this.t('events.activity.command', { command });
     ev(svc.node ? msg('events.service.startWithNode', { command, cwd, version: svc.node }) : msg('events.service.start', { command, cwd }));
     this.nodeChanged(n.id);
     const ctrl = new AbortController();
     this.controllers.set(n.id, ctrl);
+    const pattern = check === 'output' ? readyMatcher(d.readyPattern ?? '') : undefined;
     let lines = 0;
     let lastPush = 0;
     let urlResolve: (u: string) => void = () => undefined;
     const urlFromOutput = new Promise<string>((r) => { urlResolve = r; });
+    let matchedResolve: () => void = () => undefined;
+    const matched = new Promise<void>((r) => { matchedResolve = r; });
+    let exitResolve: () => void = () => undefined;
+    const exited = new Promise<void>((r) => { exitResolve = r; });
     const h = startService(command, cwd, {
       onLine: (line) => {
         pushLog(svc.log, line);
         if (++lines <= 25) this.event('servizio', line, { nodeId: n.id, attemptId: a.id });
+        if (pattern?.(line)) matchedResolve();
         const now = Date.now();
         if (now - lastPush > 500) { lastPush = now; this.nodeChanged(n.id); }
       },
-      onUrl: (u) => urlResolve(u),
+      onUrl: (u) => {
+        // Negli altri criteri l'indirizzo trovato nell'output diventa solo un link comodo.
+        if (check !== 'url' && !svc.url) svc.url = u;
+        urlResolve(u);
+      },
       onExit: (code) => {
         svc.exitCode = code;
         if (this.services.get(n.id) === h) this.services.delete(n.id);
         if (svc.status === 'attivo') {
           svc.status = 'terminato';
           this.say('errore', msg('events.service.exited', { label: d.label, code: String(code ?? '?') }), { nodeId: n.id });
-        } else if (svc.status === 'avvio') {
-          svc.status = 'errore';
         }
         this.nodeChanged(n.id);
+        exitResolve();
         ctrl.abort();
       },
-    }, env);
+    }, env, check === 'process' || check === 'output');
     this.services.set(n.id, h);
     svc.pid = h.pid;
     const deadline = Date.now() + timeoutSec * 1000;
-    let url = svc.url;
-    if (!url) {
-      url = await Promise.race([
-        urlFromOutput,
-        new Promise<undefined>((r) => setTimeout(() => r(undefined), timeoutSec * 1000)),
-        new Promise<undefined>((r) => ctrl.signal.addEventListener('abort', () => r(undefined), { once: true })),
-      ]);
-    }
+    const stopped = new Promise<void>((r) => ctrl.signal.addEventListener('abort', () => r(), { once: true }));
+    const within = (p: Promise<unknown>, ms: number) => Promise.race([p, stopped, new Promise((r) => setTimeout(r, Math.max(0, ms)))]);
     let ok = false;
-    if (url && !ctrl.signal.aborted) {
-      svc.url = url;
-      ok = await waitForUrl(url, Math.max(1000, deadline - Date.now()), () => !h.exited, ctrl.signal);
+    let detached = false;
+    let failure: Msg | undefined;
+    const exitedDuringStart = () => msg('interventions.service.exitedDuringStart', { code: String(svc.exitCode ?? '?') });
+    if (check === 'url') {
+      let url = svc.url;
+      if (!url) url = await Promise.race([urlFromOutput, within(new Promise(() => undefined), timeoutSec * 1000).then(() => undefined)]);
+      if (url && !ctrl.signal.aborted) {
+        svc.url = url;
+        ok = await waitForUrl(url, Math.max(1000, deadline - Date.now()), () => !h.exited, ctrl.signal);
+      }
+      if (!ok) failure = h.exited ? exitedDuringStart() : url ? msg('interventions.service.noResponse', { url, seconds: timeoutSec }) : msg('interventions.service.noUrl', { seconds: timeoutSec });
+    } else if (check === 'output') {
+      let seen = false;
+      void matched.then(() => { seen = true; });
+      await within(matched, timeoutSec * 1000);
+      await Promise.resolve();
+      ok = seen && !h.exited;
+      if (!ok) failure = h.exited ? exitedDuringStart() : msg('interventions.service.noOutput', { pattern: d.readyPattern ?? '', seconds: timeoutSec });
+    } else if (check === 'process') {
+      // Il programma deve restare aperto per qualche secondo; un lanciatore che termina con 0 (es. "start app.exe") va bene.
+      await within(exited, Math.min(timeoutSec, 5) * 1000);
+      if (!h.exited) ok = true;
+      else if (svc.exitCode === 0) { ok = true; detached = true; }
+      else failure = exitedDuringStart();
+    } else {
+      await within(exited, timeoutSec * 1000);
+      if (h.exited && svc.exitCode === 0) { ok = true; detached = true; }
+      else failure = h.exited ? msg('interventions.service.exitCode', { code: String(svc.exitCode ?? '?') }) : msg('interventions.service.notFinished', { seconds: timeoutSec });
     }
     this.controllers.delete(n.id);
     if (ok) {
-      svc.status = 'attivo';
+      svc.status = detached ? 'completato' : 'attivo';
+      if (detached) this.services.delete(n.id);
       fix.autoRetried = false;
       return finish(true);
     }
-    const exited = h.exited;
+    const hadExited = h.exited;
     this.stopService(n.id, 'startFailed');
     svc.status = 'errore';
     if (this.run.status === 'annullata') return finish(false, msg('interventions.service.cancelled'));
 
     // 4. Diagnosi dall'output: correzione automatica se possibile, altrimenti l'intervento adatto.
     const diag = diagnose(svc.log, this.lang);
-    const base = exited
-      ? msg('interventions.service.exitedDuringStart', { code: String(svc.exitCode ?? '?') })
-      : url ? msg('interventions.service.noResponse', { url, seconds: timeoutSec })
-        : msg('interventions.service.noUrl', { seconds: timeoutSec });
-    if (diag?.kind === 'node') {
+    const base = failure ?? (hadExited ? exitedDuringStart() : msg('interventions.service.noUrl', { seconds: timeoutSec }));
+    if (diag?.kind === 'node' && nodeProject) {
       const range = diag.requiredRange ?? fix.range;
       const res2 = range ? await resolveNode(cwd, range, this.lang) : null;
       if (res2?.ok && res2.version !== svc.node && !fix.autoRetried) {
@@ -772,7 +840,7 @@ export class RunEngine {
     if (diag?.kind === 'dipendenze' && deps) {
       return finish(false, msg('interventions.service.depsReinstall', { diag: diag.message, command: deps.display }), ['installa_dipendenze', 'riprova', 'salta', 'annulla']);
     }
-    return finish(false, diag ? msg('interventions.service.withDiagnosis', { base: this.tx(base), diag: diag.message }) : base);
+    return finish(false, diag && diag.kind !== 'node' ? msg('interventions.service.withDiagnosis', { base: this.tx(base), diag: diag.message }) : base);
   }
 
   /** Installa la versione di Node mancante o le dipendenze, su richiesta esplicita, poi riavvia la fase. */
@@ -1029,6 +1097,21 @@ export function parseDeclared(text: unknown): DeclaredOutcome | undefined {
   } catch {
     return undefined;
   }
+}
+
+/** Testo atteso nell'output: "/espressione/opzioni" come espressione regolare, altrimenti testo senza distinzione di maiuscole. */
+export function readyMatcher(p: string): (line: string) => boolean {
+  const s = p.trim();
+  if (!s) return () => false;
+  const m = s.match(/^\/(.+)\/([a-z]*)$/);
+  if (m) {
+    try {
+      const re = new RegExp(m[1], m[2].replace(/[gy]/g, ''));
+      return (l) => re.test(l);
+    } catch { /* non è un'espressione valida: si usa come testo */ }
+  }
+  const low = s.toLowerCase();
+  return (l) => l.toLowerCase().includes(low);
 }
 
 /** Nome della skill come lo vede l'utente, senza il prefisso del plugin di Regia. */

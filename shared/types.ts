@@ -26,9 +26,13 @@ export interface PhaseConfig {
   reuseResult: boolean;
   /** Skill di Claude Code utilizzabili dalla fase: 'all' tutte quelle disponibili, oppure gli id scelti. Assente = nessuna. */
   skills?: 'all' | string[];
-  /** Solo fase "server": comando da avviare (es. npm run dev). */
+  /** Solo fase "server" (Avvio app): comando da avviare (es. npm run dev, dotnet run, flutter run). Vuoto = solo verifica dell'indirizzo. */
   command?: string;
-  /** Solo fase "server": URL da controllare; se vuoto si usa il primo indirizzo locale stampato dal server. */
+  /** Solo fase "server": come capire che l'app è pronta. Assente = 'url'. */
+  readyCheck?: ReadyCheck;
+  /** Solo fase "server" con readyCheck 'output': testo (o /espressione/) atteso in una riga dell'output. */
+  readyPattern?: string;
+  /** Solo fase "server": URL da controllare ('url') o da mostrare come link; se vuoto si usa il primo indirizzo locale stampato. */
   url?: string;
   /** Solo fase "server": sottocartella del progetto in cui avviare il comando. */
   subdir?: string;
@@ -38,7 +42,17 @@ export interface PhaseConfig {
   nodeVersion?: string;
 }
 
-export type ServiceStatus = 'avvio' | 'attivo' | 'fermato' | 'terminato' | 'errore' | 'simulato';
+export type ServiceStatus = 'avvio' | 'attivo' | 'fermato' | 'terminato' | 'errore' | 'simulato' | 'completato';
+
+/**
+ * Come la fase "Avvio app" capisce che l'app è pronta:
+ * - url: un indirizzo risponde (web, API, sito su IIS o in un container);
+ * - output: compare un testo nell'output (emulatori, build in modalità watch, app mobile);
+ * - process: il programma resta aperto qualche secondo (app desktop);
+ * - exit: il comando termina con codice 0 (build, installazione su un dispositivo, deploy locale).
+ */
+export type ReadyCheck = 'url' | 'output' | 'process' | 'exit';
+export const READY_CHECKS: readonly ReadyCheck[] = ['url', 'output', 'process', 'exit'];
 
 export interface ServiceState {
   command: string;
@@ -52,6 +66,9 @@ export interface ServiceState {
   log: string[];
   /** Versione di Node usata per il comando. */
   node?: string;
+  readyCheck?: ReadyCheck;
+  /** Nessun comando: Regia verifica soltanto un servizio già attivo (es. IIS) e non lo avvia né lo ferma. */
+  external?: boolean;
 }
 
 export interface WorkflowNode {

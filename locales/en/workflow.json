@@ -16,12 +16,12 @@
     "maxParallelRange": "Parallel phases must be between 1 and 8.",
     "phaseNoName": "Phase without a name.",
     "notConnected": "Phase \"{name}\" is not connected to any other phase.",
-    "serverNoCommand": "Phase \"{name}\" has no command to start.",
+    "serverNoCommand": "Phase \"{name}\" has neither a command to start nor an address to check.",
     "invalidUrl": "Invalid URL in \"{name}\" (e.g. http://localhost:5173).",
     "subdirNotRelative": "The subfolder of \"{name}\" must be a relative path inside the project.",
     "invalidNodeVersion": "Invalid Node version in \"{name}\" (e.g. 24, 22.23, >=22.23.4).",
-    "readyTimeoutRange": "The wait time of \"{name}\" must be between 5 and 900 seconds.",
-    "serverNoSuccessor": "Server \"{name}\" has no following phases: it will be stopped as soon as the run ends. Add an approval after it to have time to check it.",
+    "readyTimeoutRange": "The wait time of \"{name}\" must be between 5 and 3600 seconds.",
+    "serverNoSuccessor": "The app of \"{name}\" has no following phases: it will be stopped as soon as the run ends. Add an approval after it to have time to check it.",
     "approvalNoPredecessor": "Approval \"{name}\" must have at least one previous phase to approve.",
     "noInstructions": "Phase \"{name}\" has no instructions.",
     "noTools": "Phase \"{name}\" has no tools: it can only reply with text.",
@@ -35,7 +35,9 @@
     "invalidBudget": "Invalid spending limit in \"{name}\".",
     "invalidModel": "Invalid model name in \"{name}\".",
     "skillsMissing": "{name}: some selected skills are no longer available ({skills}); the phase will run without them.",
-    "skillsNone": "{name}: no skills found in the workflow's active sources."
+    "skillsNone": "{name}: no skills found in the workflow's active sources.",
+    "readyPatternMissing": "Phase \"{name}\" waits for a text in the output: enter which one.",
+    "externalNeedsUrl": "Phase \"{name}\" starts nothing: it needs the address to check, with the \"An address responds\" criterion."
   },
   "insights": {
     "corrections": {

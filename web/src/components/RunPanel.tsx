@@ -243,6 +243,7 @@ function ServiceCard({ run, nodeId, embedded = false }: { run: Run; nodeId: stri
   const label = run.snapshot.nodes.find((x) => x.id === nodeId)?.data.label ?? nodeId;
   const live = run.status === 'in_corso' || run.status === 'attesa_intervento';
   const up = svc.status === 'attivo' || svc.status === 'simulato';
+  const done = svc.status === 'completato';
   const act = async (a: 'ferma' | 'riavvia') => {
     try { await api.serviceAction(run.id, nodeId, a); } catch (e) { toast((e as Error).message, 'bad'); }
   };
@@ -250,16 +251,18 @@ function ServiceCard({ run, nodeId, embedded = false }: { run: Run; nodeId: stri
     <div className={`service ${embedded ? 'embedded' : 'card'} ${up ? 'up' : ''}`}>
       <div className="service-head">
         <KindTile kind="server" size="sm" /><strong>{label}</strong>
-        <span className={`pill ${up ? 'tone-good' : svc.status === 'avvio' ? 'tone-active' : 'tone-idle'}`}><span className={`dot ${up ? 'on' : ''}`} />{serviceLabel(svc.status)}</span>
+        <span className={`pill ${up || done ? 'tone-good' : svc.status === 'avvio' ? 'tone-active' : 'tone-idle'}`}><span className={`dot ${up ? 'on' : ''}`} />{serviceLabel(svc.status)}</span>
       </div>
       {up && svc.url && (
         <a className="service-link" href={svc.url} target="_blank" rel="noreferrer"><Globe />{svc.url}<ExternalLink /></a>
       )}
-      <div className="service-meta mono">{svc.command}{svc.node ? ` · Node ${svc.node}` : ''}{svc.pid ? ` · PID ${svc.pid}` : ''}</div>
+      {up && !svc.url && !svc.external && <p className="muted small">{t('run.service.openOnDevice')}</p>}
+      {svc.external && <p className="muted small">{t('run.service.external')}</p>}
+      {svc.command && <div className="service-meta mono">{svc.command}{svc.node ? ` · Node ${svc.node}` : ''}{svc.pid && !done ? ` · PID ${svc.pid}` : ''}</div>}
       <div className="actions">
-        {live && up && <button className="btn sm ghost" onClick={() => act('ferma')}><Square />{t('run.service.stop')}</button>}
+        {live && up && !svc.external && <button className="btn sm ghost" onClick={() => act('ferma')}><Square />{t('run.service.stop')}</button>}
         {live && svc.status !== 'avvio' && <button className="btn sm ghost" onClick={() => act('riavvia')}><RotateCcw />{up ? t('run.service.restart') : t('run.service.startAgain')}</button>}
-        {!live && <span className="muted small">{t('run.service.stoppedAtEnd')}</span>}
+        {!live && !svc.external && !done && <span className="muted small">{t('run.service.stoppedAtEnd')}</span>}
       </div>
       {svc.log.length > 0 && (
         <details className="logbox">

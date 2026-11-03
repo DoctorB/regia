@@ -30,8 +30,8 @@
       "hint": "Si ferma finché non decidi tu"
     },
     "server": {
-      "label": "Server locale",
-      "hint": "Avvia l'anteprima nel browser"
+      "label": "Avvio app",
+      "hint": "Web, desktop, mobile o un sito su IIS"
     },
     "personalizzata": {
       "label": "Personalizzata",
@@ -62,7 +62,8 @@
     "simulato": "Attivo (simulato)",
     "fermato": "Fermato",
     "terminato": "Chiuso",
-    "errore": "Errore"
+    "errore": "Errore",
+    "completato": "Completato"
   },
   "app": {
     "loadError": "Errore: {message}",
@@ -138,7 +139,7 @@
     "workdir": "Cartella di lavoro",
     "writersTitle": "Possono modificare file o eseguire comandi:",
     "writersText": "{list}. Gli strumenti non concessi vengono negati.",
-    "serversTitle": "Comandi locali avviati da Regia:",
+    "serversTitle": "Comandi locali avviati o indirizzi verificati da Regia:",
     "subscription": "Il consumo rientra nei limiti del tuo piano {plan} (e nei crediti extra solo se attivi): i dollari mostrati sono un equivalente a prezzi di listino calcolato dal SDK. La documentazione del SDK chiede ai prodotti di terze parti di usare chiavi API: per uso personale e locale il login funziona, ma verifica le regole della tua organizzazione.",
     "apiKeyNote": "Con la chiave API il consumo è fatturato a token: il costo effettivo si verifica nella Console.",
     "skills": "Skill",

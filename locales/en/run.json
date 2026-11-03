@@ -51,7 +51,9 @@
       "restart": "Restart",
       "startAgain": "Start again",
       "stoppedAtEnd": "Stopped at the end of the run.",
-      "output": "Output"
+      "output": "Output",
+      "external": "External service: Regia checks it but neither starts nor stops it.",
+      "openOnDevice": "Check the app on the desktop, emulator or device, then decide."
     }
   },
   "actions": {
@@ -337,17 +339,42 @@
     "phaseName": "Phase name",
     "phaseKind": "Phase type",
     "server": {
-      "title": "Server",
-      "command": "Command to start",
-      "url": "Address to open",
-      "urlHint": "Empty: the first local address printed by the server.",
+      "title": "Start and check",
+      "command": "Command",
+      "url": "Address",
+      "urlHint": "Empty: the first local address printed by the app.",
       "subdir": "Subfolder",
       "subdirPlaceholder": "e.g. web",
-      "wait": "Startup wait (s)",
+      "wait": "Maximum wait (s)",
       "node": "Node version",
-      "nodeHint": "Empty: detected from the project's .nvmrc or engines.",
+      "nodeHint": "Node projects only. Empty: detected from .nvmrc or engines.",
+      "hint": "For Node projects Regia picks the right version and installs dependencies if missing. The app is closed at the end of the run. No cost: it doesn't use agents.",
+      "readyCheck": "Ready when",
+      "ready": {
+        "url": {
+          "label": "An address responds",
+          "hint": "Web, API, site on IIS or in a container."
+        },
+        "output": {
+          "label": "A text appears in the output",
+          "hint": "Mobile app on an emulator or device, build in watch mode."
+        },
+        "process": {
+          "label": "The program stays open",
+          "hint": "Desktop app: the window stays open until you approve."
+        },
+        "exit": {
+          "label": "The command succeeds",
+          "hint": "Build, install on a device, local deploy (e.g. to IIS)."
+        }
+      },
+      "commandHint": "Run in the project folder with the system shell: any tool (npm, dotnet, flutter, gradlew, msbuild, docker, scripts).",
+      "commandHintUrl": "Empty: Regia only checks a service that is already running, for example a site on IIS, without starting or stopping it.",
+      "urlHintOther": "Optional: a link to show in the approval.",
+      "pattern": "Expected text",
+      "patternHint": "Plain text (case-insensitive) or /regular expression/.",
       "nodePlaceholder": "automatic",
-      "hint": "Regia picks the right Node version among those installed, installs dependencies if missing and keeps the server running until the end of the run. No cost: it doesn't use agents."
+      "commandPlaceholderUrl": "e.g. npm run dev, or empty for a site on IIS"
     },
     "task": {
       "title": "Task",

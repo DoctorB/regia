@@ -29,7 +29,15 @@ export function phasePreset(kind: PhaseKind, t: Translate): PhaseConfig {
 
 export interface PhaseSnippet { id: string; label: string; hint: string; data: PhaseConfig }
 
+const APP: Base = { kind: 'server', model: '', allowedTools: [], contextMode: 'nessuno', reuseResult: false, subdir: '' };
+
 const SNIPPETS: { id: string; base: Base }[] = [
+  { id: 'app-web', base: { ...APP, command: 'npm run dev', url: '', readyCheck: 'url', readyTimeoutSec: 90 } },
+  { id: 'app-iis', base: { ...APP, command: '', url: 'http://localhost/', readyCheck: 'url', readyTimeoutSec: 30 } },
+  { id: 'app-desktop', base: { ...APP, command: 'dotnet run', url: '', readyCheck: 'process', readyTimeoutSec: 120 } },
+  // Solo su macOS con Xcode: compila per il simulatore, installa e apre l'app. Da adattare: schema, nome dell'app e bundle id.
+  { id: 'app-ios', base: { ...APP, command: "xcodebuild -scheme App -destination 'platform=iOS Simulator,name=iPhone 16' -derivedDataPath build build && (xcrun simctl boot 'iPhone 16' || true) && open -a Simulator && xcrun simctl install booted build/Build/Products/Debug-iphonesimulator/App.app && xcrun simctl launch booted com.example.App", url: '', readyCheck: 'exit', readyTimeoutSec: 900 } },
+  { id: 'app-mobile', base: { ...APP, command: 'flutter run', url: '', readyCheck: 'output', readyPattern: 'Flutter run key commands', readyTimeoutSec: 600 } },
   {
     id: 'pubblicazione',
     base: { kind: 'personalizzata', model: 'sonnet', allowedTools: ['Read', 'Glob', 'Grep', 'Bash'], maxTurns: 15, maxBudgetUsd: 0.4, contextMode: 'sintesi', reuseResult: false },
@@ -42,6 +50,9 @@ export function phaseSnippets(t: Translate): PhaseSnippet[] {
     id,
     label: t(`snippets.${id}.label`),
     hint: t(`snippets.${id}.hint`),
-    data: { ...structuredClone(base), label: t(`snippets.${id}.phaseLabel`), role: t(`snippets.${id}.role`), instructions: t(`snippets.${id}.instructions`) },
+    // Le fasi Avvio app non hanno ruolo né istruzioni per un agente.
+    data: base.kind === 'server'
+      ? { ...structuredClone(base), label: t(`snippets.${id}.phaseLabel`), role: '', instructions: t('presets.server.instructions') }
+      : { ...structuredClone(base), label: t(`snippets.${id}.phaseLabel`), role: t(`snippets.${id}.role`), instructions: t(`snippets.${id}.instructions`) },
   }));
 }

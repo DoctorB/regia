@@ -30,8 +30,8 @@
       "hint": "Stops until you decide"
     },
     "server": {
-      "label": "Local server",
-      "hint": "Starts the preview in the browser"
+      "label": "Run app",
+      "hint": "Web, desktop, mobile or a site on IIS"
     },
     "personalizzata": {
       "label": "Custom",
@@ -62,7 +62,8 @@
     "simulato": "Running (simulated)",
     "fermato": "Stopped",
     "terminato": "Closed",
-    "errore": "Error"
+    "errore": "Error",
+    "completato": "Completed"
   },
   "app": {
     "loadError": "Error: {message}",
@@ -138,7 +139,7 @@
     "workdir": "Working folder",
     "writersTitle": "Can modify files or run commands:",
     "writersText": "{list}. Tools not granted are denied.",
-    "serversTitle": "Local commands started by Regia:",
+    "serversTitle": "Local commands started or addresses checked by Regia:",
     "subscription": "Usage counts against the limits of your {plan} plan (and extra credits only if enabled): the dollar amounts shown are a list-price equivalent computed by the SDK. The SDK documentation asks third-party products to use API keys: for personal, local use the login works, but check your organization's policies.",
     "apiKeyNote": "With an API key, usage is billed per token: check the actual cost in the Console.",
     "skills": "Skills",

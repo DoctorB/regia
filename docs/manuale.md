@@ -28,6 +28,8 @@ npm start
 
 Apri **http://127.0.0.1:4317** e lascia aperto il terminale finché usi Regia. Chiudendolo si fermano anche le esecuzioni in corso.
 
+**Sistemi**: Windows, macOS e Linux. Per le app iOS serve un Mac con Xcode (vedi [App iOS su Mac](#app-ios-su-mac)).
+
 **Requisiti**: Node.js 20 o superiore. Per le esecuzioni reali serve [Claude Code](https://docs.claude.com/en/docs/claude-code) con un login attivo (verifica con `claude auth status`), oppure la variabile `ANTHROPIC_API_KEY`. Non serve aprire Claude Code: Regia usa le sue credenziali.
 
 ---
@@ -63,7 +65,7 @@ Apri **http://127.0.0.1:4317** e lascia aperto il terminale finché usi Regia. C
 |---|---|
 | Analisi, Implementazione, Test, Revisione, Personalizzata | Lavoro svolto da un agente |
 | **Approvazione umana** | Il workflow si ferma finché non approvi o respingi |
-| **Server locale** | Regia avvia il server di sviluppo (es. `npm run dev`) per farti vedere il risultato nel browser |
+| **Avvio app** | Regia avvia l'app per fartela verificare: web, desktop, mobile, oppure controlla un sito già servito da IIS |
 | **Pubblicazione** (fase pronta) | Commit, push ed eventuali pubblicazioni o GitHub Actions. Mettila dopo un'approvazione |
 
 ---
@@ -88,11 +90,34 @@ Quando il workflow si ferma, la scheda **Stato** mostra cosa serve:
 - **Approvazione**: leggi le sintesi delle fasi precedenti e controlla il progetto (`git diff`), poi **Approva** oppure **Respingi con commento**: la fase che ha prodotto il lavoro riprende da dove era con il tuo commento, e test e revisione vengono rifatti.
 - **Fase fallita o bloccata**: **Riprova da capo**, **Riprendi la sessione** (con un messaggio per l'agente), **Salta la fase** o **Annulla esecuzione**.
 
-### Anteprima nel browser
+### Verificare l'app: web, desktop, mobile
 
 ![Anteprima locale](img/05-anteprima-locale.png)
 
-La fase **Server locale** avvia il server del progetto e mette il link nella richiesta di approvazione: aprilo, verifica, poi approva. Ferma e riavvia sono a portata di clic. Regia sceglie da sola la versione di Node richiesta dal progetto (`.nvmrc`, `engines`), installa le dipendenze se mancano e, se manca la versione di Node giusta, ti propone di installarla. Il server viene chiuso a fine esecuzione.
+Regia non è legata a una tecnologia: gli agenti lavorano con gli strumenti del progetto (npm, dotnet, msbuild, gradle, flutter, Xcode, docker…) tramite lo strumento Bash. La fase **Avvio app** serve a vedere il risultato prima di approvare. Esegue un comando qualsiasi nella cartella del progetto e attende che l'app sia pronta, secondo il criterio scelto in **Quando è pronta**:
+
+| Criterio | Esempi |
+|---|---|
+| **Risponde un indirizzo** | Server di sviluppo web (`npm run dev`, `dotnet watch`), API, container. **Senza comando** verifica soltanto un sito già attivo, ad esempio su **IIS**: Regia non lo avvia né lo ferma |
+| **Compare un testo nell'output** | App mobile su emulatore o dispositivo (`flutter run` → "Flutter run key commands"), build in modalità watch |
+| **Il programma resta aperto** | App desktop (`dotnet run`, `npm run electron`, `python app.py`): la finestra resta aperta finché non approvi |
+| **Il comando termina con successo** | Build, installazione su un dispositivo (`gradlew installDebug`), app iOS nel simulatore (`xcodebuild` + `xcrun simctl`), deploy locale su IIS (`msdeploy`, script PowerShell) |
+
+Nella palette, tra le fasi **pronte all'uso**, trovi **Anteprima web**, **Sito su IIS**, **App desktop**, **App iOS (simulatore)** e **App mobile** già impostate: basta adattare comando e indirizzo.
+
+Nella richiesta di approvazione compaiono il link (se c'è), lo stato, le ultime righe di output e i pulsanti Ferma / Riavvia. L'app viene chiusa a fine esecuzione; dopo una correzione chiesta in un'approvazione viene riavviata, così verifichi la versione aggiornata.
+
+Per i progetti Node (con `package.json`) Regia fa anche di più: sceglie da sola la versione di Node richiesta (`.nvmrc`, `engines`), installa le dipendenze se mancano e, se manca la versione giusta, ti propone di installarla.
+
+### App iOS su Mac
+
+Su un Mac con **Xcode** (e i suoi strumenti da riga di comando: `xcode-select --install`) Regia orchestra anche le app iOS: Regia si installa e si avvia come su Windows.
+
+- **Agenti**: compilano e lanciano i test con `xcodebuild` tramite Bash; abilita Bash nelle fasi che devono farlo. Le compilazioni sono lente: alza il numero massimo di turni e il limite di spesa delle fasi interessate.
+- **Fase pronta App iOS (simulatore)**: compila per il simulatore, lo avvia, installa e apre l'app, con criterio "Il comando termina con successo" (attesa fino a 15 minuti). Prima di usarla adatta tre valori nel comando: lo **schema** (`-scheme App`), il **nome dell'app** (`App.app`) e il **bundle id** (`com.example.App`); se serve cambia anche il simulatore (`iPhone 16`, l'elenco è in `xcrun simctl list devices`). Per un workspace CocoaPods aggiungi `-workspace NomeApp.xcworkspace`.
+- **Altri framework**: Flutter → `flutter run -d "iPhone 16"` con testo atteso `Flutter run key commands`; React Native → `npx react-native run-ios` con "Il comando termina con successo"; Expo → `npx expo run:ios` con testo atteso `Logs for your project`.
+- **Dopo la fase** metti un'**Approvazione**: guardi l'app nel simulatore e decidi.
+- **Dispositivo fisico, TestFlight, App Store**: servono account Apple Developer, certificati e profili già configurati sul Mac; Regia e gli agenti usano quelli presenti, non li creano. La prima volta macOS può chiedere permessi per Xcode o per il simulatore: vanno accettati a mano.
 
 ---
 
@@ -173,7 +198,7 @@ Le fasi con un agente possono usare le **skill** di Claude Code: procedure scrit
 |---|---|
 | "Esegui" disattivato | Il workflow ha errori (badge in alto) |
 | Nessun login rilevato | Esegui `claude` una volta e accedi, oppure imposta `ANTHROPIC_API_KEY` prima di `npm start` |
-| Il server locale non parte | Leggi il motivo nella richiesta di intervento: versione di Node, dipendenze, porta occupata. Usa i pulsanti proposti oppure correggi il comando nella fase |
+| L'app non parte o non risulta pronta | Leggi il motivo nella richiesta di intervento: comando terminato con errore, testo atteso mai comparso, indirizzo che non risponde, versione di Node, dipendenze, porta occupata. Usa i pulsanti proposti oppure correggi comando o criterio "Quando è pronta" nella fase |
 | L'esecuzione risulta "interrotta" | Regia è stato chiuso mentre era attiva: aprila e usa **Continua…** |
 | La spesa è vicina al limite | Alza il limite nelle impostazioni del workflow o guarda la scheda Ottimizza |
 

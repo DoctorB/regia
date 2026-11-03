@@ -16,12 +16,12 @@
     "maxParallelRange": "Le fasi in parallelo devono essere tra 1 e 8.",
     "phaseNoName": "Fase senza nome.",
     "notConnected": "La fase \"{name}\" non è collegata a nessun'altra.",
-    "serverNoCommand": "La fase \"{name}\" non ha un comando da avviare.",
+    "serverNoCommand": "La fase \"{name}\" non ha né un comando da avviare né un indirizzo da verificare.",
     "invalidUrl": "URL non valido in \"{name}\" (es. http://localhost:5173).",
     "subdirNotRelative": "La sottocartella di \"{name}\" deve essere un percorso relativo dentro il progetto.",
     "invalidNodeVersion": "Versione di Node non valida in \"{name}\" (es. 24, 22.23, >=22.23.4).",
-    "readyTimeoutRange": "Il tempo di attesa di \"{name}\" deve essere tra 5 e 900 secondi.",
-    "serverNoSuccessor": "Il server \"{name}\" non ha fasi successive: verrà fermato appena l'esecuzione termina. Aggiungi un'approvazione dopo per avere il tempo di verificarlo.",
+    "readyTimeoutRange": "Il tempo di attesa di \"{name}\" deve essere tra 5 e 3600 secondi.",
+    "serverNoSuccessor": "L'app di \"{name}\" non ha fasi successive: verrà fermata appena finisce l'esecuzione. Aggiungi un'approvazione dopo, per avere il tempo di verificarla.",
     "approvalNoPredecessor": "L'approvazione \"{name}\" deve avere almeno una fase precedente da approvare.",
     "noInstructions": "La fase \"{name}\" non ha istruzioni.",
     "noTools": "La fase \"{name}\" non ha strumenti: potrà solo rispondere a testo.",
@@ -35,7 +35,9 @@
     "invalidBudget": "Limite di spesa non valido in \"{name}\".",
     "invalidModel": "Nome modello non valido in \"{name}\".",
     "skillsMissing": "{name}: alcune skill scelte non sono più disponibili ({skills}); la fase proseguirà senza.",
-    "skillsNone": "{name}: nessuna skill trovata nelle fonti attive del workflow."
+    "skillsNone": "{name}: nessuna skill trovata nelle fonti attive del workflow.",
+    "readyPatternMissing": "La fase \"{name}\" attende un testo nell'output: indica quale.",
+    "externalNeedsUrl": "La fase \"{name}\" non avvia nulla: serve l'indirizzo da verificare, con il criterio \"Risponde un indirizzo\"."
   },
   "insights": {
     "corrections": {

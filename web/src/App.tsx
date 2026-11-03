@@ -1,9 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ReactFlowProvider } from '@xyflow/react';
-import {
-  Activity, Check, ChevronDown, CircleAlert, CircleCheck, FilePlus2, FlaskConical, GitCompare, KeyRound, Languages, PenLine, Play, Rocket, Save, ScrollText, ShieldAlert,
-  LayoutList, Monitor, Moon, Search, Sun, TriangleAlert, Workflow as WorkflowIcon,
-} from 'lucide-react';
+import { Activity, TabletSmartphone, Check, ChevronDown, CircleAlert, CircleCheck, FilePlus2, FlaskConical, GitCompare, KeyRound, Languages, PenLine, Play, Rocket, Save, ScrollText, ShieldAlert, LayoutList, Monitor, Moon, Search, Sun, TriangleAlert, Workflow as WorkflowIcon, Server, Smartphone, Globe } from 'lucide-react';
 import {
   WRITE_TOOLS, isAgentKind, type EnvInfo, type PhaseConfig, type PhaseKind, type Run, type RunSummary, type ValidationIssue, type Workflow,
 } from '../../shared/types.ts';
@@ -383,7 +380,10 @@ export function App() {
               {phaseSnippets(t).map((s) => (
                 <button key={s.id} className="pal-item" draggable onDragStart={(e) => { e.dataTransfer.setData('application/regia-phase', `snippet:${s.id}`); e.dataTransfer.effectAllowed = 'copy'; }}
                   onClick={() => addPhase(s.data.kind, s.data)} title={s.hint}>
-                  <span className="kind-tile kind-publish" aria-hidden><Rocket /></span><span className="pal-text"><span>{s.label}</span><small>{t('palette.publishSub')}</small></span>
+                  {s.data.kind === 'server'
+                    ? <span className="kind-tile kind-server" aria-hidden>{s.id === 'app-iis' ? <Server /> : s.id === 'app-desktop' ? <Monitor /> : s.id === 'app-mobile' ? <Smartphone /> : s.id === 'app-ios' ? <TabletSmartphone /> : <Globe />}</span>
+                    : <span className="kind-tile kind-publish" aria-hidden><Rocket /></span>}
+                  <span className="pal-text"><span>{s.label}</span><small>{s.data.kind === 'server' ? s.hint : t('palette.publishSub')}</small></span>
                 </button>
               ))}
             </div>
@@ -489,7 +489,7 @@ function RealRunDialog({ env, wf, busy, onCancel, onConfirm }: { env: EnvInfo | 
           <ShieldAlert />
           <div>
             {writers.length > 0 && <p><strong>{t('realRun.writersTitle')}</strong> {t('realRun.writersText', { list: writers.map((n) => n.data.label).join(', ') })}</p>}
-            {servers.length > 0 && <p><strong>{t('realRun.serversTitle')}</strong> {servers.map((n) => <code key={n.id}>{n.data.command}</code>)}</p>}
+            {servers.length > 0 && <p><strong>{t('realRun.serversTitle')}</strong> {servers.map((n) => <code key={n.id}>{n.data.command?.trim() || n.data.url}</code>)}</p>}
           </div>
         </div>
       )}

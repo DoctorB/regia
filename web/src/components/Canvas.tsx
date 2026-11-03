@@ -55,7 +55,7 @@ function PhaseNode({ data, selected }: NodeProps<Node<PhaseData>>) {
       {!live && (
         <div className="node-foot">
           {agent && <><span>{t('canvas.tools', { count: cfg.allowedTools.length })}</span><span>{cfg.maxTurns ? t('canvas.turns', { count: cfg.maxTurns }) : t('canvas.freeTurns')}</span>{cfg.maxBudgetUsd ? <span>{t('canvas.maxBudget', { amount: cfg.maxBudgetUsd })}</span> : null}{cfg.skills === 'all' ? <span>{t('canvas.skillsAll')}</span> : cfg.skills?.length ? <span>{t('canvas.skills', { count: cfg.skills.length })}</span> : null}{cfg.reuseResult && <span>{t('canvas.reuse')}</span>}</>}
-          {cfg.kind === 'server' && <code className="node-cmd">{cfg.command || t('canvas.noCommand')}</code>}
+          {cfg.kind === 'server' && <code className="node-cmd">{cfg.command?.trim() || cfg.url?.trim() || t('canvas.noCommand')}</code>}
           {cfg.kind === 'approvazione' && <span>{t('canvas.waitsForYou')}</span>}
         </div>
       )}

@@ -13,7 +13,7 @@ Regia is a local app for designing development workflows as a diagram, running t
 - **Visual editor**: analysis, implementation, test, review, human approval, local server and publishing phases, connected into a flow. Start from ready-made presets.
 - **Live execution**: the state of every phase on the diagram, plus events, results, errors and the decisions declared by the agents.
 - **Interventions**: approve, reject with a comment (the agent resumes its own session), retry, skip, cancel.
-- **Local preview**: Regia starts the project's dev server with the right Node version and gives you the link to check before approving.
+- **Check the app before approving**: web, desktop or mobile, iOS included on a Mac. Regia runs the project's own command (npm, dotnet, flutter, gradle, msbuild…) and waits for an address, an output line, an open window or a successful exit; it can also just check a site already served by IIS. For Node projects it also picks the right Node version.
 - **Usage tracking**: tokens, cache, model and estimated cost per run, phase and agent, with no double counting across subagents and resumed sessions. Spending limits per run and per phase.
 - **Optimization**: suggestions based on measured data, each with its quality trade-off, and a side-by-side comparison of two runs.
 - **Continue**: add phases to finished work without re-running everything.
@@ -24,7 +24,7 @@ Regia is a local app for designing development workflows as a diagram, running t
 
 ## Quick start
 
-Requirements: Node.js 20+. For real runs, Claude Code with an active login, or `ANTHROPIC_API_KEY`.
+Runs on Windows, macOS and Linux (iOS apps need a Mac with Xcode). Requirements: Node.js 20+. For real runs, Claude Code with an active login, or `ANTHROPIC_API_KEY`.
 
 ```bash
 git clone https://github.com/DoctorB/regia.git

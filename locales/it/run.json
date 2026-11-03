@@ -51,7 +51,9 @@
       "restart": "Riavvia",
       "startAgain": "Avvia di nuovo",
       "stoppedAtEnd": "Fermato a fine esecuzione.",
-      "output": "Output"
+      "output": "Output",
+      "external": "Servizio esterno: Regia lo verifica ma non lo avvia né lo ferma.",
+      "openOnDevice": "Controlla l'app sul desktop, sull'emulatore o sul dispositivo, poi decidi."
     }
   },
   "actions": {
@@ -337,17 +339,42 @@
     "phaseName": "Nome della fase",
     "phaseKind": "Tipo di fase",
     "server": {
-      "title": "Server",
-      "command": "Comando da avviare",
-      "url": "Indirizzo da aprire",
-      "urlHint": "Vuoto: il primo indirizzo locale stampato dal server.",
+      "title": "Avvio e verifica",
+      "command": "Comando",
+      "url": "Indirizzo",
+      "urlHint": "Vuoto: il primo indirizzo locale stampato dall'app.",
       "subdir": "Sottocartella",
       "subdirPlaceholder": "es. web",
-      "wait": "Attesa avvio (s)",
+      "wait": "Attesa massima (s)",
       "node": "Versione di Node",
-      "nodeHint": "Vuoto: automatica da .nvmrc o engines del progetto.",
+      "nodeHint": "Solo progetti Node. Vuoto: automatica da .nvmrc o engines.",
+      "hint": "Per i progetti Node Regia sceglie la versione giusta e installa le dipendenze se mancano. L'app viene chiusa a fine esecuzione. Nessun costo: non usa agenti.",
+      "readyCheck": "Quando è pronta",
+      "ready": {
+        "url": {
+          "label": "Risponde un indirizzo",
+          "hint": "Web, API, sito su IIS o in un container."
+        },
+        "output": {
+          "label": "Compare un testo nell'output",
+          "hint": "App mobile su emulatore o dispositivo, build in modalità watch."
+        },
+        "process": {
+          "label": "Il programma resta aperto",
+          "hint": "App desktop: la finestra resta aperta finché non approvi."
+        },
+        "exit": {
+          "label": "Il comando termina con successo",
+          "hint": "Build, installazione su un dispositivo, deploy locale (es. su IIS)."
+        }
+      },
+      "commandHint": "Eseguito nella cartella del progetto con la shell di sistema: qualsiasi strumento (npm, dotnet, flutter, gradlew, msbuild, docker, script).",
+      "commandHintUrl": "Vuoto: Regia verifica soltanto un servizio già attivo, ad esempio un sito su IIS, senza avviarlo né fermarlo.",
+      "urlHintOther": "Facoltativo: un link da mostrare nell'approvazione.",
+      "pattern": "Testo atteso",
+      "patternHint": "Testo semplice (maiuscole indifferenti) oppure /espressione regolare/.",
       "nodePlaceholder": "automatica",
-      "hint": "Regia sceglie la versione di Node giusta tra quelle installate, installa le dipendenze se mancano e tiene il server attivo fino alla fine dell'esecuzione. Nessun costo: non usa agenti."
+      "commandPlaceholderUrl": "es. npm run dev, oppure vuoto per un sito su IIS"
     },
     "task": {
       "title": "Compito",

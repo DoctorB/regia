@@ -240,7 +240,7 @@ test('fase server reale: avvio, indirizzo dall\'output, arresto a fine esecuzion
   assert.equal(svc.status, 'attivo');
   assert.match(svc.url!, /^http:\/\/127\.0\.0\.1:\d+\/$/);
   assert.equal(await (await fetch(svc.url!)).text(), 'ok');
-  assert.match(run.nodes.srv.output!, /Server locale attivo/);
+  assert.match(run.nodes.srv.output!, /App attiva: http/);
   await eng.human('ok', 'approva');
   await waitFor(() => run.status === 'completata');
   assert.equal(svc.status, 'fermato');
