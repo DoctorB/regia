@@ -92,9 +92,9 @@ export function UsageView({ run }: { run: Run }) {
           return (
             <div key={p.node.id} className="bar-row">
               <span className="bar-label ellipsis">{p.node.data.label}</span>
-              <span className="bar-track stack" style={{ width: `${(tot / maxTok) * 100}%` }}>
+              <span className="bar-track bar-stack" style={{ width: `${(tot / maxTok) * 100}%` }}>
                 {SERIES.map((s) => p[s.key] > 0 && (
-                  <span key={s.key} className={`seg ${s.cls}`} style={{ flexGrow: p[s.key] }} title={`${p.node.data.label} · ${s.label}: ${fmtTok(p[s.key])}`} />
+                  <span key={s.key} className={`bar-seg ${s.cls}`} style={{ flexGrow: p[s.key] }} title={`${p.node.data.label} · ${s.label}: ${fmtTok(p[s.key])}`} />
                 ))}
               </span>
               <span className="bar-val mono">{fmtTok(tot)}</span>

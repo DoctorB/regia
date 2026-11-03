@@ -34,7 +34,7 @@ Open **http://127.0.0.1:4317** and keep the terminal open while you use Regia. C
 
 ![New workflow](img/01-nuovo-workflow.png)
 
-1. **Nuovo** (New) → pick a preset: *Correggi un bug* (fix a bug), *Nuova funzionalità* (new feature), *Revisione del codice* (read-only code review), *Aggiungi test* (add tests), *Refactoring sicuro* (safe refactoring) or *Vuoto* (empty).
+1. On first start you see the welcome screen; later, open the menu with the workflow name at the top left → **Nuovo workflow…** (new workflow). Pick a preset: *Correggi un bug* (fix a bug), *Nuova funzionalità* (new feature), *Revisione del codice* (read-only code review), *Aggiungi test* (add tests), *Refactoring sicuro* (safe refactoring) or *Vuoto* (empty).
 2. Enter the **project folder**. Regia checks whether it is a git repository and whether it has uncommitted changes.
    > Before a real run, **commit or stash** your changes: you can then review the agents' work with `git diff` and undo it with `git checkout .`.
 3. Write the **goal**: what needs to be done and when it counts as finished. The more precise it is, the fewer rounds it takes.
@@ -45,15 +45,15 @@ Open **http://127.0.0.1:4317** and keep the terminal open while you use Regia. C
 
 ![Editor](img/02-editor.png)
 
-- **Add** phases from the palette on the left. If a phase is selected, the new one is connected right after it.
-- **Connect** two phases by dragging from the right handle of one to the left handle of the other; select a connection or a phase and press **Delete** to remove it.
+- **Add** phases from the palette on the left: drag them onto the diagram, or click. If a phase is selected, the new one is connected right after it. **Riordina** (arrange) lays the diagram out top to bottom.
+- **Connect** two phases by dragging from the bottom handle of one to the top handle of the other; select a connection or a phase and press **Delete** to remove it.
 - **Configure** the selected phase in the right panel:
   - *Istruzioni* (instructions): what it must do, ideally naming the files to look at.
-  - *Modello* (model): `haiku` for simple tasks (tests, checks), `sonnet` as the balanced choice, `opus` for the hardest tasks.
-  - *Strumenti consentiti* (allowed tools): only those needed. Tools that edit files or run commands are shown in red.
-  - *Max turni* (max turns) and *Limite fase* (phase spending limit): safety caps.
+  - *Modello* (model): Haiku ($) for simple tasks (tests, checks), Sonnet ($$) as the balanced choice, Opus ($$$) for the hardest tasks.
+  - *Strumenti* (tools): turn on only those needed. Tools with a pencil icon edit files or run commands.
+  - *Turni massimi* (max turns) and *Spesa massima* (spending limit): safety caps.
 - With no phase selected, the panel shows the **workflow settings**: folder, goal, spending limit per run, phases in parallel, rules.
-- The badge at the top tells you whether the workflow is **valido** (valid); errors block the start. **Salva** (save) with the button or `Ctrl+S`.
+- The indicator at the top tells you whether the workflow is **Valido** (valid): click it to see errors and warnings and jump to the phase concerned. Errors block the start. **Salva** (save) appears when there are changes (also `Ctrl+S`).
 
 ### Phase types
 
@@ -68,12 +68,12 @@ Open **http://127.0.0.1:4317** and keep the terminal open while you use Regia. C
 
 ## 4. Try first, then run for real
 
-- **▶ Avvia prova** (start trial run): runs everything with simulated agents. Use it to check the flow and the interactions, for free.
-- **▶ Esecuzione reale…** (real run): shows a summary (authentication, models, phases that can edit files, local commands, spending limit) and starts only after you confirm.
+- **Prova** (trial run): runs everything with simulated agents. Use it to check the flow and the interactions, for free.
+- **Esegui** (run for real): shows a summary (authentication, models, phases that can edit files, local commands, spending limit) and starts only after you confirm.
 
 ![Run](img/03-esecuzione.png)
 
-On the diagram each phase shows its state (waiting, active, completed, failed, blocked, waiting for you), what it is doing and the last declared decision. **Annulla** (cancel) at the top right stops everything.
+On the diagram each phase shows its state (waiting, active, completed, failed, blocked, waiting for you), what it is doing and the last declared decision; **Segui fase attiva** (follow active phase) keeps the running phase in view. At the top of the panel you find cost and spending limit, completed phases and a progress bar (click a segment to select that phase). **Annulla** (cancel) stops everything.
 
 ---
 
@@ -104,7 +104,7 @@ A run's panel has five tabs:
 | **Eventi** (events) | Everything that happens, filterable by type; click a phase on the diagram to see only its events |
 | **Decisioni** (decisions) | Short explanations written by the agents (*dichiarate*, declared) or inferred from their actions (*osservate*, observed). The models' internal reasoning is not shown |
 | **Consumi** (usage) | Tokens, cache and estimated cost per phase, agent and model |
-| **Ottimizzazioni** (optimizations) | Where the spending concentrates and what to try, each with its possible quality trade-off |
+| **Ottimizza** (optimize) | Where the spending concentrates and what to try, each with its possible quality trade-off |
 
 ![Decisions](img/06-decisioni.png)
 
@@ -131,7 +131,7 @@ Change something (for example a cheaper model for the review), run again and ope
 You finished a run and realize something was missing, for example preview, approval and publishing?
 
 1. Add the phases in the editor and **save**.
-2. Open the finished run from the **Apri un'esecuzione…** (open a run) menu at the top.
+2. Go to **Esecuzione** (run) and pick the finished run from the menu at the top of the panel.
 3. **Continua…** (continue): phases already done and unchanged are carried over with their results, without running them again; only new or changed phases run. The summary before starting tells you which ones and why.
 
 ---
@@ -154,10 +154,10 @@ Each run stores the rules it used.
 
 | Problem | What to do |
 |---|---|
-| "Esecuzione reale" (real run) is disabled | The workflow has errors (badge at the top) |
+| "Esegui" (run) is disabled | The workflow has errors (badge at the top) |
 | No login detected | Run `claude` once and sign in, or set `ANTHROPIC_API_KEY` before `npm start` |
 | The local server does not start | Read the reason in the intervention request: Node version, dependencies, port in use. Use the suggested buttons or fix the command in the phase |
 | The run shows as "interrotta" (interrupted) | Regia was closed while it was active: open it and use **Continua…** |
-| Spending is close to the limit | Raise the limit in the workflow settings or check the Ottimizzazioni tab |
+| Spending is close to the limit | Raise the limit in the workflow settings or check the Ottimizza tab |
 
 For details on usage accounting, permissions, stored data and known limits: [technical details](technical-details.md).

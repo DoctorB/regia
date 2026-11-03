@@ -7,6 +7,7 @@ import { getEngine, planContinuation, startRun } from './engine.ts';
 import { envInfo } from './env.ts';
 import { computeInsights } from './insights.ts';
 import { folderInfo } from './folder.ts';
+import { withLayout } from '../shared/layout.ts';
 import { killAllServices } from './service.ts';
 import { ensureRegiaRules, getRules, saveRegiaRules } from './rules.ts';
 import {
@@ -60,7 +61,7 @@ app.post('/api/workflows', (req, res) => {
       projectDir: body.projectDir?.trim() ?? '',
       goal: body.goal?.trim() ?? '',
     },
-    nodes: structuredClone(tpl?.nodes ?? []),
+    nodes: withLayout(structuredClone(tpl?.nodes ?? []), tpl?.edges ?? []),
     edges: structuredClone(tpl?.edges ?? []),
     updatedAt: '',
   };

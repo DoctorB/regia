@@ -34,7 +34,7 @@ Apri **http://127.0.0.1:4317** e lascia aperto il terminale finché usi Regia. C
 
 ![Nuovo workflow](img/01-nuovo-workflow.png)
 
-1. **Nuovo** → scegli un preset: *Correggi un bug*, *Nuova funzionalità*, *Revisione del codice* (sola lettura), *Aggiungi test*, *Refactoring sicuro* o *Vuoto*.
+1. Al primo avvio compare la schermata di benvenuto; in seguito apri il menu con il nome del workflow in alto a sinistra → **Nuovo workflow…**. Scegli un preset: *Correggi un bug*, *Nuova funzionalità*, *Revisione del codice* (sola lettura), *Aggiungi test*, *Refactoring sicuro* o *Vuoto*.
 2. Indica la **cartella del progetto**. Regia controlla se è un repository git e se ci sono modifiche non salvate.
    > Prima di un'esecuzione reale fai **commit o stash** delle tue modifiche: così potrai rivedere il lavoro degli agenti con `git diff` e annullarlo con `git checkout .`.
 3. Scrivi l'**obiettivo**: cosa va fatto e quando è finito. Più è preciso, meno passaggi servono.
@@ -45,15 +45,15 @@ Apri **http://127.0.0.1:4317** e lascia aperto il terminale finché usi Regia. C
 
 ![Editor](img/02-editor.png)
 
-- **Aggiungi** fasi dalla palette a sinistra. Se una fase è selezionata, la nuova viene collegata subito dopo.
-- **Collega** due fasi trascinando dal punto destro di una al punto sinistro dell'altra; seleziona un collegamento o una fase e premi **Canc** per eliminarli.
+- **Aggiungi** fasi dalla palette a sinistra: trascinale sul diagramma, oppure fai clic. Se una fase è selezionata, la nuova viene collegata subito dopo. **Riordina** dispone il diagramma dall'alto verso il basso.
+- **Collega** due fasi trascinando dal punto in basso di una al punto in alto dell'altra; seleziona un collegamento o una fase e premi **Canc** per eliminarli.
 - **Configura** la fase selezionata nel pannello a destra:
   - *Istruzioni*: cosa deve fare, idealmente con i file da guardare.
-  - *Modello*: `haiku` per compiti semplici (test, controlli), `sonnet` come scelta equilibrata, `opus` per i compiti più difficili.
-  - *Strumenti consentiti*: solo quelli necessari. In rosso quelli che modificano file o eseguono comandi.
-  - *Max turni* e *Limite fase*: tetti di sicurezza.
+  - *Modello*: Haiku ($) per compiti semplici (test, controlli), Sonnet ($$) come scelta equilibrata, Opus ($$$) per i compiti più difficili.
+  - *Strumenti*: attiva solo quelli necessari. Quelli con la matita modificano file o eseguono comandi.
+  - *Turni massimi* e *Spesa massima*: tetti di sicurezza.
 - Senza fasi selezionate il pannello mostra le **impostazioni del workflow**: cartella, obiettivo, limite di spesa per esecuzione, fasi in parallelo, regole.
-- Il badge in alto dice se il workflow è **valido**; gli errori bloccano l'avvio. **Salva** con il pulsante o `Ctrl+S`.
+- L'indicatore in alto dice se il workflow è **Valido**: cliccalo per vedere errori e avvisi e andare alla fase interessata. Gli errori bloccano l'avvio. **Salva** compare quando ci sono modifiche (anche `Ctrl+S`).
 
 ### Tipi di fase
 
@@ -68,12 +68,12 @@ Apri **http://127.0.0.1:4317** e lascia aperto il terminale finché usi Regia. C
 
 ## 4. Prova, poi esegui
 
-- **▶ Avvia prova**: esegue tutto con agenti simulati. Serve a controllare il percorso e le interazioni, gratis.
-- **▶ Esecuzione reale…**: mostra un riepilogo (autenticazione, modelli, fasi che possono modificare file, comandi locali, limite di spesa) e parte solo dopo la tua conferma.
+- **Prova**: esegue tutto con agenti simulati. Serve a controllare il percorso e le interazioni, gratis.
+- **Esegui**: esecuzione reale. Mostra un riepilogo (autenticazione, modelli, fasi che possono modificare file, comandi locali, limite di spesa) e parte solo dopo la tua conferma.
 
 ![Esecuzione](img/03-esecuzione.png)
 
-Sul diagramma ogni fase mostra lo stato (in attesa, attiva, completata, fallita, bloccata, in attesa di te), cosa sta facendo e l'ultima decisione dichiarata. **Annulla** in alto a destra ferma tutto.
+Sul diagramma ogni fase mostra lo stato (in attesa, attiva, completata, fallita, bloccata, in attesa di te), cosa sta facendo e l'ultima decisione dichiarata; **Segui fase attiva** tiene inquadrata la fase in corso. In alto nel pannello trovi costo e limite di spesa, fasi completate e una barra di avanzamento (clicca un segmento per selezionare la fase). **Annulla** ferma tutto.
 
 ---
 
@@ -104,7 +104,7 @@ Il pannello di un'esecuzione ha cinque schede:
 | **Eventi** | Tutto quello che succede, filtrabile per tipo; clicca una fase sul diagramma per vedere solo i suoi |
 | **Decisioni** | Spiegazioni brevi scritte dagli agenti (*dichiarate*) o dedotte dalle loro azioni (*osservate*). Il ragionamento interno dei modelli non viene mostrato |
 | **Consumi** | Token, cache e costo stimato per fase, agente e modello |
-| **Ottimizzazioni** | Dove si concentra la spesa e cosa provare, ognuno con il possibile compromesso sulla qualità |
+| **Ottimizza** | Dove si concentra la spesa e cosa provare, ognuno con il possibile compromesso sulla qualità |
 
 ![Decisioni](img/06-decisioni.png)
 
@@ -131,7 +131,7 @@ Cambia qualcosa (ad esempio un modello più economico per la revisione), riesegu
 Hai completato un'esecuzione e ti accorgi che mancava qualcosa, ad esempio anteprima, approvazione e pubblicazione?
 
 1. Aggiungi le fasi nell'editor e **salva**.
-2. Apri l'esecuzione completata dal menu **Apri un'esecuzione…** in alto.
+2. Vai su **Esecuzione** e scegli l'esecuzione completata dal menu in cima al pannello.
 3. **Continua…**: le fasi già fatte e non modificate vengono riprese con i loro risultati, senza rifarle; vengono eseguite solo quelle nuove o cambiate. Il riepilogo prima dell'avvio ti dice quali e perché.
 
 ---
@@ -154,10 +154,10 @@ Ogni esecuzione salva le regole che ha usato.
 
 | Problema | Cosa fare |
 |---|---|
-| "Esecuzione reale" disattivato | Il workflow ha errori (badge in alto) |
+| "Esegui" disattivato | Il workflow ha errori (badge in alto) |
 | Nessun login rilevato | Esegui `claude` una volta e accedi, oppure imposta `ANTHROPIC_API_KEY` prima di `npm start` |
 | Il server locale non parte | Leggi il motivo nella richiesta di intervento: versione di Node, dipendenze, porta occupata. Usa i pulsanti proposti oppure correggi il comando nella fase |
 | L'esecuzione risulta "interrotta" | Regia è stato chiuso mentre era attiva: aprila e usa **Continua…** |
-| La spesa è vicina al limite | Alza il limite nelle impostazioni del workflow o guarda la scheda Ottimizzazioni |
+| La spesa è vicina al limite | Alza il limite nelle impostazioni del workflow o guarda la scheda Ottimizza |
 
 Per dettagli su conteggio dei consumi, permessi, dati salvati e limiti noti: [dettagli tecnici](dettagli-tecnici.md).

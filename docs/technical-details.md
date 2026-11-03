@@ -82,7 +82,7 @@ Hooks, plugins and personal settings from `~/.claude` are not loaded; personal r
 
 ## Trial mode
 
-"Avvia prova" (start trial run) runs the workflow with simulated agents: no network calls and no cost, fictitious rates. Simulated messages have the same shape as the SDK's (duplicate IDs for parallel tool calls, subagents, resumed sessions with restored totals, crashes with zeroed values), so usage accounting follows the same code path as real runs. In a phase's instructions you can write `[simula-errore]`, `[simula-blocco]` or `[simula-budget]` to try the interventions (error, block, budget). The local server is simulated and no command runs.
+"Prova" (trial run) runs the workflow with simulated agents: no network calls and no cost, fictitious rates. Simulated messages have the same shape as the SDK's (duplicate IDs for parallel tool calls, subagents, resumed sessions with restored totals, crashes with zeroed values), so usage accounting follows the same code path as real runs. In a phase's instructions you can write `[simula-errore]`, `[simula-blocco]` or `[simula-budget]` to try the interventions (error, block, budget). The local server is simulated and no command runs.
 
 ## Environment variables
 

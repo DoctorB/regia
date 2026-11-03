@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { isAgentKind, type Run, type RunSummary } from '../../../shared/types.ts';
 import { api, fmtDur, fmtTime, fmtTok, fmtUsd, runDuration } from '../api.ts';
-import { STATUS } from './Canvas.tsx';
+import { STATUS_META } from '../ui.tsx';
 
 interface PhaseM { cost: number | null; tokens: number; input: number; output: number; cacheW: number; cacheR: number; durMs: number; turns: number; attempts: number; esito: string; status: string }
 
@@ -18,14 +18,14 @@ function metrics(run: Run, nodeId: string): PhaseM | null {
     tokens: s((x) => x.usage.inputTokens + x.usage.outputTokens + x.usage.cacheCreationInputTokens + x.usage.cacheReadInputTokens),
     durMs: s((x) => x.durationMs ?? 0), turns: s((x) => x.numTurns ?? 0), attempts: a.length,
     esito: a.at(-1)?.declared?.esito ?? (st.status === 'completata' ? 'ok (non dichiarato)' : '—'),
-    status: STATUS[st.status].label,
+    status: STATUS_META[st.status].label,
   };
 }
 
 function Delta({ a, b, fmt, lowerIsBetter = true }: { a: number | null; b: number | null; fmt: (n: number) => string; lowerIsBetter?: boolean }) {
   if (a === null || b === null) return <span className="muted">n.d.</span>;
   const d = b - a;
-  if (Math.abs(d) < 1e-12) return <span className="muted">=</span>;
+  if (Math.abs(d) < 1e-12 || fmt(Math.abs(d)) === fmt(0)) return <span className="muted">=</span>;
   const pct = a !== 0 ? ` (${d > 0 ? '+' : ''}${Math.round((d / a) * 100)}%)` : '';
   const better = lowerIsBetter ? d < 0 : d > 0;
   return <span className={better ? 'delta-good' : 'delta-bad'}>{better ? '▼' : '▲'} {d > 0 ? '+' : '−'}{fmt(Math.abs(d))}{pct}</span>;

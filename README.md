@@ -31,7 +31,7 @@ npm install
 npm start
 ```
 
-Open <http://127.0.0.1:4317>, create a workflow from a preset and press **▶ Avvia prova** (start trial run).
+Open <http://127.0.0.1:4317>, create a workflow from a preset and press **Prova** (trial run).
 
 ## Documentation
 
