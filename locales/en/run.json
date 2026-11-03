@@ -254,7 +254,9 @@
       "edges": "Links between phases changed",
       "goal": "Goal changed",
       "projectSettings": "Loading of the project's CLAUDE.md changed",
-      "runBudget": "Per-run limit {from} → {to}"
+      "runBudget": "Per-run limit {from} → {to}",
+      "skills": "{label}: skills {from} → {to}",
+      "skillsAll": "all"
     },
     "mode": {
       "prova": "dry run",
@@ -380,7 +382,30 @@
       "reuse": "Reuse the result",
       "reuseHint": "If instructions, inputs and project files haven't changed, the phase is not redone."
     },
-    "deletePhase": "Delete phase"
+    "deletePhase": "Delete phase",
+    "skills": {
+      "title": "Skills",
+      "active": {
+        "one": "{count} active",
+        "other": "{count} active"
+      },
+      "mode": {
+        "none": "None",
+        "all": "All",
+        "chosen": "Selected"
+      },
+      "loading": "Looking for skills…",
+      "empty": "No skills in the project (.claude/skills). You can enable personal skills in the workflow settings.",
+      "emptyAll": "No skills found in the project or among your personal ones.",
+      "noneHint": "The phase works without skills.",
+      "allHint": "All skills from the active sources: {names}.",
+      "hint": "Regia enables the Skill tool for this phase only: the agent loads a skill when it needs it. Skill instructions use tokens like the rest of the context.",
+      "removeMissing": "Skill no longer found: click to remove it",
+      "source": {
+        "progetto": "project",
+        "personale": "personal"
+      }
+    }
   },
   "settings": {
     "workflowName": "Workflow name",
@@ -409,6 +434,26 @@
       "projectSettings": "Load the project's CLAUDE.md",
       "projectSettingsHint": "And the .claude/settings.json file, if present."
     },
-    "edgesHint": "Link phases by dragging from the bottom handle of one to the top handle of the next. Select a link and press Delete to remove it."
+    "edgesHint": "Link phases by dragging from the bottom handle of one to the top handle of the next. Select a link and press Delete to remove it.",
+    "skills": {
+      "title": "Skills",
+      "found": {
+        "one": "{count} found",
+        "other": "{count} found"
+      },
+      "project": "Project skills",
+      "projectHint": "From .claude/skills in the project folder.",
+      "projectHintCount": {
+        "one": "{count} skill in .claude/skills.",
+        "other": "{count} skills in .claude/skills."
+      },
+      "personal": "Personal skills",
+      "personalHint": "From ~/.claude/skills. Off by default: they apply to all your projects.",
+      "personalHintCount": {
+        "one": "{count} skill in {dir}.",
+        "other": "{count} skills in {dir}."
+      },
+      "hint": "Skills are chosen per phase. Regia copies them into a temporary plugin for each phase: the original files are never changed and your other personal settings are not loaded."
+    }
   }
 }

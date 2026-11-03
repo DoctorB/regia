@@ -24,6 +24,8 @@ export interface PhaseConfig {
   contextMode: ContextMode;
   /** Riusa il risultato di un'esecuzione precedente se configurazione, input e file del progetto non sono cambiati. */
   reuseResult: boolean;
+  /** Skill di Claude Code utilizzabili dalla fase: 'all' tutte quelle disponibili, oppure gli id scelti. Assente = nessuna. */
+  skills?: 'all' | string[];
   /** Solo fase "server": comando da avviare (es. npm run dev). */
   command?: string;
   /** Solo fase "server": URL da controllare; se vuoto si usa il primo indirizzo locale stampato dal server. */
@@ -78,6 +80,8 @@ export interface WorkflowSettings {
   applyGeneralRules?: boolean;
   /** Lingua delle istruzioni inviate agli agenti (protocollo di risposta, regole). Assente = it. */
   language?: string;
+  /** Dove cercare le skill: progetto (.claude/skills, predefinito) e personali (~/.claude/skills, da attivare). */
+  skillSources?: { project?: boolean; personal?: boolean };
 }
 
 export interface WorkflowTemplate {
@@ -345,4 +349,15 @@ export interface ContinuationPlan {
   fromRunId: string;
   reused: { nodeId: string; label: string }[];
   toRun: { nodeId: string; label: string; reason: string; reasonMsg?: Msg }[];
+}
+
+/** Skill di Claude Code trovata da Regia. */
+export interface SkillInfo {
+  /** "<fonte>:<nome>", stabile tra le esecuzioni. */
+  id: string;
+  name: string;
+  description: string;
+  source: 'progetto' | 'personale';
+  /** Cartella che contiene SKILL.md. */
+  path: string;
 }

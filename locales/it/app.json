@@ -140,7 +140,10 @@
     "writersText": "{list}. Gli strumenti non concessi vengono negati.",
     "serversTitle": "Comandi locali avviati da Regia:",
     "subscription": "Il consumo rientra nei limiti del tuo piano {plan} (e nei crediti extra solo se attivi): i dollari mostrati sono un equivalente a prezzi di listino calcolato dal SDK. La documentazione del SDK chiede ai prodotti di terze parti di usare chiavi API: per uso personale e locale il login funziona, ma verifica le regole della tua organizzazione.",
-    "apiKeyNote": "Con la chiave API il consumo è fatturato a token: il costo effettivo si verifica nella Console."
+    "apiKeyNote": "Con la chiave API il consumo è fatturato a token: il costo effettivo si verifica nella Console.",
+    "skills": "Skill",
+    "skillsAll": "tutte",
+    "noSkills": "nessuna"
   },
   "canvas": {
     "tools": {
@@ -171,7 +174,12 @@
     "follow": "Segui fase attiva",
     "followTitle": "Inquadra automaticamente la fase attiva",
     "emptyTitle": "Il diagramma è vuoto",
-    "emptyText": "Trascina qui una fase dalla palette a sinistra, oppure fai clic su una fase per aggiungerla."
+    "emptyText": "Trascina qui una fase dalla palette a sinistra, oppure fai clic su una fase per aggiungerla.",
+    "skills": {
+      "one": "{count} skill",
+      "other": "{count} skill"
+    },
+    "skillsAll": "tutte le skill"
   },
   "welcome": {
     "title": "Benvenuto in Regia",

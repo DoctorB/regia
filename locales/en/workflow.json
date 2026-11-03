@@ -33,7 +33,9 @@
     "invalidMaxTurns": "Invalid maximum number of turns in \"{name}\".",
     "noMaxTurns": "Phase \"{name}\" has no turn limit.",
     "invalidBudget": "Invalid spending limit in \"{name}\".",
-    "invalidModel": "Invalid model name in \"{name}\"."
+    "invalidModel": "Invalid model name in \"{name}\".",
+    "skillsMissing": "{name}: some selected skills are no longer available ({skills}); the phase will run without them.",
+    "skillsNone": "{name}: no skills found in the workflow's active sources."
   },
   "insights": {
     "corrections": {

@@ -148,6 +148,15 @@ The **Rules** button shows the rules added to every agent's instructions:
 
 Each run stores the rules it used.
 
+### Skills
+
+Agent phases can use Claude Code **skills**: procedures written in a `SKILL.md` file (for example "publish a blog post" or "SEO check before release").
+
+- **Where Regia looks**: in the project's `.claude/skills/` folder (on by default) and among your personal skills in `~/.claude/skills/`, subfolders included (turn them on in the workflow settings, **Skills** section).
+- **For each phase**, **Skills** section: *None* (default), *All* from the active sources, or *Selected* from a list with name, description and source. The phase box on the diagram shows how many skills it has.
+- **During a run** the agent loads a skill only when it needs it; the events show the available skills, which one was used and the decision "Used the skill …". Skill instructions use tokens like the rest of the context.
+- If a selected skill can no longer be found, validation warns you and the phase runs without it.
+
 ---
 
 ## 10. Organizing workflows, theme and language

@@ -71,10 +71,12 @@
       "delegated": "Ha delegato a un subagente: {description}",
       "denied": "Strumento negato dalla configurazione: {tool}",
       "edit": "Ha scelto di modificare {file}",
-      "bash": "Ha scelto di eseguire: {command}"
+      "bash": "Ha scelto di eseguire: {command}",
+      "skill": "Ha usato la skill {skill}"
     },
     "tool": {
-      "subagent": "Subagente: {description}"
+      "subagent": "Subagente: {description}",
+      "skill": "Skill: {skill}"
     },
     "activity": {
       "starting": "Avvio…",
@@ -109,7 +111,10 @@
         "manual": "{label}: server fermato (richiesta manuale).",
         "cancelled": "{label}: server fermato (esecuzione annullata)."
       }
-    }
+    },
+    "skillsAvailable": "{label}: skill disponibili ({count}): {skills}.",
+    "skillsMissing": "{label}: skill non trovate, la fase prosegue senza: {skills}.",
+    "skillsBundleFailed": "{label}: impossibile preparare le skill ({error}); la fase prosegue senza."
   },
   "interventions": {
     "budgetReached": "Limite di spesa dell'esecuzione raggiunto prima di avviare la fase.",
@@ -176,7 +181,8 @@
       "done": "Fase \"{label}\" completata in simulazione."
     },
     "finalDecision": "Esito {outcome} dichiarato al termine della fase {label}.",
-    "workDone": "Lavoro completato."
+    "workDone": "Lavoro completato.",
+    "skillLoaded": "Istruzioni della skill {skill} caricate (simulazione)."
   },
   "api": {
     "originForbidden": "Origine non consentita",

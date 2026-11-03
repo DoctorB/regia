@@ -32,10 +32,18 @@ Il pulsante **Regole** mostra le regole aggiunte alle istruzioni di ogni fase (o
 
 Ogni esecuzione salva le regole che ha usato: le trovi nella scheda Stato ("Regole applicate") e nel registro eventi. Il percorso del file di regole personali si può cambiare con `REGIA_GLOBAL_RULES`.
 
+## Skill
+
+- **Ricerca**: `<progetto>/.claude/skills/<nome>/SKILL.md` e `~/.claude/skills` (fino a 4 livelli di sottocartelle). Nome e descrizione dal frontmatter; senza frontmatter il nome è quello della cartella. Le skill personali sono escluse finché non si attivano nel workflow.
+- **Esecuzione**: per ogni tentativo Regia copia le sole skill scelte in un plugin locale temporaneo (`data/skill-bundles/`, chiamato `regia-skills`) e lo passa al SDK con le opzioni `plugins` e `skills`, aggiungendo lo strumento `Skill` solo a quella fase. I file originali non vengono modificati e, con le impostazioni del progetto spente, non si caricano impostazioni, hook o plugin personali. Il plugin viene rimosso a fine fase (e all'avvio di Regia, se ne restano).
+- **Nomi**: nel plugin ogni skill prende il nome della propria cartella in minuscolo (`Revisione Testi` → `revisione-testi`); due skill con lo stesso nome, una del progetto e una personale, restano distinte con un suffisso.
+- **Riuso dei risultati**: le skill scelte fanno parte della chiave di riuso.
+- **Modalità di prova**: la prima skill disponibile viene "usata" in modo simulato, così eventi e decisioni si vedono senza costi.
+
 ## Decisioni mostrate
 
 - **Dichiarate**: righe `DECISIONE: …` che l'agente scrive su richiesta del protocollo di risposta, più l'elenco `decisioni` del blocco di esito finale.
-- **Osservate**: dedotte da eventi visibili, cioè file modificati, comandi eseguiti, subagenti avviati e strumenti negati.
+- **Osservate**: dedotte da eventi visibili, cioè file modificati, comandi eseguiti, skill usate, subagenti avviati e strumenti negati.
 
 I blocchi di ragionamento interno (thinking) non vengono mai mostrati né salvati.
 
@@ -103,6 +111,7 @@ Interfaccia, messaggi di Regia e istruzioni inviate agli agenti sono tradotti tr
 | `PORT` | Porta del server (predefinita 4317; ascolta solo su 127.0.0.1) |
 | `REGIA_DATA_DIR` | Cartella dei dati locali (predefinita `data/`) |
 | `REGIA_GLOBAL_RULES` | File delle regole personali (predefinito `~/.claude/CLAUDE.md`) |
+| `REGIA_SKILLS_DIR` | Cartella delle skill personali (predefinita `~/.claude/skills`) |
 | `REGIA_DISABLE_REAL=1` | Disattiva le esecuzioni reali |
 | `REGIA_LANG` | Lingua predefinita del server (es. per le regole di Regia iniziali); altrimenti quella del sistema |
 | `REGIA_MOCK_SPEED` | Millisecondi per passo nella modalità di prova (predefinito 600) |
@@ -121,6 +130,7 @@ server/            API Express + SSE, motore di esecuzione, contabilità, simula
   folder.ts        controllo della cartella di progetto (git, modifiche in sospeso)
   service.ts       processi della fase server locale (avvio, indirizzo, arresto)
   nodeenv.ts       versione di Node richiesta dal progetto, installazioni, diagnosi degli errori
+  skills.ts        ricerca delle skill e plugin temporaneo per fase
 shared/types.ts    modello dati comune
 web/src/           interfaccia React + React Flow
 templates/         preset di partenza (JSON)

@@ -254,7 +254,9 @@
       "edges": "Collegamenti tra le fasi modificati",
       "goal": "Obiettivo modificato",
       "projectSettings": "Caricamento CLAUDE.md del progetto modificato",
-      "runBudget": "Limite per esecuzione {from} → {to}"
+      "runBudget": "Limite per esecuzione {from} → {to}",
+      "skills": "{label}: skill {from} → {to}",
+      "skillsAll": "tutte"
     },
     "mode": {
       "prova": "prova",
@@ -380,7 +382,30 @@
       "reuse": "Riusa il risultato",
       "reuseHint": "Se istruzioni, input e file del progetto non sono cambiati, non rifà la fase."
     },
-    "deletePhase": "Elimina fase"
+    "deletePhase": "Elimina fase",
+    "skills": {
+      "title": "Skill",
+      "active": {
+        "one": "{count} attiva",
+        "other": "{count} attive"
+      },
+      "mode": {
+        "none": "Nessuna",
+        "all": "Tutte",
+        "chosen": "Scelte"
+      },
+      "loading": "Ricerca delle skill…",
+      "empty": "Nessuna skill nel progetto (.claude/skills). Puoi attivare le skill personali nelle impostazioni del workflow.",
+      "emptyAll": "Nessuna skill trovata nel progetto né tra le personali.",
+      "noneHint": "La fase lavora senza skill.",
+      "allHint": "Tutte le skill delle fonti attive: {names}.",
+      "hint": "Regia abilita lo strumento Skill solo per questa fase: l'agente carica una skill quando gli serve. Le istruzioni della skill consumano token come il resto del contesto.",
+      "removeMissing": "Skill non più trovata: clic per toglierla",
+      "source": {
+        "progetto": "progetto",
+        "personale": "personale"
+      }
+    }
   },
   "settings": {
     "workflowName": "Nome del workflow",
@@ -409,6 +434,26 @@
       "projectSettings": "Carica il CLAUDE.md del progetto",
       "projectSettingsHint": "E il file .claude/settings.json, se presente."
     },
-    "edgesHint": "Collega le fasi trascinando dal punto in basso di una al punto in alto della successiva. Seleziona un collegamento e premi Canc per rimuoverlo."
+    "edgesHint": "Collega le fasi trascinando dal punto in basso di una al punto in alto della successiva. Seleziona un collegamento e premi Canc per rimuoverlo.",
+    "skills": {
+      "title": "Skill",
+      "found": {
+        "one": "{count} trovata",
+        "other": "{count} trovate"
+      },
+      "project": "Skill del progetto",
+      "projectHint": "Da .claude/skills nella cartella del progetto.",
+      "projectHintCount": {
+        "one": "{count} skill in .claude/skills.",
+        "other": "{count} skill in .claude/skills."
+      },
+      "personal": "Skill personali",
+      "personalHint": "Da ~/.claude/skills. Disattivate di serie: valgono per tutti i tuoi progetti.",
+      "personalHintCount": {
+        "one": "{count} skill in {dir}.",
+        "other": "{count} skill in {dir}."
+      },
+      "hint": "Le skill si scelgono per fase. Regia le copia in un plugin temporaneo per ogni fase: i file originali non vengono modificati e le altre impostazioni personali non sono caricate."
+    }
   }
 }

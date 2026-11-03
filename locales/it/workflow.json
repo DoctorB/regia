@@ -33,7 +33,9 @@
     "invalidMaxTurns": "Numero massimo di turni non valido in \"{name}\".",
     "noMaxTurns": "La fase \"{name}\" non ha un limite di turni.",
     "invalidBudget": "Limite di spesa non valido in \"{name}\".",
-    "invalidModel": "Nome modello non valido in \"{name}\"."
+    "invalidModel": "Nome modello non valido in \"{name}\".",
+    "skillsMissing": "{name}: alcune skill scelte non sono più disponibili ({skills}); la fase proseguirà senza.",
+    "skillsNone": "{name}: nessuna skill trovata nelle fonti attive del workflow."
   },
   "insights": {
     "corrections": {

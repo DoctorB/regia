@@ -1,8 +1,9 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { KNOWN_TOOLS, WRITE_TOOLS, type ValidationIssue, type Workflow } from '../shared/types.ts';
+import { KNOWN_TOOLS, WRITE_TOOLS, type SkillInfo, type ValidationIssue, type Workflow } from '../shared/types.ts';
 import { msg, type Msg } from '../shared/i18n.ts';
 import { serverT } from './i18n.ts';
+import { discoverSkills, phaseSkills, skillSources } from './skills.ts';
 
 /** Ordine topologico; restituisce null se il grafo ha cicli. */
 export function topoOrder(wf: Workflow): string[] | null {
@@ -63,6 +64,7 @@ export function validateWorkflow(wf: Workflow, mode: 'prova' | 'reale' = 'prova'
 
   const hasIn = new Set(wf.edges.map((e) => e.target));
   const hasOut = new Set(wf.edges.map((e) => e.source));
+  let skills: SkillInfo[] | undefined;
   for (const n of wf.nodes) {
     const d = n.data;
     // Nome della fase come appare nei messaggi (le virgolette sono nei testi tradotti).
@@ -94,6 +96,12 @@ export function validateWorkflow(wf: Workflow, mode: 'prova' | 'reale' = 'prova'
     if (d.maxTurns === undefined) warn(msg('validate.noMaxTurns', { name }), n.id);
     if (d.maxBudgetUsd !== undefined && !(d.maxBudgetUsd > 0)) err(msg('validate.invalidBudget', { name }), n.id);
     if (d.model && !/^[a-zA-Z0-9.\-_[\]:]+$/.test(d.model)) err(msg('validate.invalidModel', { name }), n.id);
+    if (d.skills && d.skills.length) {
+      skills ??= discoverSkills(dir, skillSources(wf.settings));
+      const found = phaseSkills(d, skills);
+      if (found.missing.length) warn(msg('validate.skillsMissing', { name, skills: found.missing.map((s) => s.replace(/^(progetto|personale):/, '')).join(', ') }), n.id);
+      else if (found.selected.length === 0) warn(msg('validate.skillsNone', { name }), n.id);
+    }
   }
   return issues;
 }

@@ -1,5 +1,5 @@
 import { currentLocaleTag, tm } from './i18n.tsx';
-import type { ApiErrorBody, ContinuationPlan, EnvInfo, FolderInfo, HumanAction, Insight, RulesInfo, Run, RunMode, RunSummary, ValidationIssue, Workflow, WorkflowTemplate } from '../../shared/types.ts';
+import type { ApiErrorBody, ContinuationPlan, EnvInfo, FolderInfo, HumanAction, Insight, RulesInfo, Run, RunMode, RunSummary, SkillInfo, ValidationIssue, Workflow, WorkflowTemplate } from '../../shared/types.ts';
 
 async function req<T>(method: string, url: string, body?: unknown): Promise<T> {
   const r = await fetch(url, { method, headers: body ? { 'Content-Type': 'application/json' } : undefined, body: body ? JSON.stringify(body) : undefined });
@@ -23,6 +23,7 @@ export const api = {
   createWorkflow: (body: { name?: string; projectDir?: string; goal?: string; templateId?: string; language?: string; group?: string }) => req<Workflow>('POST', '/api/workflows', body),
   rules: (projectDir?: string) => req<RulesInfo>('GET', `/api/rules${projectDir ? `?projectDir=${encodeURIComponent(projectDir)}` : ''}`),
   saveRules: (text: string) => req<RulesInfo>('PUT', '/api/rules', { text }),
+  skills: (projectDir: string, sources: { project: boolean; personal: boolean }) => req<{ personalDir: string; skills: SkillInfo[] }>('GET', `/api/skills?projectDir=${encodeURIComponent(projectDir)}&project=${sources.project ? 1 : 0}&personal=${sources.personal ? 1 : 0}`),
   folderInfo: (path: string) => req<FolderInfo>('GET', `/api/folder-info?path=${encodeURIComponent(path)}`),
   saveWorkflow: (wf: Workflow) => req<Workflow>('PUT', `/api/workflows/${wf.id}`, wf),
   deleteWorkflow: (id: string, withRuns = false) => req<{ ok: boolean; removedRuns: number }>('DELETE', `/api/workflows/${id}${withRuns ? '?runs=1' : ''}`),

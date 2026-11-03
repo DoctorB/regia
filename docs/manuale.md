@@ -150,6 +150,15 @@ Il pulsante **Regole** mostra le regole aggiunte alle istruzioni di ogni agente:
 
 Ogni esecuzione salva le regole che ha usato.
 
+### Skill
+
+Le fasi con un agente possono usare le **skill** di Claude Code: procedure scritte in un file `SKILL.md` (ad esempio "pubblica un articolo del blog" o "controllo SEO prima del rilascio").
+
+- **Dove le cerca Regia**: nella cartella `.claude/skills/` del progetto (attiva di serie) e tra le tue skill personali in `~/.claude/skills/`, comprese le sottocartelle (da attivare nelle impostazioni del workflow, sezione **Skill**).
+- **Per ogni fase**, sezione **Skill**: *Nessuna* (predefinito), *Tutte* quelle delle fonti attive, oppure *Scelte* da un elenco con nome, descrizione e provenienza. Il riquadro della fase sul diagramma indica quante skill ha.
+- **In esecuzione** l'agente carica una skill solo quando gli serve; negli eventi vedi le skill disponibili, quale ha usato e la decisione "Ha usato la skill …". Le istruzioni della skill consumano token come il resto del contesto.
+- Se una skill scelta non si trova più, la validazione lo segnala e la fase prosegue senza.
+
 ---
 
 ## 10. Organizzare i workflow, tema e lingua

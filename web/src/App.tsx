@@ -412,7 +412,7 @@ export function App() {
         {view === 'editor' && (
           <aside className="inspector">
             {selNode
-              ? <PhaseInspector key={selNode.id} cfg={selNode.data} issues={issues.filter((i) => i.nodeId === selNode.id)}
+              ? <PhaseInspector key={selNode.id} cfg={selNode.data} settings={wf.settings} issues={issues.filter((i) => i.nodeId === selNode.id)}
                   onChange={(c) => setWf({ ...wf, nodes: wf.nodes.map((n) => (n.id === selNode.id ? { ...n, data: c } : n)) })}
                   onDelete={() => { setWf({ ...wf, nodes: wf.nodes.filter((n) => n.id !== selNode.id), edges: wf.edges.filter((e) => e.source !== selNode.id && e.target !== selNode.id) }); setSelected(null); }} />
               : <WorkflowSettingsForm wf={wf} groups={groupNames(workflows)} onChange={setWf} onShowRules={() => setRulesDialog(true)} />}
@@ -448,6 +448,8 @@ function RealRunDialog({ env, wf, busy, onCancel, onConfirm }: { env: EnvInfo | 
   const writers = agents.filter((n) => n.data.allowedTools.some((t) => WRITE_TOOLS.includes(t)));
   const subscription = a?.authMethod === 'claude.ai' && !a.apiKeyEnv;
   const models = [...new Set(agents.map((n) => n.data.model || t('common.defaultModel')))];
+  const withSkills = agents.filter((n) => n.data.skills === 'all' || (n.data.skills?.length ?? 0) > 0)
+    .map((n) => `${n.data.label} (${n.data.skills === 'all' ? t('realRun.skillsAll') : (n.data.skills as string[]).map((id) => id.replace(/^(progetto|personale):/, '')).join(', ')})`);
   const canStart = ok && !busy && a && (a.loggedIn || a.apiKeyEnv) && !warn.some((i) => i.level === 'errore');
   return (
     <Modal title={t('realRun.title')} icon={<span className="kind-tile kind-publish"><Rocket /></span>} onClose={onCancel} wide
@@ -472,6 +474,7 @@ function RealRunDialog({ env, wf, busy, onCancel, onConfirm }: { env: EnvInfo | 
           <dl className="kv">
             <dt>{t('realRun.agentPhases')}</dt><dd>{agents.length} · {models.join(', ')}</dd>
             <dt>{t('realRun.maxSpend')}</dt><dd>{wf.settings.runBudgetUsd ? fmtUsd(wf.settings.runBudgetUsd, 2) : <span className="tone-warn">{t('realRun.noLimit')}</span>}</dd>
+            <dt>{t('realRun.skills')}</dt><dd>{withSkills.length ? withSkills.join('; ') : t('realRun.noSkills')}</dd>
             <dt>{t('realRun.generalRules')}</dt><dd>{wf.settings.applyGeneralRules === false ? t('realRun.rulesOff') : t('realRun.rulesOn')}</dd>
           </dl>
         </div>

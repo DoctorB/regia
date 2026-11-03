@@ -45,6 +45,8 @@ function configDiff(a: Run, b: Run): string[] {
     if (c.model !== d.model) out.push(t('compare.diff.model', { label: l, from: c.model || def, to: d.model || def }));
     if (c.instructions !== d.instructions) out.push(t('compare.diff.instructions', { label: l }));
     if (c.role !== d.role) out.push(t('compare.diff.role', { label: l }));
+    const sk = (x: typeof c) => (x.skills === 'all' ? t('compare.diff.skillsAll') : x.skills?.length ? x.skills.map((id) => id.replace(/^(progetto|personale):/, '')).join(', ') : '—');
+    if (sk(c) !== sk(d)) out.push(t('compare.diff.skills', { label: l, from: sk(c), to: sk(d) }));
     if (c.allowedTools.join() !== d.allowedTools.join()) out.push(t('compare.diff.tools', { label: l, from: c.allowedTools.join(', ') || '—', to: d.allowedTools.join(', ') || '—' }));
     if (c.contextMode !== d.contextMode) out.push(t('compare.diff.context', { label: l, from: c.contextMode, to: d.contextMode }));
     if (c.maxTurns !== d.maxTurns) out.push(t('compare.diff.maxTurns', { label: l, from: c.maxTurns ?? '∞', to: d.maxTurns ?? '∞' }));

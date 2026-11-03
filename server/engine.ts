@@ -10,6 +10,7 @@ import { msg, type Msg, type Params, type Translate } from '../shared/i18n.ts';
 import { serverT } from './i18n.ts';
 import { mockQuery } from './mockQuery.ts';
 import { clip, redact } from './redact.ts';
+import { buildSkillBundle, discoverSkills, phaseSkills, PLUGIN_NAME, removeSkillBundles, skillSources, type SkillBundle } from './skills.ts';
 import { rulesPrompt, snapshotRules } from './rules.ts';
 import { readReuseCache, saveRun, writeReuseEntry } from './store.ts';
 import { AttemptAccounting, sumTotals, type SessionSnapshot } from './usage.ts';
@@ -308,7 +309,7 @@ export class RunEngine {
   private reuseKey(n: WorkflowNode, prompt: string) {
     const d = n.data;
     const h = createHash('sha256');
-    h.update(JSON.stringify([this.run.mode, d.role, d.model, d.allowedTools, d.maxTurns, prompt, this.wf.settings.projectDir, this.wf.settings.loadProjectSettings]));
+    h.update(JSON.stringify([this.run.mode, d.role, d.model, d.allowedTools, d.maxTurns, prompt, this.wf.settings.projectDir, this.wf.settings.loadProjectSettings, d.skills ?? null, this.wf.settings.skillSources ?? null]));
     h.update(projectFingerprint(this.wf.settings.projectDir));
     return h.digest('hex');
   }
@@ -392,6 +393,20 @@ export class RunEngine {
     this.nodeChanged(n.id);
     this.updateRunStatus();
 
+    // Skill: solo quelle scelte per la fase, in un plugin preparato per questo tentativo.
+    const found = phaseSkills(d, discoverSkills(this.wf.settings.projectDir, skillSources(this.wf.settings)));
+    if (found.missing.length) this.say('errore', msg('events.skillsMissing', { label: d.label, skills: found.missing.map(skillLabel).join(', ') }), { nodeId: n.id, attemptId: a.id });
+    let bundle: SkillBundle | undefined;
+    if (found.selected.length) {
+      try {
+        bundle = buildSkillBundle(`${this.run.id}_${a.id}`, found.selected);
+        this.say('fase', msg('events.skillsAvailable', { label: d.label, skills: found.selected.map((s) => s.name).join(', '), count: found.selected.length }), { nodeId: n.id, attemptId: a.id });
+      } catch (err) {
+        this.say('errore', msg('events.skillsBundleFailed', { label: d.label, error: redact((err as Error).message) }), { nodeId: n.id, attemptId: a.id });
+      }
+    }
+    const tools = bundle && !d.allowedTools.includes('Skill') ? [...d.allowedTools, 'Skill'] : d.allowedTools;
+
     const stderrTail: string[] = [];
     const toolNames = new Map<string, string>();
     let gotResult = false;
@@ -400,14 +415,15 @@ export class RunEngine {
     let errorMsg: Msg | undefined;
     try {
       const stream = this.run.mode === 'prova'
-        ? mockQuery({ phase: d, attemptIndex: a.index, resume: resume?.sessionId, maxBudgetUsd: nodeBudget, signal: ctrl.signal, lang: this.lang })
+        ? mockQuery({ phase: d, attemptIndex: a.index, resume: resume?.sessionId, maxBudgetUsd: nodeBudget, signal: ctrl.signal, lang: this.lang, skills: bundle ? Object.values(bundle.byId) : [] })
         : query({
           prompt,
           options: {
             cwd: this.wf.settings.projectDir,
             model: d.model || undefined,
-            tools: d.allowedTools,
-            allowedTools: d.allowedTools,
+            tools,
+            allowedTools: tools,
+            ...(bundle ? { plugins: [{ type: 'local' as const, path: bundle.path }], skills: bundle.names } : {}),
             permissionMode: 'dontAsk',
             systemPrompt: { type: 'preset', preset: 'claude_code', append: `${d.role ? `\n${this.t('agent.role', { role: d.role })}` : ''}${rulesPrompt(this.run.rules, this.lang)}` || undefined },
             maxTurns: d.maxTurns,
@@ -514,6 +530,7 @@ export class RunEngine {
     } finally {
       this.running.delete(n.id);
       this.controllers.delete(n.id);
+      if (bundle) removeSkillBundles(`${this.run.id}_${a.id}`);
     }
 
     a.endedAt = new Date().toISOString();
@@ -1014,6 +1031,10 @@ export function parseDeclared(text: unknown): DeclaredOutcome | undefined {
   }
 }
 
+/** Nome della skill come lo vede l'utente, senza il prefisso del plugin di Regia. */
+const skillName = (s: unknown) => String(s ?? '').replace(new RegExp(`^${PLUGIN_NAME}:`), '').replace(/^\//, '');
+const skillLabel = (id: string) => id.replace(/^(progetto|personale):/, '');
+
 function summarizeTool(name: string, input: Record<string, any>, t: Translate): string {
   const rel = (p: unknown) => (typeof p === 'string' ? p.replace(/\\/g, '/').split('/').slice(-3).join('/') : '');
   switch (name) {
@@ -1024,6 +1045,7 @@ function summarizeTool(name: string, input: Record<string, any>, t: Translate): 
     case 'Agent': case 'Task': return t('events.tool.subagent', { description: input.description ?? '' });
     case 'WebFetch': return `WebFetch ${input.url ?? ''}`;
     case 'WebSearch': return `WebSearch "${input.query ?? ''}"`;
+    case 'Skill': return t('events.tool.skill', { skill: skillName(input.skill) });
     default: return name;
   }
 }
@@ -1032,6 +1054,7 @@ function observedDecision(name: string, input: Record<string, any>): Msg | null 
   const f = typeof input.file_path === 'string' ? input.file_path.replace(/\\/g, '/').split('/').slice(-2).join('/') : '';
   if (name === 'Edit' || name === 'Write') return msg('events.decisions.edit', { file: f });
   if (name === 'Bash') return msg('events.decisions.bash', { command: clip(String(input.command ?? ''), 120) });
+  if (name === 'Skill') return msg('events.decisions.skill', { skill: skillName(input.skill) });
   return null;
 }
 

@@ -16,11 +16,14 @@ import {
   ROOT, deleteRunsOf, deleteWorkflow, getRun, getWorkflow, initStore, listRuns, listTemplates, listWorkflows, saveWorkflow,
 } from './store.ts';
 import { validateWorkflow } from './validate.ts';
+import { discoverSkills, personalSkillsDir, removeSkillBundles } from './skills.ts';
 
 const PORT = Number(process.env.PORT ?? 4317);
 const HOST = '127.0.0.1';
 
 initStore();
+// Le skill preparate per le fasi sono temporanee: quelle rimaste da un arresto improvviso vengono rimosse.
+removeSkillBundles();
 ensureRegiaRules();
 const app = express();
 app.use(express.json({ limit: '2mb' }));
@@ -101,6 +104,11 @@ app.put('/api/rules', (req, res) => {
   res.json(getRules());
 });
 
+/** Skill trovate per una cartella di progetto; le personali solo se richieste (personal=1). */
+app.get('/api/skills', (req, res) => {
+  const dir = String(req.query.projectDir ?? '');
+  res.json({ personalDir: personalSkillsDir(), skills: discoverSkills(dir, { project: req.query.project !== '0', personal: req.query.personal === '1' }) });
+});
 app.get('/api/folder-info', h(async (req, res) => res.json(await folderInfo(String(req.query.path ?? '')))));
 app.put('/api/workflows/:id', (req, res) => {
   const wf = req.body as Workflow;

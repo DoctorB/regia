@@ -1,8 +1,98 @@
-import { FileCode2, Lock, PencilLine, ScrollText, Trash2, TriangleAlert, CircleAlert } from 'lucide-react';
-import { KNOWN_TOOLS, WRITE_TOOLS, type PhaseConfig, type PhaseKind, type ValidationIssue, type Workflow } from '../../../shared/types.ts';
+import { useEffect, useState } from 'react';
+import { FileCode2, Lock, PencilLine, ScrollText, Sparkles, Trash2, TriangleAlert, CircleAlert, X } from 'lucide-react';
+import { KNOWN_TOOLS, WRITE_TOOLS, type PhaseConfig, type PhaseKind, type SkillInfo, type ValidationIssue, type Workflow, type WorkflowSettings } from '../../../shared/types.ts';
 import { useI18n } from '../i18n.tsx';
 import { Field, KIND_META, KindTile, Section, Switch, kindLabel } from '../ui.tsx';
 import { FolderStatus } from './Setup.tsx';
+import { api } from '../api.ts';
+
+const sourcesOf = (s: WorkflowSettings) => ({ project: s.skillSources?.project !== false, personal: s.skillSources?.personal === true });
+
+/** Skill disponibili per le impostazioni del workflow (aggiornate quando cambiano cartella o fonti). */
+function useSkills(s: WorkflowSettings) {
+  const { project, personal } = sourcesOf(s);
+  const [state, set] = useState<{ skills: SkillInfo[]; personalDir: string; loading: boolean }>({ skills: [], personalDir: '', loading: true });
+  useEffect(() => {
+    let alive = true;
+    const h = setTimeout(() => {
+      api.skills(s.projectDir, { project, personal })
+        .then((r) => { if (alive) set({ ...r, loading: false }); })
+        .catch(() => { if (alive) set({ skills: [], personalDir: '', loading: false }); });
+    }, 250);
+    return () => { alive = false; clearTimeout(h); };
+  }, [s.projectDir, project, personal]);
+  return state;
+}
+
+const skillName = (id: string) => id.replace(/^(progetto|personale):/, '');
+
+function SkillsSection({ cfg, settings, onChange }: { cfg: PhaseConfig; settings: WorkflowSettings; onChange: (v: PhaseConfig['skills']) => void }) {
+  const { t } = useI18n();
+  const { skills, loading } = useSkills(settings);
+  const mode = cfg.skills === 'all' ? 'all' : Array.isArray(cfg.skills) && cfg.skills.length ? 'chosen' : 'none';
+  // "Scelte" resta visibile anche prima di spuntare la prima skill.
+  const [picking, setPicking] = useState(mode === 'chosen');
+  const shown = mode === 'all' ? 'all' : picking || mode === 'chosen' ? 'chosen' : 'none';
+  const chosen = Array.isArray(cfg.skills) ? cfg.skills : [];
+  const missing = chosen.filter((id) => !skills.some((s) => s.id === id));
+  const toggle = (id: string) => onChange(chosen.includes(id) ? chosen.filter((x) => x !== id) : [...chosen, id]);
+  const count = mode === 'all' ? skills.length : chosen.length;
+  return (
+    <Section title={t('inspector.skills.title')} aside={<span className="muted small">{t('inspector.skills.active', { count })}</span>}>
+      <div className="model-picker cols-3" role="radiogroup" aria-label={t('inspector.skills.title')}>
+        {(['none', 'all', 'chosen'] as const).map((m) => (
+          <button key={m} role="radio" aria-checked={shown === m} className={`model-opt ${shown === m ? 'on' : ''}`}
+            onClick={() => { setPicking(m === 'chosen'); onChange(m === 'all' ? 'all' : m === 'none' ? undefined : chosen); }}>
+            <span className="model-name">{t(`inspector.skills.mode.${m}`)}</span>
+          </button>
+        ))}
+      </div>
+      {loading ? <p className="hint">{t('inspector.skills.loading')}</p>
+        : skills.length === 0 ? <p className="hint">{sourcesOf(settings).personal ? t('inspector.skills.emptyAll') : t('inspector.skills.empty')}</p>
+        : shown === 'chosen' ? (
+          <div className="skill-list">
+            {skills.map((s) => (
+              <label key={s.id} className={`skill-row ${chosen.includes(s.id) ? 'on' : ''}`} title={s.path}>
+                <input type="checkbox" checked={chosen.includes(s.id)} onChange={() => toggle(s.id)} />
+                <span className="skill-main">
+                  <span className="skill-name"><Sparkles />{s.name}<span className="tag">{t(`inspector.skills.source.${s.source}`)}</span></span>
+                  {s.description && <span className="skill-desc">{s.description}</span>}
+                </span>
+              </label>
+            ))}
+          </div>
+        ) : shown === 'all' ? <p className="hint">{t('inspector.skills.allHint', { names: skills.map((s) => s.name).join(', ') })}</p>
+        : <p className="hint">{t('inspector.skills.noneHint')}</p>}
+      {!loading && missing.length > 0 && (
+        <div className="tool-chips">
+          {missing.map((id) => (
+            <button key={id} className="tool-chip missing" onClick={() => toggle(id)} title={t('inspector.skills.removeMissing')}>
+              <TriangleAlert />{skillName(id)}<X />
+            </button>
+          ))}
+        </div>
+      )}
+      {shown !== 'none' && <p className="hint">{t('inspector.skills.hint')}</p>}
+    </Section>
+  );
+}
+
+function SkillSourcesSection({ settings, onChange }: { settings: WorkflowSettings; onChange: (v: WorkflowSettings['skillSources']) => void }) {
+  const { t } = useI18n();
+  const src = sourcesOf(settings);
+  const { skills, personalDir, loading } = useSkills(settings);
+  const by = (source: SkillInfo['source']) => skills.filter((s) => s.source === source).length;
+  return (
+    <Section title={t('settings.skills.title')} aside={loading ? undefined : <span className="muted small">{t('settings.skills.found', { count: skills.length })}</span>}>
+      <Switch checked={src.project} onChange={(v) => onChange({ ...src, project: v })} label={t('settings.skills.project')}
+        hint={src.project && !loading ? t('settings.skills.projectHintCount', { count: by('progetto') }) : t('settings.skills.projectHint')} />
+      <Switch checked={src.personal} onChange={(v) => onChange({ ...src, personal: v })} label={t('settings.skills.personal')}
+        hint={src.personal && !loading ? t('settings.skills.personalHintCount', { count: by('personale'), dir: personalDir }) : t('settings.skills.personalHint')} />
+      <p className="hint">{t('settings.skills.hint')}</p>
+    </Section>
+  );
+}
+
 
 // Descrizioni in locales/<lingua>/run.json (inspector.models.<id>).
 const MODELS: { id: string; label: string; cost: string }[] = [
@@ -35,7 +125,7 @@ function Issues({ issues }: { issues: ValidationIssue[] }) {
   );
 }
 
-export function PhaseInspector({ cfg, issues, onChange, onDelete }: { cfg: PhaseConfig; issues: ValidationIssue[]; onChange: (c: PhaseConfig) => void; onDelete: () => void }) {
+export function PhaseInspector({ cfg, settings, issues, onChange, onDelete }: { cfg: PhaseConfig; settings: WorkflowSettings; issues: ValidationIssue[]; onChange: (c: PhaseConfig) => void; onDelete: () => void }) {
   const { t } = useI18n();
   const set = <K extends keyof PhaseConfig>(k: K, v: PhaseConfig[K]) => onChange({ ...cfg, [k]: v });
   const human = cfg.kind === 'approvazione';
@@ -114,6 +204,8 @@ export function PhaseInspector({ cfg, issues, onChange, onDelete }: { cfg: Phase
             <p className="hint">{t('inspector.tools.hint')}</p>
           </Section>
 
+          <SkillsSection cfg={cfg} settings={settings} onChange={(v) => set('skills', v)} />
+
           <Section title={t('inspector.limits.title')}>
             <div className="grid2">
               <Field label={t('inspector.limits.maxTurns')}><Num value={cfg.maxTurns} onChange={(v) => set('maxTurns', v)} min={1} placeholder={t('inspector.limits.none')} /></Field>
@@ -186,6 +278,8 @@ export function WorkflowSettingsForm({ wf, groups = [], onChange, onShowRules }:
         <Switch checked={s.applyGeneralRules !== false} onChange={(v) => set('applyGeneralRules', v)} label={t('settings.rules.general')} hint={t('settings.rules.generalHint')} />
         <Switch checked={s.loadProjectSettings} onChange={(v) => set('loadProjectSettings', v)} label={t('settings.rules.projectSettings')} hint={t('settings.rules.projectSettingsHint')} />
       </Section>
+
+      <SkillSourcesSection settings={s} onChange={(v) => set('skillSources', v)} />
 
       <p className="hint pad">{t('settings.edgesHint')}</p>
     </div>

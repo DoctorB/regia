@@ -140,7 +140,10 @@
     "writersText": "{list}. Tools not granted are denied.",
     "serversTitle": "Local commands started by Regia:",
     "subscription": "Usage counts against the limits of your {plan} plan (and extra credits only if enabled): the dollar amounts shown are a list-price equivalent computed by the SDK. The SDK documentation asks third-party products to use API keys: for personal, local use the login works, but check your organization's policies.",
-    "apiKeyNote": "With an API key, usage is billed per token: check the actual cost in the Console."
+    "apiKeyNote": "With an API key, usage is billed per token: check the actual cost in the Console.",
+    "skills": "Skills",
+    "skillsAll": "all",
+    "noSkills": "none"
   },
   "canvas": {
     "tools": {
@@ -171,7 +174,12 @@
     "follow": "Follow active phase",
     "followTitle": "Automatically frame the active phase",
     "emptyTitle": "The diagram is empty",
-    "emptyText": "Drag a phase here from the palette on the left, or click a phase to add it."
+    "emptyText": "Drag a phase here from the palette on the left, or click a phase to add it.",
+    "skills": {
+      "one": "{count} skill",
+      "other": "{count} skills"
+    },
+    "skillsAll": "all skills"
   },
   "welcome": {
     "title": "Welcome to Regia",

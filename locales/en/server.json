@@ -71,10 +71,12 @@
       "delegated": "Delegated to a subagent: {description}",
       "denied": "Tool denied by the configuration: {tool}",
       "edit": "Chose to modify {file}",
-      "bash": "Chose to run: {command}"
+      "bash": "Chose to run: {command}",
+      "skill": "Used the skill {skill}"
     },
     "tool": {
-      "subagent": "Subagent: {description}"
+      "subagent": "Subagent: {description}",
+      "skill": "Skill: {skill}"
     },
     "activity": {
       "starting": "Starting…",
@@ -109,7 +111,10 @@
         "manual": "{label}: server stopped (manual request).",
         "cancelled": "{label}: server stopped (run cancelled)."
       }
-    }
+    },
+    "skillsAvailable": "{label}: skills available ({count}): {skills}.",
+    "skillsMissing": "{label}: skills not found, the phase continues without them: {skills}.",
+    "skillsBundleFailed": "{label}: could not prepare the skills ({error}); the phase continues without them."
   },
   "interventions": {
     "budgetReached": "The run's spending limit was reached before starting the phase.",
@@ -176,7 +181,8 @@
       "done": "Phase \"{label}\" completed in simulation."
     },
     "finalDecision": "Outcome {outcome} declared at the end of phase {label}.",
-    "workDone": "Work completed."
+    "workDone": "Work completed.",
+    "skillLoaded": "Instructions of the skill {skill} loaded (simulation)."
   },
   "api": {
     "originForbidden": "Origin not allowed",

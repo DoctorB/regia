@@ -18,6 +18,7 @@ Regia is a local app for designing development workflows as a diagram, running t
 - **Optimization**: suggestions based on measured data, each with its quality trade-off, and a side-by-side comparison of two runs.
 - **Continue**: add phases to finished work without re-running everything.
 - **General rules**: your personal rules and Regia's own rules are applied to every agent.
+- **Skills**: phases can use the Claude Code skills of the project or your personal ones, chosen per phase.
 - **Trial mode**: explore everything with simulated agents, at no cost.
 - **Languages**: Italian and English included; interface, messages and agent instructions come from JSON files, so a new language needs no code changes.
 

@@ -39,6 +39,8 @@ export interface MockOptions {
   stepMs?: number;
   /** Lingua del workflow: i testi simulati dell'agente la seguono. */
   lang?: string;
+  /** Skill disponibili per la fase (nomi visti dall'agente): la prova ne simula l'uso della prima. */
+  skills?: string[];
 }
 
 type Step =
@@ -158,6 +160,9 @@ export async function* mockQuery(o: MockOptions): AsyncGenerator<Record<string, 
   await sleep(stepMs / 2, o.signal);
 
   const steps = script(p, resumed, t);
+  if (!resumed && o.skills?.length) {
+    steps.unshift({ kind: 'tools', calls: [{ name: 'Skill', input: { skill: o.skills[0] }, result: t('mock.skillLoaded', { skill: o.skills[0] }) }] });
+  }
   let ctx = ctxBase + (prev ? 6000 : 0);
   for (let i = 0; i < steps.length; i++) {
     const s = steps[i];

@@ -32,10 +32,18 @@ The **Regole** (rules) button shows the rules added to every phase's instruction
 
 Each run stores the rules it used: you find them in the Stato tab ("Regole applicate") and in the event log. The personal rules file path can be changed with `REGIA_GLOBAL_RULES`.
 
+## Skills
+
+- **Discovery**: `<project>/.claude/skills/<name>/SKILL.md` and `~/.claude/skills` (up to 4 levels of subfolders). Name and description come from the frontmatter; without frontmatter the name is the folder name. Personal skills are excluded until enabled in the workflow.
+- **Execution**: for each attempt Regia copies only the selected skills into a temporary local plugin (`data/skill-bundles/`, named `regia-skills`) and passes it to the SDK through the `plugins` and `skills` options, adding the `Skill` tool to that phase only. Original files are never changed and, with project settings off, no personal settings, hooks or plugins are loaded. The plugin is removed when the phase ends (and when Regia starts, if any are left).
+- **Names**: inside the plugin each skill takes its folder name in lowercase (`Text Review` → `text-review`); two skills with the same name, one from the project and one personal, stay distinct with a suffix.
+- **Result reuse**: the selected skills are part of the reuse key.
+- **Trial mode**: the first available skill is "used" in simulation, so events and decisions are visible at no cost.
+
 ## Decisions shown
 
 - **Declared**: `DECISIONE: …` lines that the agent writes as required by the response protocol, plus the `decisioni` list in the final outcome block.
-- **Observed**: inferred from visible events, i.e. files edited, commands run, subagents started and tools denied.
+- **Observed**: inferred from visible events, i.e. files edited, commands run, skills used, subagents started and tools denied.
 
 Internal reasoning blocks (thinking) are never shown or stored.
 
@@ -103,6 +111,7 @@ The interface, Regia's messages and the instructions sent to agents are translat
 | `PORT` | Server port (default 4317; listens on 127.0.0.1 only) |
 | `REGIA_DATA_DIR` | Local data folder (default `data/`) |
 | `REGIA_GLOBAL_RULES` | Personal rules file (default `~/.claude/CLAUDE.md`) |
+| `REGIA_SKILLS_DIR` | Personal skills folder (default `~/.claude/skills`) |
 | `REGIA_DISABLE_REAL=1` | Disables real runs |
 | `REGIA_LANG` | Default server language (e.g. for the initial Regia rules); otherwise the system language |
 | `REGIA_MOCK_SPEED` | Milliseconds per step in trial mode (default 600) |
@@ -121,6 +130,7 @@ server/            Express API + SSE, execution engine, usage accounting, simula
   folder.ts        project folder check (git, pending changes)
   service.ts       local server phase processes (start, address, shutdown)
   nodeenv.ts       Node version required by the project, installations, error diagnosis
+  skills.ts        skill discovery and temporary per-phase plugin
 shared/types.ts    shared data model
 web/src/           React + React Flow interface
 templates/         starting presets (JSON)
