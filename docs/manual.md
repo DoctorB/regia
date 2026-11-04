@@ -40,6 +40,7 @@ Open **http://127.0.0.1:4317** and keep the terminal open while you use Regia. C
 2. Enter the **project folder**. Regia checks whether it is a git repository and whether it has uncommitted changes.
    > Before a real run, **commit or stash** your changes: you can then review the agents' work with `git diff` and undo it with `git checkout .`.
 3. Write the **goal**: what needs to be done and when it counts as finished. The more precise it is, the fewer rounds it takes.
+4. Optional: turn on one or more **design principles** (KISS, YAGNI, DRY, SOLID). See [Design principles](#design-principles).
 
 ---
 
@@ -172,6 +173,17 @@ The **Rules** button shows the rules added to every agent's instructions:
 - the **project's CLAUDE.md**, if you enable the option in the workflow.
 
 Each run stores the rules it used.
+
+### Design principles
+
+In the workflow settings (and when creating it) the **Design principles** section has a switch for each principle; they can be combined:
+
+- **KISS** (Keep It Simple): the simplest solution that solves the real problem;
+- **YAGNI** (You Aren't Gonna Need It): no features or extensions for hypothetical needs;
+- **DRY** (Don't Repeat Yourself): a single source for every piece of knowledge, without premature abstractions;
+- **SOLID**: single responsibility, open/closed, substitutability, small interfaces, depending on abstractions.
+
+Each phase receives guidance suited to its type: analysis proposes the solution that fits the principle, implementation applies it, tests and review check it. Approvals show a checklist to go through. The instructions you write in the phases are left untouched: the guidance is added at run time, and turning the switch off removes it. In each phase's inspector, below the instructions, you can read what will be added. The run log lists the principles applied.
 
 ### Skills
 

@@ -42,6 +42,7 @@ Apri **http://127.0.0.1:4317** e lascia aperto il terminale finché usi Regia. C
 2. Indica la **cartella del progetto**. Regia controlla se è un repository git e se ci sono modifiche non salvate.
    > Prima di un'esecuzione reale fai **commit o stash** delle tue modifiche: così potrai rivedere il lavoro degli agenti con `git diff` e annullarlo con `git checkout .`.
 3. Scrivi l'**obiettivo**: cosa va fatto e quando è finito. Più è preciso, meno passaggi servono.
+4. Facoltativo: attiva uno o più **principi di progettazione** (KISS, YAGNI, DRY, SOLID). Vedi [Principi di progettazione](#principi-di-progettazione).
 
 ---
 
@@ -174,6 +175,17 @@ Il pulsante **Regole** mostra le regole aggiunte alle istruzioni di ogni agente:
 - il **CLAUDE.md del progetto**, se attivi l'opzione nel workflow.
 
 Ogni esecuzione salva le regole che ha usato.
+
+### Principi di progettazione
+
+Nelle impostazioni del workflow (e alla creazione) la sezione **Principi di progettazione** ha un interruttore per ogni principio; si possono combinare:
+
+- **KISS** (Keep It Simple): la soluzione più semplice che risolve il problema reale;
+- **YAGNI** (You Aren't Gonna Need It): niente funzionalità o estensioni per esigenze ipotetiche;
+- **DRY** (Don't Repeat Yourself): una sola fonte per ogni conoscenza, senza astrazioni premature;
+- **SOLID**: responsabilità singola, aperto/chiuso, sostituibilità, interfacce piccole, dipendenze dalle astrazioni.
+
+Ogni fase riceve indicazioni adatte al suo tipo: l'analisi propone la soluzione coerente con il principio, l'implementazione lo applica, i test e la revisione lo verificano. Le approvazioni mostrano una checklist da controllare. Le istruzioni che scrivi nelle fasi non vengono toccate: le indicazioni si aggiungono al momento dell'esecuzione, e spegnendo l'interruttore spariscono. Nell'ispettore di ogni fase, sotto le istruzioni, puoi leggere cosa verrà aggiunto. Il registro dell'esecuzione indica i principi applicati.
 
 ### Skill
 

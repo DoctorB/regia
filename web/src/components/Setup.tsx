@@ -6,6 +6,7 @@ import type { AppliedRules, ContinuationPlan, FolderInfo, RulesInfo, RunMode, Wo
 import { api } from '../api.ts';
 import { useI18n } from '../i18n.tsx';
 import { Field, KindTile, Modal } from '../ui.tsx';
+import { PrinciplePicker } from './Principles.tsx';
 
 /** Stato di una cartella di progetto: esistenza, git, modifiche non salvate, CLAUDE.md. */
 export function FolderStatus({ path }: { path: string }) {
@@ -62,6 +63,7 @@ export function NewWorkflowDialog({ onCancel, onCreated, inline = false, groups 
   const [name, setName] = useState('');
   const [dir, setDir] = useState('');
   const [goal, setGoal] = useState('');
+  const [principles, setPrinciples] = useState<string[] | undefined>();
   // Gruppo: di base il nome della cartella del progetto, finché non lo cambi a mano.
   const [group, setGroup] = useState('');
   const [groupTouched, setGroupTouched] = useState(false);
@@ -87,7 +89,7 @@ export function NewWorkflowDialog({ onCancel, onCreated, inline = false, groups 
   async function create() {
     setBusy(true); setErr('');
     try {
-      const wf = await api.createWorkflow({ templateId: tpl || undefined, name, projectDir: dir, goal, language: lang, group });
+      const wf = await api.createWorkflow({ templateId: tpl || undefined, name, projectDir: dir, goal, language: lang, group, principles });
       onCreated(wf.id);
     } catch (e) { setErr((e as Error).message); } finally { setBusy(false); }
   }
@@ -112,6 +114,11 @@ export function NewWorkflowDialog({ onCancel, onCreated, inline = false, groups 
             <input id="nw-group" list="nw-groups" value={group} onChange={(e) => { setGroup(e.target.value); setGroupTouched(true); }} placeholder={t('manage.groupPlaceholder')} />
             <datalist id="nw-groups">{groups.map((g) => <option key={g} value={g} />)}</datalist>
           </Field>
+        </div>
+        <div className="field" role="group" aria-label={t('principles.title')}>
+          <span className="field-label">{t('principles.title')}</span>
+          <PrinciplePicker value={principles} onChange={setPrinciples} />
+          <span className="field-hint">{t('principles.hint')}</span>
         </div>
       </div>
       {err && <div className="callout tone-bad"><CircleAlert /><span>{err}</span></div>}

@@ -1,0 +1,51 @@
+{
+  "principles": {
+    "title": "Design principles",
+    "hint": "Phases receive the guidance of the active principles, tailored to their task. The instructions you write stay unchanged.",
+    "preview": "Guidance added to this phase",
+    "prompt": {
+      "header": "# Design principles\nThis workflow follows the principles below. Apply them in your task; the general rules and the phase instructions take precedence in case of conflict. If a principle leads you to rule out a solution, say so in the result.",
+      "approvalHeader": "Workflow principles, to check:"
+    },
+    "kiss": {
+      "name": "KISS (Keep It Simple)",
+      "summary": "The simplest solution that solves the real problem.",
+      "analisi": "- Among the possible solutions, propose the one with the fewest moving parts; if you suggest a more complex one, explain which concrete requirement makes it necessary.\n- Name the smallest change that solves the problem as the first step.",
+      "implementazione": "- Write direct, readable code: no abstraction layers, patterns or configuration the task does not need.\n- Prefer short functions, clear names and linear flow over clever solutions.\n- Use the tools and libraries already in the project before adding new ones.",
+      "test": "- Keep tests simple and readable: one behaviour per test, minimal test data, no unnecessary test infrastructure.",
+      "revisione": "- Flag unjustified complexity: single-use abstractions, indirection, superfluous configuration or generalisation.\n- For each finding, propose the simpler version.",
+      "personalizzata": "- Choose the simplest way to do the task and avoid unnecessary steps or structures.",
+      "checklist": "KISS: is the solution as simple as possible? Are there abstractions, layers or configuration that could be removed?"
+    },
+    "yagni": {
+      "name": "YAGNI (You Aren't Gonna Need It)",
+      "summary": "Only what is needed now: no features or extensions for hypothetical needs.",
+      "analisi": "- Limit the plan to what the goal asks for; list ideas that were not requested separately, as possible future work.\n- Do not plan extension points, options or generalisations without a current use case.",
+      "implementazione": "- Implement only the requested behaviour: no parameters, options, hooks or generic cases \"for the future\".\n- Do not add unused code, interfaces with a single implementation or configuration nobody uses.",
+      "test": "- Test the requested and existing behaviour; do not write tests for features that do not exist.",
+      "revisione": "- Flag code, options or generalisations the current goal does not need, and any dead code introduced.\n- Suggest what to remove.",
+      "personalizzata": "- Do only what the task requires, with no anticipatory additions.",
+      "checklist": "YAGNI: was anything added that the goal did not ask for (options, extensions, unused code)?"
+    },
+    "dry": {
+      "name": "DRY (Don't Repeat Yourself)",
+      "summary": "Every piece of knowledge has a single source in the code, without premature abstractions.",
+      "analisi": "- Look in the project for existing functions, components or constants that solve part of the problem and recommend reusing them.\n- Point out where the change risks duplicating logic that already exists.",
+      "implementazione": "- Before writing new code, check whether something reusable already exists.\n- Do not duplicate rules, values or logic: extract into a single place what truly repeats with the same meaning.\n- Do not merge code just because it looks alike: if two parts can change for different reasons, keep them separate.",
+      "test": "- Reuse existing test helpers and fixtures; avoid setup blocks copied between tests.",
+      "revisione": "- Flag duplicated logic, values or rules introduced by the change, pointing to where the original already exists.\n- Also flag forced abstractions that tie together code with different meanings.",
+      "personalizzata": "- Reuse what already exists and avoid repeating the same information in several places.",
+      "checklist": "DRY: does the change duplicate logic or values already in the project? Does it reuse what existed?"
+    },
+    "solid": {
+      "name": "SOLID",
+      "summary": "Single responsibility, open/closed, substitutability (Liskov), small interfaces, depending on abstractions.",
+      "analisi": "- Identify the responsibilities involved and where each part of the change belongs.\n- Point out classes or modules that already do too much and whether the change would make them worse.",
+      "implementazione": "- Each class, module or function has one responsibility and one reason to change.\n- Extend behaviour by adding code rather than riskily changing stable code, where the project allows it.\n- Subclasses and implementations honour the contract of the base type.\n- Prefer small, specific interfaces; make high-level code depend on abstractions, not on details.\n- Apply these principles in proportion: do not add interfaces or layers where a simple function is enough.",
+      "test": "- Test each responsibility in isolation; where needed, replace dependencies through their abstractions.",
+      "revisione": "- Flag concrete violations: classes with several responsibilities, direct dependencies on details, implementations that break the contract, oversized interfaces.\n- For each one, give a fix proportionate to the problem.",
+      "personalizzata": "- Keep each part of the work focused on a single responsibility.",
+      "checklist": "SOLID: does each module have a single responsibility? Do dependencies go through abstractions without needless layers?"
+    }
+  }
+}

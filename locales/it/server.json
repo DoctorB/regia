@@ -18,6 +18,7 @@
       "off": "Regole generali non applicate (disattivate nelle impostazioni del workflow).",
       "project": "CLAUDE.md del progetto caricato dalla CLI: {path}."
     },
+    "principles": "Principi di progettazione applicati alle fasi: {list}.",
     "runCompleted": "Esecuzione completata.",
     "runPaused": "L'esecuzione è in pausa: serve un tuo intervento.",
     "runCancelled": "Esecuzione annullata.",

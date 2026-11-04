@@ -7,6 +7,7 @@ import type { ApiErrorBody, HumanAction, Run, RunMode, ValidationIssue, Workflow
 import { RegiaError, getEngine, planContinuation, startRun } from './engine.ts';
 import { envInfo } from './env.ts';
 import { versionInfo } from './version.ts';
+import { activePrinciples } from '../shared/principles.ts';
 import { computeInsights } from './insights.ts';
 import { folderInfo } from './folder.ts';
 import { withLayout } from '../shared/layout.ts';
@@ -75,7 +76,7 @@ app.get('/api/i18n/:lang', (req, res) => res.json(mergedDict(req.params.lang)));
 
 /** Crea un workflow, vuoto o da un preset. */
 app.post('/api/workflows', (req, res) => {
-  const body = req.body as { name?: string; projectDir?: string; goal?: string; templateId?: string; language?: string; group?: string };
+  const body = req.body as { name?: string; projectDir?: string; goal?: string; templateId?: string; language?: string; group?: string; principles?: string[] };
   const language = body.language && languages().some((l) => l.code === body.language) ? body.language : systemLanguage();
   const t = serverT(language);
   const tpl = body.templateId ? listTemplates(language).find((t) => t.id === body.templateId) : undefined;
@@ -90,6 +91,7 @@ app.post('/api/workflows', (req, res) => {
       ...tpl?.settings,
       projectDir: body.projectDir?.trim() ?? '',
       goal: body.goal?.trim() ?? '',
+      ...(Array.isArray(body.principles) && activePrinciples(body.principles).length ? { principles: activePrinciples(body.principles) } : {}),
     },
     nodes: withLayout(structuredClone(tpl?.nodes ?? []), tpl?.edges ?? []),
     edges: structuredClone(tpl?.edges ?? []),

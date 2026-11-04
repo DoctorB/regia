@@ -4,6 +4,7 @@ import { KNOWN_TOOLS, READY_CHECKS, WRITE_TOOLS, type PhaseConfig, type PhaseKin
 import { useI18n } from '../i18n.tsx';
 import { Field, KIND_META, KindTile, Section, Switch, kindLabel } from '../ui.tsx';
 import { FolderStatus } from './Setup.tsx';
+import { PrinciplePicker, PrinciplesPreview } from './Principles.tsx';
 import { api } from '../api.ts';
 
 const sourcesOf = (s: WorkflowSettings) => ({ project: s.skillSources?.project !== false, personal: s.skillSources?.personal === true });
@@ -190,6 +191,7 @@ export function PhaseInspector({ cfg, settings, issues, onChange, onDelete }: { 
           <Field label={human ? t('inspector.task.instructionsHuman') : t('inspector.task.instructions')} hint={agent ? t('inspector.task.instructionsHint') : undefined}>
             <textarea rows={human ? 4 : 7} value={cfg.instructions} onChange={(e) => set('instructions', e.target.value)} />
           </Field>
+          <PrinciplesPreview value={settings.principles} kind={cfg.kind} />
         </Section>
       )}
 
@@ -294,6 +296,11 @@ export function WorkflowSettingsForm({ wf, groups = [], onChange, onShowRules }:
             {!languages.some((l) => l.code === lang) && <option value={lang}>{lang}</option>}
           </select>
         </Field>
+      </Section>
+
+      <Section title={t('principles.title')}>
+        <p className="hint">{t('principles.hint')}</p>
+        <PrinciplePicker value={s.principles} onChange={(v) => set('principles', v)} />
       </Section>
 
       <Section title={t('settings.rules.title')} aside={<button className="btn sm ghost" onClick={onShowRules}><ScrollText />{t('settings.rules.show')}</button>}>

@@ -688,3 +688,11 @@ input[type="checkbox"] { width: 16px; height: 16px; min-height: 0; accent-color:
 .version-pop p { margin: 0; }
 .version-cmd { margin: 4px 12px 8px; padding: 8px 10px; background: var(--surface-3); border-radius: var(--r-sm); white-space: pre; }
 .version-cmd code { background: none; padding: 0; }
+
+/* ---------- Principi di progettazione ---------- */
+.principle-grid { display: grid; grid-template-columns: 1fr; gap: 2px; }
+.newwf .principle-grid { grid-template-columns: 1fr 1fr; column-gap: 16px; }
+@media (max-width: 760px) { .newwf .principle-grid { grid-template-columns: 1fr; } }
+.principles-preview { margin-top: 4px; }
+.principles-preview summary { display: flex; align-items: center; justify-content: space-between; gap: 8px; cursor: pointer; font-size: 12px; font-weight: 600; color: var(--text-2); padding: 4px 0; }
+.principles-preview .reason { margin-top: 6px; max-height: 260px; }

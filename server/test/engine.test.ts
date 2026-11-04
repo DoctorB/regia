@@ -20,6 +20,8 @@ const { computeInsights } = await import('../insights.ts');
 const { mockSessionTotals } = await import('../mockQuery.ts');
 const { validateWorkflow } = await import('../validate.ts');
 const { ensureRegiaRules, rulesPrompt } = await import('../rules.ts');
+const { serverT } = await import('../i18n.ts');
+const { principlesText } = await import('../../shared/principles.ts');
 store.initStore();
 ensureRegiaRules();
 
@@ -70,6 +72,27 @@ test('regole generali fotografate e aggiunte al prompt; disattivabili', () => {
   assert.equal(eng2.run.rules!.applied, false);
   assert.equal(rulesPrompt(eng2.run.rules), '');
   eng2.cancel();
+});
+
+test('principi di progettazione: indicazioni per tipo di fase, checklist nelle approvazioni', async () => {
+  const t = serverT('it');
+  assert.equal(principlesText(undefined, 'implementazione', t), '');
+  assert.equal(principlesText(['kiss'], 'server', t), '');
+  const impl = principlesText(['yagni', 'sconosciuto', 'kiss'], 'implementazione', t);
+  // Ordine fisso (KISS prima di YAGNI), id sconosciuti ignorati, indicazioni specifiche dell'implementazione.
+  assert.match(impl, /^# Principi di progettazione[\s\S]*## KISS[\s\S]*astrazione[\s\S]*## YAGNI/);
+  assert.doesNotMatch(impl, /sconosciuto/);
+  assert.notEqual(principlesText(['kiss'], 'revisione', t), principlesText(['kiss'], 'analisi', t));
+  assert.match(principlesText(['solid'], 'implementazione', serverT('en')), /single responsibility|one responsibility/i);
+
+  const wf = bugWf();
+  wf.settings.principles = ['kiss', 'dry'];
+  const eng = startRun(wf, 'prova', 5);
+  const run = eng.run;
+  assert.ok(run.events.some((e) => e.text === 'Principi di progettazione applicati alle fasi: KISS, DRY.'));
+  await waitFor(() => run.nodes.approvazione.status === 'attesa_intervento');
+  assert.match(run.nodes.approvazione.pendingReason!, /Principi del workflow, da verificare:\n- KISS:[\s\S]*\n- DRY:/);
+  eng.cancel();
 });
 
 test('esecuzione di prova completa con approvazione e ripresa con feedback', async () => {

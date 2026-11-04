@@ -141,7 +141,9 @@ server/            API Express + SSE, motore di esecuzione, contabilità, simula
   service.ts       processi della fase Avvio app (avvio, indirizzo, raggiungibilità, arresto)
   nodeenv.ts       versione di Node richiesta dal progetto, installazioni, diagnosi degli errori
   skills.ts        ricerca delle skill e plugin temporaneo per fase
+  version.ts       versione in uso e controllo di quella pubblicata su GitHub
 shared/types.ts    modello dati comune
+shared/principles.ts principi di progettazione (testi in locales/<lingua>/principles.json)
 web/src/           interfaccia React + React Flow
 templates/         preset di partenza (JSON)
 ```

@@ -12,6 +12,7 @@ import { mockQuery } from './mockQuery.ts';
 import { clip, redact } from './redact.ts';
 import { buildSkillBundle, discoverSkills, phaseSkills, PLUGIN_NAME, removeSkillBundles, skillSources, type SkillBundle } from './skills.ts';
 import { rulesPrompt, snapshotRules } from './rules.ts';
+import { activePrinciples, principlesText } from '../shared/principles.ts';
 import { readReuseCache, saveRun, writeReuseEntry } from './store.ts';
 import { AttemptAccounting, sumTotals, type SessionSnapshot } from './usage.ts';
 import { topoOrder } from './validate.ts';
@@ -232,6 +233,8 @@ export class RunEngine {
       this.say('run', msg('events.rules.off'));
     }
     if (r?.projectPath) this.say('run', msg('events.rules.project', { path: r.projectPath }));
+    const principles = activePrinciples(this.wf.settings.principles);
+    if (principles.length) this.say('run', msg('events.principles', { list: principles.map((p) => p.toUpperCase()).join(', ') }));
     this.persist(true);
     this.schedule();
   }
@@ -306,10 +309,19 @@ export class RunEngine {
     ].filter(Boolean).join('\n\n');
   }
 
+  /** Testo aggiunto al prompt di sistema della fase: ruolo, principi di progettazione e regole generali. */
+  private systemAppend(d: WorkflowNode['data']): string {
+    const principles = principlesText(this.wf.settings.principles, d.kind, this.t);
+    return `${d.role ? `\n${this.t('agent.role', { role: d.role })}` : ''}${principles ? `\n\n${principles}` : ''}${rulesPrompt(this.run.rules, this.lang)}`;
+  }
+
   private reuseKey(n: WorkflowNode, prompt: string) {
     const d = n.data;
     const h = createHash('sha256');
     h.update(JSON.stringify([this.run.mode, d.role, d.model, d.allowedTools, d.maxTurns, prompt, this.wf.settings.projectDir, this.wf.settings.loadProjectSettings, d.skills ?? null, this.wf.settings.skillSources ?? null]));
+    // I principi cambiano il prompt di sistema: entrano nella chiave solo se attivi, così i risultati già in cache restano validi.
+    const principles = activePrinciples(this.wf.settings.principles);
+    if (principles.length) h.update(JSON.stringify(principles));
     h.update(projectFingerprint(this.wf.settings.projectDir));
     return h.digest('hex');
   }
@@ -425,7 +437,7 @@ export class RunEngine {
             allowedTools: tools,
             ...(bundle ? { plugins: [{ type: 'local' as const, path: bundle.path }], skills: bundle.names } : {}),
             permissionMode: 'dontAsk',
-            systemPrompt: { type: 'preset', preset: 'claude_code', append: `${d.role ? `\n${this.t('agent.role', { role: d.role })}` : ''}${rulesPrompt(this.run.rules, this.lang)}` || undefined },
+            systemPrompt: { type: 'preset', preset: 'claude_code', append: this.systemAppend(d) || undefined },
             maxTurns: d.maxTurns,
             maxBudgetUsd: nodeBudget,
             abortController: ctrl,
@@ -953,7 +965,9 @@ export class RunEngine {
     st.status = 'attesa_intervento';
     st.pendingActions = ['approva', 'respingi', 'annulla'];
     // Le istruzioni dell'approvazione sono testo del workflow: nessun messaggio localizzabile.
-    this.setPending(st, undefined, n.data.instructions);
+    // Con dei principi attivi si aggiunge la checklist per chi approva.
+    const checklist = principlesText(this.wf.settings.principles, 'approvazione', this.t);
+    this.setPending(st, undefined, [n.data.instructions, checklist].filter(Boolean).join('\n\n'));
     this.say('intervento', msg('events.awaitingApproval', { label: n.data.label }), { nodeId: n.id });
     this.nodeChanged(n.id);
   }

@@ -99,6 +99,8 @@ export interface WorkflowSettings {
   language?: string;
   /** Dove cercare le skill: progetto (.claude/skills, predefinito) e personali (~/.claude/skills, da attivare). */
   skillSources?: { project?: boolean; personal?: boolean };
+  /** Principi di progettazione seguiti dal workflow (es. kiss, yagni): le fasi ne ricevono le indicazioni. Assente = nessuno. */
+  principles?: string[];
 }
 
 export interface WorkflowTemplate {

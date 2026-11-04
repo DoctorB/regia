@@ -1,0 +1,51 @@
+{
+  "principles": {
+    "title": "Principi di progettazione",
+    "hint": "Le fasi ricevono le indicazioni dei principi attivi, adatte al loro compito. Le istruzioni che scrivi restano invariate.",
+    "preview": "Indicazioni aggiunte a questa fase",
+    "prompt": {
+      "header": "# Principi di progettazione\nQuesto workflow segue i principi indicati sotto. Applicali nel tuo compito; le regole generali e le istruzioni della fase restano prioritarie in caso di conflitto. Se un principio ti porta a escludere una soluzione, dillo nel risultato.",
+      "approvalHeader": "Principi del workflow, da verificare:"
+    },
+    "kiss": {
+      "name": "KISS (Keep It Simple)",
+      "summary": "La soluzione più semplice che risolve il problema reale.",
+      "analisi": "- Tra le soluzioni possibili proponi quella con meno parti mobili; se ne suggerisci una più complessa, spiega quale requisito concreto la rende necessaria.\n- Indica come primo passo la modifica minima che risolve il problema.",
+      "implementazione": "- Scrivi codice diretto e leggibile: niente livelli di astrazione, pattern o configurazioni che il compito non richiede.\n- Preferisci funzioni brevi, nomi chiari e flusso lineare a soluzioni ingegnose.\n- Usa gli strumenti e le librerie già presenti nel progetto prima di introdurne di nuovi.",
+      "test": "- Mantieni i test semplici e leggibili: un comportamento per test, dati di prova minimi, niente infrastruttura di test non necessaria.",
+      "revisione": "- Segnala la complessità non giustificata: astrazioni con un solo uso, indirezioni, configurazioni o generalizzazioni superflue.\n- Per ogni segnalazione proponi la versione più semplice.",
+      "personalizzata": "- Scegli il modo più semplice di svolgere il compito ed evita passaggi o strutture non necessari.",
+      "checklist": "KISS: la soluzione è la più semplice possibile? Ci sono astrazioni, livelli o configurazioni che si potrebbero togliere?"
+    },
+    "yagni": {
+      "name": "YAGNI (You Aren't Gonna Need It)",
+      "summary": "Solo ciò che serve adesso: niente funzionalità o estensioni per esigenze ipotetiche.",
+      "analisi": "- Limita il piano a quanto chiesto dall'obiettivo; elenca a parte, come possibili sviluppi futuri, le idee non richieste.\n- Non pianificare punti di estensione, opzioni o generalizzazioni senza un caso d'uso attuale.",
+      "implementazione": "- Implementa solo il comportamento richiesto: niente parametri, opzioni, hook o casi generici \"per il futuro\".\n- Non aggiungere codice inutilizzato, interfacce con una sola implementazione o configurazioni che nessuno usa.",
+      "test": "- Verifica i comportamenti richiesti e quelli esistenti; non scrivere test per funzionalità che non esistono.",
+      "revisione": "- Segnala codice, opzioni o generalizzazioni che non servono all'obiettivo attuale, e il codice morto introdotto.\n- Suggerisci cosa rimuovere.",
+      "personalizzata": "- Fai solo ciò che il compito richiede, senza aggiunte anticipate.",
+      "checklist": "YAGNI: è stato aggiunto qualcosa che l'obiettivo non chiedeva (opzioni, estensioni, codice inutilizzato)?"
+    },
+    "dry": {
+      "name": "DRY (Don't Repeat Yourself)",
+      "summary": "Ogni conoscenza ha una sola fonte nel codice, senza astrazioni premature.",
+      "analisi": "- Cerca nel progetto funzioni, componenti o costanti già esistenti che risolvono parte del problema e indica di riutilizzarli.\n- Segnala dove la modifica rischia di duplicare logica già presente.",
+      "implementazione": "- Prima di scrivere codice nuovo cerca se esiste già qualcosa da riutilizzare.\n- Non duplicare regole, valori o logica: estrai in un unico punto ciò che si ripete davvero con lo stesso significato.\n- Non unire codice solo perché si somiglia: se due parti possono cambiare per motivi diversi, tienile separate.",
+      "test": "- Riusa gli helper e le fixture di test esistenti; evita blocchi di preparazione copiati tra un test e l'altro.",
+      "revisione": "- Segnala duplicazioni di logica, valori o regole introdotte dalla modifica, indicando dove esiste già l'originale.\n- Segnala anche le astrazioni forzate che legano codice con significati diversi.",
+      "personalizzata": "- Riutilizza ciò che esiste già ed evita di ripetere le stesse informazioni in più punti.",
+      "checklist": "DRY: la modifica duplica logica o valori già presenti nel progetto? Riusa ciò che esisteva?"
+    },
+    "solid": {
+      "name": "SOLID",
+      "summary": "Responsabilità singola, aperto/chiuso, sostituibilità (Liskov), interfacce piccole, dipendenze dalle astrazioni.",
+      "analisi": "- Individua le responsabilità coinvolte e dove dovrebbe stare ciascuna parte della modifica.\n- Segnala le classi o i moduli che già fanno troppe cose e se la modifica li peggiorerebbe.",
+      "implementazione": "- Ogni classe, modulo o funzione ha una sola responsabilità e un solo motivo per cambiare.\n- Estendi il comportamento aggiungendo codice invece di modificare in modo rischioso quello stabile, quando il progetto lo consente.\n- Le sottoclassi e le implementazioni rispettano il contratto del tipo base.\n- Preferisci interfacce piccole e specifiche; fai dipendere il codice di alto livello dalle astrazioni, non dai dettagli.\n- Applica questi principi con misura: non introdurre interfacce o livelli dove una funzione semplice basta.",
+      "test": "- Verifica ogni responsabilità in modo isolato; dove serve sostituisci le dipendenze tramite le loro astrazioni.",
+      "revisione": "- Segnala violazioni concrete: classi con più responsabilità, dipendenze dirette da dettagli, implementazioni che non rispettano il contratto, interfacce troppo grandi.\n- Per ognuna indica la correzione proporzionata al problema.",
+      "personalizzata": "- Mantieni ogni parte del lavoro focalizzata su una sola responsabilità.",
+      "checklist": "SOLID: ogni modulo ha una sola responsabilità? Le dipendenze passano dalle astrazioni senza livelli superflui?"
+    }
+  }
+}

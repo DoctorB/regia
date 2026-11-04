@@ -18,6 +18,7 @@
       "off": "General rules not applied (disabled in the workflow settings).",
       "project": "Project CLAUDE.md loaded by the CLI: {path}."
     },
+    "principles": "Design principles applied to the phases: {list}.",
     "runCompleted": "Run completed.",
     "runPaused": "The run is paused: your input is needed.",
     "runCancelled": "Run cancelled.",

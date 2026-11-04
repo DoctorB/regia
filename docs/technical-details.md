@@ -141,7 +141,9 @@ server/            Express API + SSE, execution engine, usage accounting, simula
   service.ts       Run app phase processes (start, address, reachability, shutdown)
   nodeenv.ts       Node version required by the project, installations, error diagnosis
   skills.ts        skill discovery and temporary per-phase plugin
+  version.ts       version in use and check of the one published on GitHub
 shared/types.ts    shared data model
+shared/principles.ts design principles (texts in locales/<language>/principles.json)
 web/src/           React + React Flow interface
 templates/         starting presets (JSON)
 ```

@@ -21,7 +21,7 @@ export const api = {
   templates: (lang?: string) => req<WorkflowTemplate[]>('GET', `/api/templates${lang ? `?lang=${lang}` : ''}`),
   duplicateWorkflow: (id: string) => req<Workflow>('POST', `/api/workflows/${id}/duplicate`),
   renameGroup: (from: string, to: string) => req<{ ok: boolean; updated: number }>('POST', '/api/workflow-groups/rename', { from, to }),
-  createWorkflow: (body: { name?: string; projectDir?: string; goal?: string; templateId?: string; language?: string; group?: string }) => req<Workflow>('POST', '/api/workflows', body),
+  createWorkflow: (body: { name?: string; projectDir?: string; goal?: string; templateId?: string; language?: string; group?: string; principles?: string[] }) => req<Workflow>('POST', '/api/workflows', body),
   rules: (projectDir?: string) => req<RulesInfo>('GET', `/api/rules${projectDir ? `?projectDir=${encodeURIComponent(projectDir)}` : ''}`),
   saveRules: (text: string) => req<RulesInfo>('PUT', '/api/rules', { text }),
   skills: (projectDir: string, sources: { project: boolean; personal: boolean }) => req<{ personalDir: string; skills: SkillInfo[] }>('GET', `/api/skills?projectDir=${encodeURIComponent(projectDir)}&project=${sources.project ? 1 : 0}&personal=${sources.personal ? 1 : 0}`),

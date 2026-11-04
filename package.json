@@ -1,6 +1,6 @@
 {
   "name": "regia",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Editor grafico e monitor in tempo reale per workflow multi-fase eseguiti con il Claude Agent SDK",
   "scripts": {
     "start": "npm run build && node --import tsx server/index.ts",
