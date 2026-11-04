@@ -10,7 +10,7 @@ Regia is a local app for designing development workflows as a diagram, running t
 
 ## What it does
 
-- **Visual editor**: analysis, implementation, test, review, human approval, local server and publishing phases, connected into a flow. Start from ready-made presets.
+- **Visual editor**: analysis, implementation, test, review, human approval, run app and publishing phases, connected into a flow. Start from ready-made presets.
 - **Live execution**: the state of every phase on the diagram, plus events, results, errors and the decisions declared by the agents.
 - **Interventions**: approve, reject with a comment (the agent resumes its own session), retry, skip, cancel.
 - **Check the app before approving**: web, desktop or mobile, iOS included on a Mac. Regia runs the project's own command (npm, dotnet, flutter, gradle, msbuild…) and waits for an address, an output line, an open window or a successful exit; it can also just check a site already served by IIS. For Node projects it also picks the right Node version.
@@ -18,8 +18,10 @@ Regia is a local app for designing development workflows as a diagram, running t
 - **Optimization**: suggestions based on measured data, each with its quality trade-off, and a side-by-side comparison of two runs.
 - **Continue**: add phases to finished work without re-running everything.
 - **General rules**: your personal rules and Regia's own rules are applied to every agent.
+- **Design principles**: turn on KISS, YAGNI, DRY or SOLID for a workflow; each phase gets guidance suited to its task and approvals get a checklist, without touching your instructions.
 - **Skills**: phases can use the Claude Code skills of the project or your personal ones, chosen per phase.
 - **Trial mode**: explore everything with simulated agents, at no cost.
+- **Update notice**: the version in use is shown in the interface, with a notice when a newer one is on GitHub (update with `git pull`).
 - **Languages**: Italian and English included; interface, messages and agent instructions come from JSON files, so a new language needs no code changes.
 
 ## Quick start
@@ -52,7 +54,7 @@ Open <http://127.0.0.1:4317>, create a workflow from a preset and press **Prova*
 
 ```bash
 npm run dev        # server and UI with hot reload (http://127.0.0.1:5173)
-npm test           # usage accounting, execution engine, local server
+npm test           # usage accounting, execution engine, Run app phase
 npm run typecheck
 ```
 

@@ -30,6 +30,15 @@ Open **http://127.0.0.1:4317** and keep the terminal open while you use Regia. C
 
 **Requirements**: Node.js 20 or later. Real runs need [Claude Code](https://docs.claude.com/en/docs/claude-code) with an active login (check with `claude auth status`), or the `ANTHROPIC_API_KEY` environment variable. You don't need to open Claude Code: Regia uses its credentials.
 
+**Updates**: the version in use is shown next to the Regia name, at the top left. When a newer one is published on the GitHub repository, a notice appears in its place (`v0.1.0 → v0.2.0`): click it to see the commands to update. Updating is manual, from the Regia folder:
+
+```bash
+git pull
+npm install
+```
+
+then restart with `npm start`. The check only reads the published version number and can be turned off with `REGIA_UPDATE_CHECK=0`.
+
 ---
 
 ## 2. Create a workflow
@@ -91,7 +100,7 @@ When the workflow stops, the **Status** tab shows what is needed:
 
 ### Checking the app: web, desktop, mobile
 
-![Local preview](img/05-anteprima-locale.png)
+![Checking the app before approving](img/05-anteprima-locale.png)
 
 Regia is not tied to a technology: agents work with the project's own tools (npm, dotnet, msbuild, gradle, flutter, Xcode, docker…) through the Bash tool. The **Run app** phase lets you see the result before approving. It runs any command in the project folder and waits until the app is ready, according to the criterion chosen in **Ready when**:
 
@@ -176,6 +185,8 @@ Each run stores the rules it used.
 
 ### Design principles
 
+![Design principles](img/12-principi.png)
+
 In the workflow settings (and when creating it) the **Design principles** section has a switch for each principle; they can be combined:
 
 - **KISS** (Keep It Simple): the simplest solution that solves the real problem;
@@ -183,7 +194,11 @@ In the workflow settings (and when creating it) the **Design principles** sectio
 - **DRY** (Don't Repeat Yourself): a single source for every piece of knowledge, without premature abstractions;
 - **SOLID**: single responsibility, open/closed, substitutability, small interfaces, depending on abstractions.
 
-Each phase receives guidance suited to its type: analysis proposes the solution that fits the principle, implementation applies it, tests and review check it. Approvals show a checklist to go through. The instructions you write in the phases are left untouched: the guidance is added at run time, and turning the switch off removes it. In each phase's inspector, below the instructions, you can read what will be added. The run log lists the principles applied.
+Each phase receives guidance suited to its type: analysis proposes the solution that fits the principle, implementation applies it, tests and review check it. Approvals show a checklist to go through. The instructions you write in the phases are left untouched: the guidance is added at run time, and turning the switch off removes it. In each phase's inspector, below the instructions, you can read what will be added.
+
+![Guidance added to a phase](img/13-principi-fase.png)
+
+The run log lists the principles applied.
 
 ### Skills
 

@@ -32,6 +32,15 @@ Apri **http://127.0.0.1:4317** e lascia aperto il terminale finché usi Regia. C
 
 **Requisiti**: Node.js 20 o superiore. Per le esecuzioni reali serve [Claude Code](https://docs.claude.com/en/docs/claude-code) con un login attivo (verifica con `claude auth status`), oppure la variabile `ANTHROPIC_API_KEY`. Non serve aprire Claude Code: Regia usa le sue credenziali.
 
+**Aggiornamenti**: la versione in uso compare accanto al nome Regia, in alto a sinistra. Quando sul repository GitHub ne esce una più recente, al suo posto compare un avviso (`v0.1.0 → v0.2.0`): cliccandolo vedi i comandi per aggiornare. L'aggiornamento è manuale, dalla cartella di Regia:
+
+```bash
+git pull
+npm install
+```
+
+poi riavvia con `npm start`. Il controllo legge solo il numero di versione pubblicato e si può disattivare con `REGIA_UPDATE_CHECK=0`.
+
 ---
 
 ## 2. Crea un workflow
@@ -93,7 +102,7 @@ Quando il workflow si ferma, la scheda **Stato** mostra cosa serve:
 
 ### Verificare l'app: web, desktop, mobile
 
-![Anteprima locale](img/05-anteprima-locale.png)
+![Verifica dell'app prima di approvare](img/05-anteprima-locale.png)
 
 Regia non è legata a una tecnologia: gli agenti lavorano con gli strumenti del progetto (npm, dotnet, msbuild, gradle, flutter, Xcode, docker…) tramite lo strumento Bash. La fase **Avvio app** serve a vedere il risultato prima di approvare. Esegue un comando qualsiasi nella cartella del progetto e attende che l'app sia pronta, secondo il criterio scelto in **Quando è pronta**:
 
@@ -178,6 +187,8 @@ Ogni esecuzione salva le regole che ha usato.
 
 ### Principi di progettazione
 
+![Principi di progettazione](img/12-principi.png)
+
 Nelle impostazioni del workflow (e alla creazione) la sezione **Principi di progettazione** ha un interruttore per ogni principio; si possono combinare:
 
 - **KISS** (Keep It Simple): la soluzione più semplice che risolve il problema reale;
@@ -185,7 +196,11 @@ Nelle impostazioni del workflow (e alla creazione) la sezione **Principi di prog
 - **DRY** (Don't Repeat Yourself): una sola fonte per ogni conoscenza, senza astrazioni premature;
 - **SOLID**: responsabilità singola, aperto/chiuso, sostituibilità, interfacce piccole, dipendenze dalle astrazioni.
 
-Ogni fase riceve indicazioni adatte al suo tipo: l'analisi propone la soluzione coerente con il principio, l'implementazione lo applica, i test e la revisione lo verificano. Le approvazioni mostrano una checklist da controllare. Le istruzioni che scrivi nelle fasi non vengono toccate: le indicazioni si aggiungono al momento dell'esecuzione, e spegnendo l'interruttore spariscono. Nell'ispettore di ogni fase, sotto le istruzioni, puoi leggere cosa verrà aggiunto. Il registro dell'esecuzione indica i principi applicati.
+Ogni fase riceve indicazioni adatte al suo tipo: l'analisi propone la soluzione coerente con il principio, l'implementazione lo applica, i test e la revisione lo verificano. Le approvazioni mostrano una checklist da controllare. Le istruzioni che scrivi nelle fasi non vengono toccate: le indicazioni si aggiungono al momento dell'esecuzione, e spegnendo l'interruttore spariscono. Nell'ispettore di ogni fase, sotto le istruzioni, puoi leggere cosa verrà aggiunto.
+
+![Indicazioni aggiunte a una fase](img/13-principi-fase.png)
+
+Il registro dell'esecuzione indica i principi applicati.
 
 ### Skill
 
