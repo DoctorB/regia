@@ -252,5 +252,14 @@
     "toRun": "Da eseguire",
     "noneToRun": "Nessuna: il workflow non è cambiato.",
     "hint": "Se respingi una nuova approvazione, l'implementazione ripresa riparte dalla sua sessione originale con il tuo commento."
+  },
+  "version": {
+    "current": "Versione in uso",
+    "available": "Disponibile la versione {version}",
+    "inUse": "In uso: v{version}.",
+    "howTo": "Per aggiornare, dalla cartella di Regia esegui:",
+    "restart": "Poi riavvia Regia (npm start).",
+    "changes": "Vedi le modifiche su GitHub",
+    "toast": "È disponibile Regia v{version}: dettagli accanto al nome in alto."
   }
 }

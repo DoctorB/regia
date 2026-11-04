@@ -252,5 +252,14 @@
     "toRun": "To run",
     "noneToRun": "None: the workflow has not changed.",
     "hint": "If you reject a new approval, the reused implementation resumes from its original session with your comment."
+  },
+  "version": {
+    "current": "Version in use",
+    "available": "Version {version} available",
+    "inUse": "In use: v{version}.",
+    "howTo": "To update, run from the Regia folder:",
+    "restart": "Then restart Regia (npm start).",
+    "changes": "See the changes on GitHub",
+    "toast": "Regia v{version} is available: details next to the name at the top."
   }
 }

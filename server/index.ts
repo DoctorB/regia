@@ -6,6 +6,7 @@ import { msg, type Msg } from '../shared/i18n.ts';
 import type { ApiErrorBody, HumanAction, Run, RunMode, ValidationIssue, Workflow } from '../shared/types.ts';
 import { RegiaError, getEngine, planContinuation, startRun } from './engine.ts';
 import { envInfo } from './env.ts';
+import { versionInfo } from './version.ts';
 import { computeInsights } from './insights.ts';
 import { folderInfo } from './folder.ts';
 import { withLayout } from '../shared/layout.ts';
@@ -58,6 +59,7 @@ const h = (fn: (req: Request, res: Response) => unknown) => (req: Request, res: 
   Promise.resolve(fn(req, res)).catch(next);
 
 app.get('/api/env', h(async (req, res) => res.json(await envInfo(req.query.refresh === '1'))));
+app.get('/api/version', h(async (_req, res) => res.json(await versionInfo())));
 
 app.get('/api/workflows', (_req, res) => res.json(listWorkflows()));
 app.get('/api/workflows/:id', (req, res) => {

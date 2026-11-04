@@ -122,6 +122,7 @@ The interface, Regia's messages and the instructions sent to agents are translat
 | `REGIA_GLOBAL_RULES` | Personal rules file (default `~/.claude/CLAUDE.md`) |
 | `REGIA_SKILLS_DIR` | Personal skills folder (default `~/.claude/skills`) |
 | `REGIA_DISABLE_REAL=1` | Disables real runs |
+| `REGIA_UPDATE_CHECK=0` | Disables the check for new versions on GitHub (the version in use stays visible next to the name) |
 | `REGIA_LANG` | Default server language (e.g. for the initial Regia rules); otherwise the system language |
 | `REGIA_MOCK_SPEED` | Milliseconds per step in trial mode (default 600) |
 | `ANTHROPIC_API_KEY` | If set, real runs use the API key instead of the login |

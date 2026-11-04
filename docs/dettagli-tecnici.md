@@ -122,6 +122,7 @@ Interfaccia, messaggi di Regia e istruzioni inviate agli agenti sono tradotti tr
 | `REGIA_GLOBAL_RULES` | File delle regole personali (predefinito `~/.claude/CLAUDE.md`) |
 | `REGIA_SKILLS_DIR` | Cartella delle skill personali (predefinita `~/.claude/skills`) |
 | `REGIA_DISABLE_REAL=1` | Disattiva le esecuzioni reali |
+| `REGIA_UPDATE_CHECK=0` | Disattiva il controllo di nuove versioni su GitHub (la versione in uso resta visibile accanto al nome) |
 | `REGIA_LANG` | Lingua predefinita del server (es. per le regole di Regia iniziali); altrimenti quella del sistema |
 | `REGIA_MOCK_SPEED` | Millisecondi per passo nella modalità di prova (predefinito 600) |
 | `ANTHROPIC_API_KEY` | Se presente, le esecuzioni reali usano la chiave API invece del login |

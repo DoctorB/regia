@@ -336,6 +336,14 @@ export interface ApiErrorBody {
   issues?: ValidationIssue[];
 }
 
+/** Versione di Regia in uso e, se raggiungibile, ultima versione pubblicata sul repository. */
+export interface VersionInfo {
+  current: string;
+  latest?: string;
+  updateAvailable: boolean;
+  repoUrl?: string;
+}
+
 export interface EnvInfo {
   sdkVersion: string;
   claudeCodeVersion?: string;

@@ -1,5 +1,5 @@
 import { currentLocaleTag, tm } from './i18n.tsx';
-import type { ApiErrorBody, ContinuationPlan, EnvInfo, FolderInfo, HumanAction, Insight, RulesInfo, Run, RunMode, RunSummary, SkillInfo, ValidationIssue, Workflow, WorkflowTemplate } from '../../shared/types.ts';
+import type { ApiErrorBody, ContinuationPlan, EnvInfo, FolderInfo, HumanAction, Insight, RulesInfo, Run, RunMode, RunSummary, SkillInfo, ValidationIssue, VersionInfo, Workflow, WorkflowTemplate } from '../../shared/types.ts';
 
 async function req<T>(method: string, url: string, body?: unknown): Promise<T> {
   const r = await fetch(url, { method, headers: body ? { 'Content-Type': 'application/json' } : undefined, body: body ? JSON.stringify(body) : undefined });
@@ -16,6 +16,7 @@ async function req<T>(method: string, url: string, body?: unknown): Promise<T> {
 
 export const api = {
   env: (refresh = false) => req<EnvInfo>('GET', `/api/env${refresh ? '?refresh=1' : ''}`),
+  version: () => req<VersionInfo>('GET', '/api/version'),
   workflows: () => req<Workflow[]>('GET', '/api/workflows'),
   templates: (lang?: string) => req<WorkflowTemplate[]>('GET', `/api/templates${lang ? `?lang=${lang}` : ''}`),
   duplicateWorkflow: (id: string) => req<Workflow>('POST', `/api/workflows/${id}/duplicate`),

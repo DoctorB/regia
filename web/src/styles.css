@@ -679,3 +679,12 @@ input[type="checkbox"] { width: 16px; height: 16px; min-height: 0; accent-color:
 .btn.danger-solid { background: var(--bad); border-color: var(--bad); color: #fff; }
 .btn.danger-solid:hover:not(:disabled) { background: var(--bad-ink); border-color: var(--bad-ink); }
 .menu-item svg:first-child { color: var(--muted); }
+
+/* ---------- Versione ---------- */
+.version-label { font-size: 11.5px; font-weight: 500; color: var(--muted); font-family: var(--mono); letter-spacing: 0; }
+.version-pill { border: 0; cursor: pointer; font-family: var(--mono); letter-spacing: 0; }
+.version-pill:hover { filter: brightness(.96); }
+.topbar .popover.version-pop { left: 0; right: auto; width: 300px; font-weight: 400; font-size: 13px; letter-spacing: 0; }
+.version-pop p { margin: 0; }
+.version-cmd { margin: 4px 12px 8px; padding: 8px 10px; background: var(--surface-3); border-radius: var(--r-sm); white-space: pre; }
+.version-cmd code { background: none; padding: 0; }

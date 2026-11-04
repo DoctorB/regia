@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ReactFlowProvider } from '@xyflow/react';
-import { Activity, TabletSmartphone, Check, ChevronDown, CircleAlert, CircleCheck, FilePlus2, FlaskConical, GitCompare, KeyRound, Languages, PenLine, Play, Rocket, Save, ScrollText, ShieldAlert, LayoutList, Monitor, Moon, Search, Sun, TriangleAlert, Workflow as WorkflowIcon, Server, Smartphone, Globe } from 'lucide-react';
+import { Activity, TabletSmartphone, Check, ChevronDown, CircleAlert, CircleArrowUp, CircleCheck, FilePlus2, FlaskConical, GitCompare, KeyRound, Languages, PenLine, Play, Rocket, Save, ScrollText, ShieldAlert, LayoutList, Monitor, Moon, Search, Sun, TriangleAlert, Workflow as WorkflowIcon, Server, Smartphone, Globe } from 'lucide-react';
 import {
-  WRITE_TOOLS, isAgentKind, type EnvInfo, type PhaseConfig, type PhaseKind, type Run, type RunSummary, type ValidationIssue, type Workflow,
+  WRITE_TOOLS, isAgentKind, type EnvInfo, type PhaseConfig, type PhaseKind, type Run, type RunSummary, type ValidationIssue, type VersionInfo, type Workflow,
 } from '../../shared/types.ts';
 import { NODE_H, looksHorizontal, withLayout } from '../../shared/layout.ts';
 import { phasePreset, phaseSnippets } from '../../shared/presets.ts';
@@ -59,6 +59,44 @@ function ThemeSwitch() {
               <Icon /><span className="menu-main">{t(`theme.${c}`)}</span>{c === choice && <Check />}
             </button>
           ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Versione in uso accanto al nome; se sul repository ce n'è una più recente, la segnala con le istruzioni per aggiornare. */
+function VersionBadge() {
+  const { t } = useI18n();
+  const pop = usePopover();
+  const [info, setInfo] = useState<VersionInfo | null>(null);
+  useEffect(() => {
+    api.version().then((v) => {
+      setInfo(v);
+      if (!v.updateAvailable || !v.latest) return;
+      // Avviso una sola volta per ogni nuova versione; il badge resta visibile.
+      try {
+        if (localStorage.getItem('regia.updateNotified') === v.latest) return;
+        localStorage.setItem('regia.updateNotified', v.latest);
+      } catch { /* archivio non disponibile: si avvisa comunque */ }
+      toast(t('version.toast', { version: v.latest }));
+    }).catch(() => undefined);
+  }, []);
+  if (!info) return null;
+  if (!info.updateAvailable) return <span className="version-label" title={t('version.current')}>v{info.current}</span>;
+  return (
+    <div className="popover-wrap" ref={pop.ref}>
+      <button className="pill tone-active version-pill" onClick={() => pop.setOpen(!pop.open)} aria-expanded={pop.open} title={t('version.available', { version: info.latest! })}>
+        <CircleArrowUp />v{info.current} → v{info.latest}
+      </button>
+      {pop.open && (
+        <div className="popover version-pop">
+          <div className="menu-label">{t('version.available', { version: info.latest! })}</div>
+          <p className="small pad">{t('version.inUse', { version: info.current })}</p>
+          <p className="small pad">{t('version.howTo')}</p>
+          <pre className="version-cmd"><code>git pull{'\n'}npm install</code></pre>
+          <p className="small pad muted">{t('version.restart')}</p>
+          {info.repoUrl && <p className="small pad"><a href={`${info.repoUrl}/commits/main`} target="_blank" rel="noreferrer">{t('version.changes')}</a></p>}
         </div>
       )}
     </div>
@@ -272,7 +310,7 @@ export function App() {
 
   if (!loaded) return <div className="boot">{loadError ? t('app.loadError', { message: loadError }) : <span className="brand-mark"><WorkflowIcon /></span>}</div>;
 
-  const brand = <div className="brand"><span className="brand-mark" aria-hidden><WorkflowIcon /></span><span>Regia</span></div>;
+  const brand = <div className="brand"><span className="brand-mark" aria-hidden><WorkflowIcon /></span><span>Regia</span><VersionBadge /></div>;
 
   if (!wf || !shownWf) {
     return (
