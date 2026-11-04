@@ -482,5 +482,35 @@
       },
       "hint": "Le skill si scelgono per fase. Regia le copia in un plugin temporaneo per ogni fase: i file originali non vengono modificati e le altre impostazioni personali non sono caricate."
     }
+  },
+  "report": {
+    "button": "Resoconto",
+    "buttonTitle": "Resoconto dell'esecuzione in Markdown, da copiare o scaricare",
+    "dialogTitle": "Resoconto dell'esecuzione",
+    "copy": "Copia",
+    "download": "Scarica .md",
+    "copied": "Resoconto copiato negli appunti",
+    "copyFailed": "Copia non riuscita: seleziona il testo e copialo a mano",
+    "title": "Resoconto: {name}",
+    "inProgress": "in corso",
+    "fields": {
+      "run": "Esecuzione",
+      "status": "Stato",
+      "started": "Inizio",
+      "ended": "Fine",
+      "duration": "Durata",
+      "project": "Cartella del progetto",
+      "continuedFrom": "Continua da"
+    },
+    "goal": "Obiettivo",
+    "phases": "Fasi",
+    "result": "Risultato",
+    "decisions": "Decisioni dichiarate",
+    "files": "File modificati",
+    "interventions": "Interventi",
+    "noInterventions": "Nessun intervento.",
+    "notes": "Note",
+    "footer": "Generato da Regia il {date}. Costi stimati, non dati di fatturazione.",
+    "reusedFrom": "ripresa da {id}"
   }
 }

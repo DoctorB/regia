@@ -98,6 +98,8 @@ When the workflow stops, the **Status** tab shows what is needed:
 - **Approval**: read the summaries of the previous phases and check the project (`git diff`), then **Approve** or **Reject with comment**: the phase that produced the work resumes where it left off with your comment, and tests and review run again.
 - **Failed or blocked phase**: **Retry from scratch**, **Resume session** (with a message for the agent), **Skip phase** or **Cancel run**.
 
+When a phase starts waiting for you, and when the run ends, Regia plays a short sound, even while you are in the editor. Turn it on or off with the bell button at the top right; the choice is remembered.
+
 ### Checking the app: web, desktop, mobile
 
 ![Checking the app before approving](img/05-anteprima-locale.png)
@@ -146,6 +148,10 @@ A run's panel has five tabs:
 ![Usage](img/07-consumi.png)
 
 ![Optimizations](img/08-ottimizzazioni.png)
+
+**Report**: the button at the top of the panel opens a Markdown summary of the run, to copy (for example into a pull request description) or download as a `.md` file. It includes status, duration, estimated cost, goal and, for each phase, the result, declared decisions, files edited, attempts and models, plus the interventions with your comments.
+
+![Report](img/14-resoconto.png)
 
 > **Costs are estimates** computed by the SDK at list prices. With an API key, the actual cost is in the Console; with a claude.ai subscription, usage counts against your plan limits.
 
@@ -215,6 +221,7 @@ Agent phases can use Claude Code **skills**: procedures written in a `SKILL.md` 
 
 - **Groups**: each workflow can belong to a group, for example its project. When you create one, the suggested group is the project folder name; you can also change it in the workflow settings. The menu with the workflow name, at the top left, lists workflows by group and has a search (Enter opens the first result).
 - **Manage workflows…** (from the same menu): search, collapsible groups, and for each workflow open, rename, move to a group, duplicate, delete. Use the checkboxes to move or delete several workflows at once. A group can be renamed or removed (its workflows are kept, ungrouped). Deleting a workflow keeps its runs unless you choose to delete them; runs still in progress are never touched.
+- **Sounds**: the bell at the top right (see [Step in when needed](#5-step-in-when-needed)).
 - **Theme**: button at the top right, Match system / Light / Dark. **Language**: the button next to it. Both choices are remembered.
 
 ## 11. Common problems

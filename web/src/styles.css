@@ -559,6 +559,7 @@ input[type="checkbox"] { width: 16px; height: 16px; min-height: 0; accent-color:
 .modal-back { position: fixed; inset: 0; background: rgba(10, 14, 24, .5); backdrop-filter: blur(2px); display: grid; place-items: center; z-index: 100; padding: 20px; animation: fade .12s ease-out; }
 .modal { background: var(--surface); border-radius: 14px; box-shadow: var(--shadow-lg); width: min(600px, 100%); max-height: calc(100vh - 40px); display: flex; flex-direction: column; animation: rise .16s ease-out; }
 .modal.wide { width: min(920px, 100%); }
+.report-text { display: block; width: 100%; height: min(60vh, 560px); font-family: var(--mono); font-size: 12.5px; white-space: pre; overflow: auto; resize: none; }
 .modal-head { display: flex; align-items: center; gap: 12px; padding: 16px 18px; border-bottom: 1px solid var(--border); }
 .modal-head h2 { font-size: 17px; flex: 1; }
 .modal-body { padding: 18px; overflow: auto; display: flex; flex-direction: column; gap: 12px; }

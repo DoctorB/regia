@@ -86,5 +86,11 @@
       "groupRenamed": "Gruppo rinominato",
       "groupRemoved": "Gruppo \"{name}\" tolto: i workflow restano, senza gruppo"
     }
+  },
+  "sound": {
+    "title": "Suoni",
+    "on": "Suoni attivi",
+    "off": "Suoni disattivati",
+    "hint": "Un suono quando una fase aspetta il tuo intervento e quando l'esecuzione termina."
   }
 }

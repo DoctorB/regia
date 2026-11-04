@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ReactFlowProvider } from '@xyflow/react';
-import { Activity, TabletSmartphone, Check, ChevronDown, CircleAlert, CircleArrowUp, CircleCheck, FilePlus2, FlaskConical, GitCompare, KeyRound, Languages, PenLine, Play, Rocket, Save, ScrollText, ShieldAlert, LayoutList, Monitor, Moon, Search, Sun, TriangleAlert, Workflow as WorkflowIcon, Server, Smartphone, Globe } from 'lucide-react';
+import { Activity, Bell, BellOff, TabletSmartphone, Check, ChevronDown, CircleAlert, CircleArrowUp, CircleCheck, FilePlus2, FlaskConical, GitCompare, KeyRound, Languages, PenLine, Play, Rocket, Save, ScrollText, ShieldAlert, LayoutList, Monitor, Moon, Search, Sun, TriangleAlert, Workflow as WorkflowIcon, Server, Smartphone, Globe } from 'lucide-react';
 import {
   WRITE_TOOLS, isAgentKind, type EnvInfo, type PhaseConfig, type PhaseKind, type Run, type RunSummary, type ValidationIssue, type VersionInfo, type Workflow,
 } from '../../shared/types.ts';
@@ -8,6 +8,7 @@ import { NODE_H, looksHorizontal, withLayout } from '../../shared/layout.ts';
 import { phasePreset, phaseSnippets } from '../../shared/presets.ts';
 import { api, fmtTime, fmtUsd } from './api.ts';
 import { useI18n } from './i18n.tsx';
+import { useRunSounds, useSoundSetting } from './sound.ts';
 import { Canvas } from './components/Canvas.tsx';
 import { Compare } from './components/Compare.tsx';
 import { PhaseInspector, WorkflowSettingsForm } from './components/Inspector.tsx';
@@ -103,6 +104,18 @@ function VersionBadge() {
   );
 }
 
+/** Interruttore dei suoni (intervento richiesto, fine esecuzione). */
+function SoundSwitch() {
+  const { t } = useI18n();
+  const [on, setOn] = useSoundSetting();
+  const title = `${on ? t('sound.on') : t('sound.off')}. ${t('sound.hint')}`;
+  return (
+    <button className="icon-btn" onClick={() => setOn(!on)} aria-pressed={on} title={title} aria-label={t('sound.title')}>
+      {on ? <Bell /> : <BellOff />}
+    </button>
+  );
+}
+
 function LanguageSwitch() {
   const { t, lang, languages, setLang } = useI18n();
   const pop = usePopover();
@@ -146,6 +159,7 @@ export function App() {
   const [loadError, setLoadError] = useState('');
   const [continueFrom, setContinueFrom] = useState<string | null>(null);
   const esRef = useRef<EventSource | null>(null);
+  useRunSounds(run);
   const wfMenu = usePopover();
   const [wfQuery, setWfQuery] = useState('');
   const [manager, setManager] = useState(false);
@@ -391,6 +405,7 @@ export function App() {
               </div>
             )}
           </div>
+          <SoundSwitch />
           <ThemeSwitch />
           <LanguageSwitch />
           <button className="icon-btn" onClick={() => setRulesDialog(true)} title={t('topbar.rulesTitle')} aria-label={t('topbar.rulesTitle')}><ScrollText /></button>

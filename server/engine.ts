@@ -468,7 +468,7 @@ export class RunEngine {
               if (visible) this.event('testo', visible, { nodeId: n.id, attemptId: a.id, subagent: sub });
             } else if (block.type === 'tool_use') {
               toolNames.set(block.id, block.name);
-              const summary = summarizeTool(block.name, block.input ?? {}, this.t);
+              const summary = summarizeTool(block.name, block.input ?? {}, this.t, this.wf.settings.projectDir);
               a.toolCalls.push({ name: block.name, key: createHash('sha1').update(block.name + JSON.stringify(block.input ?? {})).digest('hex').slice(0, 12) });
               st.activity = sub ? this.t('events.activity.subagent', { summary }) : summary;
               this.event('strumento', summary, { nodeId: n.id, attemptId: a.id, subagent: sub });
@@ -1132,8 +1132,14 @@ export function readyMatcher(p: string): (line: string) => boolean {
 const skillName = (s: unknown) => String(s ?? '').replace(new RegExp(`^${PLUGIN_NAME}:`), '').replace(/^\//, '');
 const skillLabel = (id: string) => id.replace(/^(progetto|personale):/, '');
 
-function summarizeTool(name: string, input: Record<string, any>, t: Translate): string {
-  const rel = (p: unknown) => (typeof p === 'string' ? p.replace(/\\/g, '/').split('/').slice(-3).join('/') : '');
+function summarizeTool(name: string, input: Record<string, any>, t: Translate, projectDir = ''): string {
+  // Percorso relativo alla cartella del progetto; fuori dal progetto, solo gli ultimi segmenti.
+  const rel = (p: unknown) => {
+    if (typeof p !== 'string') return '';
+    const r = projectDir ? path.relative(projectDir, path.resolve(projectDir, p)) : '';
+    const inside = Boolean(r) && !r.startsWith('..') && !path.isAbsolute(r);
+    return (inside ? r : p).replace(/\\/g, '/').split('/').slice(inside ? 0 : -3).join('/');
+  };
   switch (name) {
     case 'Read': case 'Edit': case 'Write': case 'NotebookEdit': return `${name} ${rel(input.file_path ?? input.notebook_path)}`;
     case 'Bash': return `Bash: ${clip(String(input.command ?? ''), 160)}`;

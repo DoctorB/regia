@@ -30,6 +30,7 @@ L'app viene fermata (insieme ai processi figli) quando l'esecuzione termina o vi
 
 - **Approvazione umana**: approva, oppure respingi con un commento. La fase a monte più vicina che può modificare file riprende la propria sessione con il commento; le fasi intermedie (test, revisione) vengono rieseguite e l'approvazione viene richiesta di nuovo. Al massimo 3 cicli.
 - **Fase fallita o bloccata**: l'agente può dichiarare un esito `ko` o `bloccato`. Le scelte sono riprova da capo, riprendi la sessione con un messaggio, salta oppure annulla l'esecuzione.
+- **Suono**: generato dal browser (Web Audio, nessun file audio) per l'esecuzione aperta nella pagina, quando una fase comincia ad aspettare un intervento e quando l'esecuzione termina (non quando la annulli tu). Con la pagina chiusa non suona. La scelta attivo/disattivo è ricordata nel browser.
 
 ## Regole generali
 
@@ -55,6 +56,10 @@ Ogni esecuzione salva le regole che ha usato: le trovi nella scheda Stato ("Rego
 - **Osservate**: dedotte da eventi visibili, cioè file modificati, comandi eseguiti, skill usate, subagenti avviati e strumenti negati.
 
 I blocchi di ragionamento interno (thinking) non vengono mai mostrati né salvati.
+
+## Resoconto
+
+Generato nel browser dai dati dell'esecuzione, nella lingua dell'interfaccia; non viene salvato in `data/`. Riporta solo le decisioni dichiarate. I **file modificati** sono quelli toccati dagli strumenti `Edit`, `Write` e `NotebookEdit`, con il percorso relativo alla cartella del progetto: i file cambiati da comandi `Bash` (generatori, formattatori, `git`) non compaiono, quindi per l'elenco completo resta `git diff`. Le fasi riprese da un'esecuzione precedente indicano da quale, senza durata né costo.
 
 ## Consumi
 
@@ -144,6 +149,7 @@ server/            API Express + SSE, motore di esecuzione, contabilità, simula
   version.ts       versione in uso e controllo di quella pubblicata su GitHub
 shared/types.ts    modello dati comune
 shared/principles.ts principi di progettazione (testi in locales/<lingua>/principles.json)
+shared/report.ts   resoconto dell'esecuzione in Markdown
 web/src/           interfaccia React + React Flow
 templates/         preset di partenza (JSON)
 ```

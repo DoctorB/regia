@@ -1,14 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Activity, Bot, CircleAlert, CircleCheck, Clock, Coins, CornerDownRight, ExternalLink, Flag, Gauge, Globe, Hand, Info, Lightbulb, ListTree,
+  Activity, Bot, CircleAlert, CircleCheck, Clock, Coins, Copy, CornerDownRight, Download, ExternalLink, FileText, Flag, Gauge, Globe, Hand, Info, Lightbulb, ListTree,
   MessageSquareText, OctagonX, Play, Recycle, RotateCcw, SkipForward, Square, Terminal, TriangleAlert, Undo2, Workflow as WorkflowIcon, X,
   type LucideIcon,
 } from 'lucide-react';
 import { isAgentKind, type EventKind, type HumanAction, type Insight, type Run, type RunSummary } from '../../../shared/types.ts';
 import { layoutGraph } from '../../../shared/layout.ts';
+import { runReport } from '../../../shared/report.ts';
 import { api, fmtDur, fmtTime, fmtTok, fmtUsd, runDuration } from '../api.ts';
 import { useI18n } from '../i18n.tsx';
-import { EmptyState, KindTile, RUN_STATUS_META, STATUS_META, StatusPill, runStatusLabel, serviceLabel, statusLabel, toast } from '../ui.tsx';
+import { EmptyState, KindTile, Modal, RUN_STATUS_META, STATUS_META, StatusPill, runStatusLabel, serviceLabel, statusLabel, toast } from '../ui.tsx';
 import { AppliedRulesView } from './Setup.tsx';
 import { UsageView } from './UsageView.tsx';
 
@@ -46,6 +47,7 @@ interface Props {
 export function RunPanel({ run, runs, selectedNode, onSelectNode, onOpenRun, onContinue }: Props) {
   const { t } = useI18n();
   const [tab, setTab] = useState<Tab>('stato');
+  const [report, setReport] = useState(false);
   const pending = Object.values(run.nodes).filter((n) => n.pendingActions?.length);
   useEffect(() => { if (pending.length) setTab('stato'); }, [pending.length]);
   const label = (id?: string) => run.snapshot.nodes.find((n) => n.id === id)?.data.label ?? id ?? '';
@@ -85,6 +87,7 @@ export function RunPanel({ run, runs, selectedNode, onSelectNode, onOpenRun, onC
           <span className={`tag ${run.mode === 'reale' ? 'tag-real' : ''}`}>{run.mode === 'prova' ? t('run.mode.prova') : t('run.mode.reale')}</span>
           <span className="muted small inline-ic"><Clock />{fmtDur(runDuration(run))}</span>
           <span className="grow" />
+          <button className="btn sm ghost" onClick={() => setReport(true)} title={t('report.buttonTitle')}><FileText />{t('report.button')}</button>
           {live && <button className="btn sm ghost danger" onClick={cancel}><Square />{t('run.cancel')}</button>}
           {!live && onContinue && <button className="btn sm soft" onClick={onContinue} title={t('run.continueHint')}><Recycle />{t('run.continue')}</button>}
         </div>
@@ -137,6 +140,7 @@ export function RunPanel({ run, runs, selectedNode, onSelectNode, onOpenRun, onC
         {tab === 'consumi' && <UsageView run={run} />}
         {tab === 'ottimizza' && <InsightsTab run={run} label={label} onSelectNode={onSelectNode} />}
       </div>
+      {report && <ReportDialog run={run} onClose={() => setReport(false)} />}
     </div>
   );
 }
@@ -373,5 +377,30 @@ function InsightsTab({ run, label, onSelectNode }: { run: Run; label: (id?: stri
         );
       })}
     </div>
+  );
+}
+
+/** Resoconto in Markdown dell'esecuzione, da copiare o scaricare. */
+function ReportDialog({ run, onClose }: { run: Run; onClose: () => void }) {
+  const { t, locale } = useI18n();
+  const text = useMemo(() => runReport(run, t, locale), [run, t, locale]);
+  const copy = async () => {
+    try { await navigator.clipboard.writeText(text); toast(t('report.copied'), 'good'); } catch { toast(t('report.copyFailed'), 'bad'); }
+  };
+  const download = () => {
+    const url = URL.createObjectURL(new Blob([text], { type: 'text/markdown;charset=utf-8' }));
+    const a = Object.assign(document.createElement('a'), { href: url, download: `regia-${run.id}.md` });
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+  return (
+    <Modal title={t('report.dialogTitle')} icon={<FileText />} onClose={onClose} wide
+      footer={<>
+        <span className="grow" />
+        <button className="btn" onClick={copy}><Copy />{t('report.copy')}</button>
+        <button className="btn primary" onClick={download}><Download />{t('report.download')}</button>
+      </>}>
+      <textarea className="report-text" readOnly value={text} aria-label={t('report.dialogTitle')} />
+    </Modal>
   );
 }

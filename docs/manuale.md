@@ -100,6 +100,8 @@ Quando il workflow si ferma, la scheda **Stato** mostra cosa serve:
 - **Approvazione**: leggi le sintesi delle fasi precedenti e controlla il progetto (`git diff`), poi **Approva** oppure **Respingi con commento**: la fase che ha prodotto il lavoro riprende da dove era con il tuo commento, e test e revisione vengono rifatti.
 - **Fase fallita o bloccata**: **Riprova da capo**, **Riprendi la sessione** (con un messaggio per l'agente), **Salta la fase** o **Annulla esecuzione**.
 
+Quando una fase comincia ad aspettarti, e quando l'esecuzione termina, Regia emette un breve suono, anche se stai guardando l'editor. Si attiva e disattiva con il pulsante a forma di campanella in alto a destra; la scelta viene ricordata.
+
 ### Verificare l'app: web, desktop, mobile
 
 ![Verifica dell'app prima di approvare](img/05-anteprima-locale.png)
@@ -148,6 +150,10 @@ Il pannello di un'esecuzione ha cinque schede:
 ![Consumi](img/07-consumi.png)
 
 ![Ottimizzazioni](img/08-ottimizzazioni.png)
+
+**Resoconto**: il pulsante in cima al pannello apre un riepilogo dell'esecuzione in Markdown, da copiare (ad esempio nella descrizione di una pull request) o scaricare come file `.md`. Contiene stato, durata, costo stimato, obiettivo e, per ogni fase, risultato, decisioni dichiarate, file modificati, tentativi e modelli, più gli interventi con i tuoi commenti.
+
+![Resoconto](img/14-resoconto.png)
 
 > **I costi sono stime** calcolate dal SDK a prezzi di listino. Con una chiave API il costo reale è nella Console; con un abbonamento claude.ai il consumo rientra nei limiti del piano.
 
@@ -217,6 +223,7 @@ Le fasi con un agente possono usare le **skill** di Claude Code: procedure scrit
 
 - **Gruppi**: ogni workflow può stare in un gruppo, ad esempio il progetto. Alla creazione il gruppo proposto è il nome della cartella del progetto; si cambia anche dalle impostazioni del workflow. Il menu con il nome del workflow, in alto a sinistra, mostra i workflow per gruppo e ha una ricerca (Invio apre il primo risultato).
 - **Gestisci workflow…** (dallo stesso menu): ricerca, gruppi comprimibili, e per ogni workflow apri, rinomina, sposta in un gruppo, duplica, elimina. Con le caselle puoi spostare o eliminare più workflow insieme. Un gruppo si rinomina o si toglie (i suoi workflow restano, senza gruppo). Eliminando un workflow le sue esecuzioni restano, a meno di scegliere di eliminarle; quelle ancora in corso non vengono mai toccate.
+- **Suoni**: la campanella in alto a destra (vedi [Intervieni quando serve](#5-intervieni-quando-serve)).
 - **Tema**: pulsante in alto a destra, Come il sistema / Chiaro / Scuro. **Lingua**: il pulsante accanto. Entrambe le scelte vengono ricordate.
 
 ## 11. Problemi comuni

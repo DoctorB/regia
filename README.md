@@ -12,10 +12,11 @@ Regia is a local app for designing development workflows as a diagram, running t
 
 - **Visual editor**: analysis, implementation, test, review, human approval, run app and publishing phases, connected into a flow. Start from ready-made presets.
 - **Live execution**: the state of every phase on the diagram, plus events, results, errors and the decisions declared by the agents.
-- **Interventions**: approve, reject with a comment (the agent resumes its own session), retry, skip, cancel.
+- **Interventions**: approve, reject with a comment (the agent resumes its own session), retry, skip, cancel. A short sound tells you when a phase needs you and when the run ends.
 - **Check the app before approving**: web, desktop or mobile, iOS included on a Mac. Regia runs the project's own command (npm, dotnet, flutter, gradle, msbuild…) and waits for an address, an output line, an open window or a successful exit; it can also just check a site already served by IIS. For Node projects it also picks the right Node version.
 - **Usage tracking**: tokens, cache, model and estimated cost per run, phase and agent, with no double counting across subagents and resumed sessions. Spending limits per run and per phase.
 - **Optimization**: suggestions based on measured data, each with its quality trade-off, and a side-by-side comparison of two runs.
+- **Run report**: a Markdown summary of the run (results, decisions, files edited, interventions, costs), to copy into a pull request or download.
 - **Continue**: add phases to finished work without re-running everything.
 - **General rules**: your personal rules and Regia's own rules are applied to every agent.
 - **Design principles**: turn on KISS, YAGNI, DRY or SOLID for a workflow; each phase gets guidance suited to its task and approvals get a checklist, without touching your instructions.

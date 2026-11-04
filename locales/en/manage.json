@@ -86,5 +86,11 @@
       "groupRenamed": "Group renamed",
       "groupRemoved": "Group \"{name}\" removed: its workflows are kept, ungrouped"
     }
+  },
+  "sound": {
+    "title": "Sounds",
+    "on": "Sounds on",
+    "off": "Sounds off",
+    "hint": "A sound when a phase needs you and when the run ends."
   }
 }

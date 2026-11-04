@@ -22,6 +22,7 @@ const { validateWorkflow } = await import('../validate.ts');
 const { ensureRegiaRules, rulesPrompt } = await import('../rules.ts');
 const { serverT } = await import('../i18n.ts');
 const { principlesText } = await import('../../shared/principles.ts');
+const { runReport } = await import('../../shared/report.ts');
 store.initStore();
 ensureRegiaRules();
 
@@ -132,6 +133,21 @@ test('esecuzione di prova completa con approvazione e ripresa con feedback', asy
   const insights = computeInsights(run);
   assert.ok(insights.length > 0);
   for (const i of insights) assert.ok(i.tradeoff.key.length > 0);
+
+  // Resoconto: fasi in ordine, decisioni, file modificati e interventi con il commento.
+  const report = runReport(run, serverT('it'), 'it-IT');
+  assert.ok(report.startsWith(`# Resoconto: ${run.workflowName}\n`));
+  assert.ok(report.includes('| Stato | Completata |'));
+  assert.ok(report.includes('## Obiettivo\n\nObiettivo di prova'));
+  for (const n of run.snapshot.nodes) assert.ok(report.includes(`. ${n.data.label}\n`), n.data.label);
+  assert.ok(report.includes('**Decisioni dichiarate**\n\n- '));
+  assert.ok(report.includes('- `src/modulo.js`'));
+  assert.ok(report.includes(': Respingi con commento — "Aggiungi un commento che spieghi la correzione"'));
+  assert.ok(report.includes(': Approva\n'));
+  assert.ok(!/\{\w+\}|\breport\.\w|\bevents\.\w/.test(report), 'nessuna chiave o parametro non tradotto');
+  const en = runReport(run, serverT('en'), 'en-US');
+  assert.match(en, /^# Report: /);
+  assert.match(en, /: Reject with comment — "/);
 });
 
 const phase = (p: Partial<PhaseConfig> & Pick<PhaseConfig, 'label' | 'kind' | 'instructions'>): PhaseConfig => ({
