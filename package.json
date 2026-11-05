@@ -1,7 +1,7 @@
 {
   "name": "regia",
   "version": "0.4.0",
-  "description": "Editor grafico e monitor in tempo reale per workflow multi-fase eseguiti con il Claude Agent SDK",
+  "description": "Visual editor and live monitor for development workflows run by Claude Agent SDK agents",
   "scripts": {
     "start": "npm run build && node --import tsx server/index.ts",
     "build": "vite build",
