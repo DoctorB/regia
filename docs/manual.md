@@ -45,7 +45,7 @@ then restart with `npm start`. The check only reads the published version number
 
 ![New workflow](img/01-nuovo-workflow.png)
 
-1. On first start you see the welcome screen; later, open the menu with the workflow name at the top left → **New workflow…**. Pick a preset: *Fix a bug*, *New feature*, *Code review (read-only)*, *Add tests*, *Safe refactoring* or *Empty*.
+1. On first start you see the welcome screen; later, open the menu with the workflow name at the top left → **New workflow…**. Pick a preset: *Fix a bug*, *New feature*, *Code review (read-only)*, *Add tests*, *Safe refactoring*, *Sync and verify* or *Empty*.
 2. Enter the **project folder**. Regia checks whether it is a git repository and whether it has uncommitted changes.
    > Before a real run, **commit or stash** your changes: you can then review the agents' work with `git diff` and undo it with `git checkout .`.
 3. Write the **goal**: what needs to be done and when it counts as finished. The more precise it is, the fewer rounds it takes.
@@ -99,6 +99,20 @@ When the workflow stops, the **Status** tab shows what is needed:
 - **Failed or blocked phase**: **Retry from scratch**, **Resume session** (with a message for the agent), **Skip phase** or **Cancel run**.
 
 When a phase starts waiting for you, and when the run ends, Regia plays a short sound, even while you are in the editor. Turn it on or off with the bell button at the top right; the choice is remembered.
+
+### Suspend and resume the next day
+
+![Suspended run](img/15-sospensione.png)
+
+A long piece of work does not have to finish the same day:
+
+1. Press **Suspend** at the top of the run panel. Running phases stop and their work stays recorded, apps started by Regia are closed, and pending approvals and interventions stay where they are.
+2. You can close Regia and shut down the PC. If you shut it down without suspending, after restarting the run shows as **Interrupted** and resumes the same way.
+3. The next day, open the run and press **Resume**. Completed phases are kept, phases stopped halfway pick up where they were, apps are restarted and approvals are available again.
+
+Regia decides how an interrupted phase restarts. If the last activity is recent (within the prompt cache lifetime, 5 minutes) it resumes the same agent session. Otherwise it opens a new session with a summary of the steps already done, instead of sending the whole previous conversation again. The event log says which one it chose and why.
+
+If the project has changed branch or commit in the meantime (a pull, a checkout), Regia tells you before resuming and asks for confirmation.
 
 ### Checking the app: web, desktop, mobile
 
@@ -175,6 +189,27 @@ You finished a run and realize something was missing, for example preview, appro
 2. Go to **Runs** and pick the finished run from the menu at the top of the panel.
 3. **Continue…**: phases already done and unchanged are carried over with their results, without running them again; only new or changed phases run. The summary before starting tells you which ones and why.
 
+**Resume** and **Continue…** are different: Resume carries on the same suspended or interrupted run, Continue… creates a new one with the current workflow.
+
+### Syncing a feature with develop
+
+The feature workflow is opened, worked on and closed. The backmerge from develop and the functional test that follows, maybe days later, are separate work that can be repeated every time develop moves: that is why they have their own preset, **Sync and verify**.
+
+1. Create a workflow from the preset on the project folder, with the feature branch checked out. In the goal, name the branches, for example "Sync feature/orders with develop".
+2. If the functional test needs the app, add a **Run app** phase suited to the project from the palette, before **Functional test**.
+![Choosing the reference run](img/16-riferimento.png)
+
+3. At start, Regia asks for the **reference run**: pick the feature's run. Its report (goal, results, decisions, changed files, interventions) reaches every phase. The agent resolves conflicts knowing what the feature was meant to do, and the functional test checklist starts from there.
+4. The flow is:
+   - **Sync with develop**: merges and resolves conflicts, declaring each choice; it stops and asks you when a conflict needs a product decision.
+   - **Tests**, **Merge review** and **Functional test checklist**.
+   - **Functional test**: you do it, following the checklist. If you reject, the fix is made on the branch and the checks are repeated.
+   - **Publish** (push).
+
+![Functional test with the checklist](img/17-test-funzionale.png)
+
+The reference run can be turned on for any workflow in the settings (**Reference run**) and is shown in the run's Status tab and in the report.
+
 ---
 
 ## 9. General rules
@@ -231,7 +266,7 @@ Agent phases can use Claude Code **skills**: procedures written in a `SKILL.md` 
 | "Run" is disabled | The workflow has errors (badge at the top) |
 | No login detected | Run `claude` once and sign in, or set `ANTHROPIC_API_KEY` before `npm start` |
 | The app does not start or is never ready | Read the reason in the intervention request: command exited with an error, expected text never appeared, address not responding, Node version, dependencies, port in use. Use the suggested buttons or fix the command or the "Ready when" criterion in the phase |
-| The run shows as "Interrupted" | Regia was closed while it was active: open it and use **Continue…** |
+| The run shows as "Interrupted" | Regia was closed while it was active: open it and use **Resume** |
 | Spending is close to the limit | Raise the limit in the workflow settings or check the Optimize tab |
 
 For details on usage accounting, permissions, stored data and known limits: [technical details](technical-details.md).

@@ -1,0 +1,42 @@
+{
+  "id": "allineamento-verifica",
+  "name": "Allineamento e verifica",
+  "description": "Porta nel ramo della funzionalità le novità di develop, risolve i conflitti, ripete test e revisione e prepara la checklist del tuo test funzionale. All'avvio scegli l'esecuzione della funzionalità come riferimento.",
+  "goalHint": "Indica il ramo da allineare e il ramo di integrazione (es. \"Allinea feature/ordini con develop\"), più eventuali punti da verificare con attenzione nel test funzionale.",
+  "settings": { "runBudgetUsd": 3, "maxParallel": 2, "loadProjectSettings": true, "applyGeneralRules": true, "referenceRun": true },
+  "nodes": [
+    { "id": "allineamento", "position": { "x": 0, "y": 120 }, "data": {
+      "label": "Allineamento con develop", "kind": "implementazione", "role": "Integratore: porta nel ramo corrente le novità del ramo di integrazione senza perdere il lavoro della funzionalità.",
+      "instructions": "Questa fase è autorizzata a fare il commit di merge, non il push. 1) Controlla git status: se ci sono modifiche non salvate fermati con esito \"bloccato\" ed elencale. 2) Aggiorna i riferimenti remoti (git fetch) e fai il merge nel ramo corrente del ramo di integrazione: develop, salvo diversa indicazione nell'obiettivo (es. git merge origin/develop). Non fare rebase né push, non cambiare ramo. 3) Risolvi i conflitti uno per uno, tenendo sia le novità del ramo di integrazione sia l'intento della funzionalità descritto nell'esecuzione di riferimento; per ogni conflitto scrivi una riga DECISIONE con il file e la scelta fatta. Se un conflitto richiede una scelta di prodotto, fermati con esito \"bloccato\" e descrivilo. 4) Completa il merge con il messaggio predefinito di git. 5) Se il progetto ha una compilazione o controlli rapidi, eseguili. Nella sintesi indica i commit integrati, i file in conflitto e come li hai risolti.",
+      "model": "sonnet", "allowedTools": ["Read", "Glob", "Grep", "Edit", "Write", "Bash"], "maxTurns": 40, "maxBudgetUsd": 1.5, "contextMode": "sintesi", "reuseResult": false } },
+    { "id": "test", "position": { "x": 300, "y": 0 }, "data": {
+      "label": "Test", "kind": "test", "role": "Tester: esegue i test e riporta l'esito senza modificare il codice.",
+      "instructions": "Esegui la suite di test del progetto e riporta l'esito. Esito 'ko' se fallisce almeno un test. Non modificare file.",
+      "model": "haiku", "allowedTools": ["Read", "Glob", "Bash"], "maxTurns": 8, "maxBudgetUsd": 0.3, "contextMode": "nessuno", "reuseResult": false } },
+    { "id": "revisione", "position": { "x": 300, "y": 120 }, "data": {
+      "label": "Revisione del merge", "kind": "revisione", "role": "Revisore: verifica che l'allineamento non abbia perso né le novità del ramo di integrazione né il lavoro della funzionalità.",
+      "instructions": "Rivedi i file in conflitto indicati dalla fase precedente, insieme alle risoluzioni dichiarate. Controlla che ogni risoluzione mantenga sia il comportamento arrivato dal ramo di integrazione sia quello della funzionalità descritta nell'esecuzione di riferimento. Segnala problemi concreti con file e motivo. Non modificare file.",
+      "model": "sonnet", "allowedTools": ["Read", "Glob", "Grep"], "maxTurns": 12, "maxBudgetUsd": 0.6, "contextMode": "completo", "reuseResult": false } },
+    { "id": "checklist", "position": { "x": 300, "y": 240 }, "data": {
+      "label": "Checklist del test funzionale", "kind": "analisi", "role": "Analista di test: prepara le prove manuali che dimostrano che la funzionalità funziona ancora.",
+      "instructions": "Prepara la checklist del test funzionale da fare a mano nell'app. Parti da cosa doveva fare la funzionalità (esecuzione di riferimento e obiettivo) e da cosa è cambiato con l'allineamento. Elenca i casi da provare, uno per riga, con passi e risultato atteso; metti per primi quelli toccati dai conflitti risolti. Non modificare file.",
+      "model": "sonnet", "allowedTools": ["Read", "Glob", "Grep"], "maxTurns": 12, "maxBudgetUsd": 0.5, "contextMode": "completo", "reuseResult": false } },
+    { "id": "test_funzionale", "position": { "x": 600, "y": 120 }, "data": {
+      "label": "Test funzionale", "kind": "approvazione", "role": "",
+      "instructions": "Avvia l'app (oppure aggiungi prima di questa fase una fase Avvio app adatta al progetto) e segui la checklist. Approva se la funzionalità si comporta come previsto; altrimenti respingi descrivendo cosa non va: la correzione verrà fatta sul ramo e test, revisione e checklist verranno ripetuti.",
+      "model": "", "allowedTools": [], "contextMode": "sintesi", "reuseResult": false } },
+    { "id": "pubblicazione", "position": { "x": 900, "y": 120 }, "data": {
+      "label": "Pubblicazione", "kind": "personalizzata", "role": "Release manager: pubblica il lavoro approvato in modo verificabile.",
+      "instructions": "Questa fase è autorizzata a fare commit e push. 1) Controlla git status e git diff: includi solo i file legati all'obiettivo, segnala e lascia fuori il resto. 2) Se ci sono correzioni non ancora salvate, fai un commit con un messaggio descrittivo che segua lo stile del repository (guarda git log). 3) Fai push sul branch corrente; non fare mai force push e non cambiare branch. Nella sintesi indica hash dell'ultimo commit, branch ed esito del push. Esito \"ko\" se un passo fallisce.",
+      "model": "sonnet", "allowedTools": ["Read", "Glob", "Grep", "Bash"], "maxTurns": 15, "maxBudgetUsd": 0.4, "contextMode": "sintesi", "reuseResult": false } }
+  ],
+  "edges": [
+    { "id": "e1", "source": "allineamento", "target": "test" },
+    { "id": "e2", "source": "allineamento", "target": "revisione" },
+    { "id": "e3", "source": "allineamento", "target": "checklist" },
+    { "id": "e4", "source": "test", "target": "test_funzionale" },
+    { "id": "e5", "source": "revisione", "target": "test_funzionale" },
+    { "id": "e6", "source": "checklist", "target": "test_funzionale" },
+    { "id": "e7", "source": "test_funzionale", "target": "pubblicazione" }
+  ]
+}

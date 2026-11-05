@@ -21,24 +21,9 @@ function writeJsonAtomic(file: string, value: unknown) {
   fs.renameSync(tmp, file);
 }
 
+/** Crea le cartelle dei dati. Le esecuzioni rimaste attive da un avvio precedente le sistema recoverInterruptedRuns (resume.ts). */
 export function initStore() {
   for (const d of [DATA_DIR, WF_DIR, RUN_DIR]) fs.mkdirSync(d, { recursive: true });
-  // Le esecuzioni rimaste "in corso" da un avvio precedente non sono più vive.
-  for (const s of listRuns()) {
-    if (s.status === 'in_corso' || s.status === 'attesa_intervento') {
-      const run = getRun(s.id);
-      if (run) {
-        run.status = 'interrotta';
-        run.endedAt = run.endedAt ?? new Date().toISOString();
-        run.notes.push('Esecuzione interrotta: il server è stato riavviato mentre era attiva.');
-        for (const n of Object.values(run.nodes)) {
-          if (n.status === 'attiva' || n.status === 'attesa_intervento') n.status = 'fallita';
-          n.pendingActions = undefined;
-        }
-        saveRun(run);
-      }
-    }
-  }
 }
 
 /**

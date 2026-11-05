@@ -54,7 +54,8 @@
     "completata": "Completed",
     "fallita": "Failed",
     "annullata": "Cancelled",
-    "interrotta": "Interrupted"
+    "interrotta": "Interrupted",
+    "sospesa": "Suspended"
   },
   "service": {
     "avvio": "Starting",
@@ -261,5 +262,13 @@
     "restart": "Then restart Regia (npm start).",
     "changes": "See the changes on GitHub",
     "toast": "Regia v{version} is available: details next to the name at the top."
+  },
+  "reference": {
+    "title": "Reference run",
+    "lead": "Pick the run this workflow works on, for example the feature to sync with develop. Its report (goal, results, decisions, changed files, interventions) is passed to every phase.",
+    "label": "Run",
+    "none": "None",
+    "loading": "Loading runs…",
+    "empty": "There are no runs of other workflows: you can start without a reference."
   }
 }

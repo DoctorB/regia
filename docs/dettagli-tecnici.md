@@ -32,6 +32,22 @@ L'app viene fermata (insieme ai processi figli) quando l'esecuzione termina o vi
 - **Fase fallita o bloccata**: l'agente può dichiarare un esito `ko` o `bloccato`. Le scelte sono riprova da capo, riprendi la sessione con un messaggio, salta oppure annulla l'esecuzione.
 - **Suono**: generato dal browser (Web Audio, nessun file audio) per l'esecuzione aperta nella pagina, quando una fase comincia ad aspettare un intervento e quando l'esecuzione termina (non quando la annulli tu). Con la pagina chiusa non suona. La scelta attivo/disattivo è ricordata nel browser.
 
+## Sospensione e ripresa
+
+- **Sospendi**: le fasi agente in corso vengono fermate e il tentativo risulta "interrotto", con la sessione dell'agente e l'ora dell'ultima attività. Le app della fase Avvio app vengono chiuse e riavviate alla ripresa. Approvazioni e interventi restano in attesa. Tutto è salvato in `data/runs`, quindi la ripresa funziona anche dopo aver chiuso Regia o spento il PC.
+- **Chiusura improvvisa**: all'avvio, le esecuzioni rimaste attive diventano "interrotte" e vengono trattate come sospese.
+- **Riprendi** prosegue la stessa esecuzione (stesso identificativo, consumi e resoconto). Per ogni fase interrotta:
+  - se l'ultima attività è entro la durata della cache del prompt (300 secondi, `REGIA_CACHE_TTL_SEC`), riprende la stessa sessione con l'indicazione di controllare lo stato dei file e completare il compito;
+  - altrimenti apre una sessione nuova con il prompt normale della fase più un riassunto: gli ultimi passi e decisioni registrati (fino a 60, anche dei tentativi interrotti precedenti) e l'eventuale correzione che la fase stava applicando;
+  - se la sessione non si può più riprendere (ad esempio i dati di Claude Code sono stati rimossi), passa da sola al riassunto.
+- **Perché il riassunto**: riprendere una sessione dopo la scadenza della cache rimanda tutta la conversazione e la riscrive in cache. Il riassunto costa meno; in cambio l'agente rilegge i file che gli servono.
+- **Git**: ramo e commit del progetto sono registrati alla fine di ogni fase e alla sospensione. Prima di riprendere vengono confrontati con quelli attuali e, se sono diversi, l'interfaccia chiede conferma.
+- Un'esecuzione sospesa si può anche annullare senza riprenderla. La durata mostrata comprende il tempo di sospensione.
+
+## Esecuzione di riferimento
+
+Con l'impostazione **Esecuzione di riferimento** (attiva nel preset Allineamento e verifica) all'avvio si sceglie un'esecuzione di un altro workflow. Il suo resoconto, in versione compatta (obiettivo, risultati, decisioni dichiarate, file modificati, interventi, senza costi né tempi, al massimo 12.000 caratteri), viene fotografato nell'esecuzione e aggiunto al prompt di ogni fase agente, dopo l'obiettivo. Resta lo stesso anche se l'esecuzione di riferimento viene poi eliminata, e una continuazione lo mantiene. Entra nella chiave del riuso dei risultati: con un riferimento diverso le fasi non vengono riusate.
+
 ## Regole generali
 
 Il pulsante **Regole** mostra le regole aggiunte alle istruzioni di ogni fase (opzione "Applica le regole generali" del workflow, attiva di base). Prevalgono sulle istruzioni della fase.
@@ -129,6 +145,7 @@ Interfaccia, messaggi di Regia e istruzioni inviate agli agenti sono tradotti tr
 | `REGIA_DISABLE_REAL=1` | Disattiva le esecuzioni reali |
 | `REGIA_UPDATE_CHECK=0` | Disattiva il controllo di nuove versioni su GitHub (la versione in uso resta visibile accanto al nome) |
 | `REGIA_LANG` | Lingua predefinita del server (es. per le regole di Regia iniziali); altrimenti quella del sistema |
+| `REGIA_CACHE_TTL_SEC` | Durata della cache del prompt usata per decidere come riprendere una fase interrotta (predefinita 300 secondi) |
 | `REGIA_MOCK_SPEED` | Millisecondi per passo nella modalità di prova (predefinito 600) |
 | `ANTHROPIC_API_KEY` | Se presente, le esecuzioni reali usano la chiave API invece del login |
 
@@ -143,6 +160,7 @@ server/            API Express + SSE, motore di esecuzione, contabilità, simula
   validate.ts      validazione del diagramma
   rules.ts         regole generali (personali, di Regia, del progetto)
   folder.ts        controllo della cartella di progetto (git, modifiche in sospeso)
+  resume.ts        sospensione e ripresa: stato riprendibile, riassunto del lavoro interrotto
   service.ts       processi della fase Avvio app (avvio, indirizzo, raggiungibilità, arresto)
   nodeenv.ts       versione di Node richiesta dal progetto, installazioni, diagnosi degli errori
   skills.ts        ricerca delle skill e plugin temporaneo per fase
@@ -162,5 +180,6 @@ templates/         preset di partenza (JSON)
 - Dopo un rifiuto vengono rieseguite solo le fasi tra quella corretta e l'approvazione (comprese eventuali approvazioni intermedie, che vengono richieste di nuovo). Le altre fasi a valle già completate non vengono rieseguite.
 - "Continua" riprende una fase solo se identica e completata; una fase saltata o fallita viene eseguita. La ripresa della sessione originale richiede che Claude Code abbia ancora la sessione salvata (`~/.claude/projects`).
 - Il riuso confronta configurazione, input e un'impronta dei file del progetto (percorso, dimensione, data di modifica). Non rileva cambiamenti esterni alla cartella.
-- Un'esecuzione attiva non sopravvive al riavvio del server: viene marcata come interrotta.
+- Un'esecuzione non prosegue mentre Regia è chiuso: risulta interrotta e si riprende con Riprendi. Della fase interrotta resta ciò che era già registrato (passi, decisioni, file modificati); il consumo del tentativo interrotto è parziale e il suo costo non è noto.
+- La durata reale della cache del prompt dipende dall'account (di norma 5 minuti, in alcuni casi 1 ora) e Regia non la può leggere: usa 5 minuti, modificabili con `REGIA_CACHE_TTL_SEC`.
 - I contatori live dei subagenti non sono mostrati durante la fase: i loro consumi arrivano con il result.

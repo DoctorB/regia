@@ -59,8 +59,8 @@ export function useRunSounds(run: Run | null) {
     const p = prev.current;
     prev.current = { id: run.id, pending, live };
     if (!p || p.id !== run.id) return;
-    // L'annullamento lo decide la persona: nessun suono.
-    if (p.live && !live) { if (run.status !== 'annullata') playCue(run.status === 'completata' ? 'done' : 'failed'); }
+    // Annullamento e sospensione li decide la persona: nessun suono.
+    if (p.live && !live) { if (run.status !== 'annullata' && run.status !== 'sospesa') playCue(run.status === 'completata' ? 'done' : 'failed'); }
     else if ([...pending].some((id) => !p.pending.has(id))) playCue('attention');
   }, [run]);
 }

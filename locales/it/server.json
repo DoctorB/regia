@@ -30,7 +30,11 @@
       "resumed": "{label}: avviata (ripresa della sessione con feedback). Modello: {model}; strumenti: {tools}.",
       "resumedLimit": "{label}: avviata (ripresa della sessione con feedback). Modello: {model}; strumenti: {tools}; limite {limit} USD.",
       "retry": "{label}: avviata (nuovo tentativo). Modello: {model}; strumenti: {tools}.",
-      "retryLimit": "{label}: avviata (nuovo tentativo). Modello: {model}; strumenti: {tools}; limite {limit} USD."
+      "retryLimit": "{label}: avviata (nuovo tentativo). Modello: {model}; strumenti: {tools}; limite {limit} USD.",
+      "interruptedSession": "{label}: avviata (ripresa della sessione interrotta). Modello: {model}; strumenti: {tools}.",
+      "interruptedSessionLimit": "{label}: avviata (ripresa della sessione interrotta). Modello: {model}; strumenti: {tools}; limite {limit} USD.",
+      "interruptedSummary": "{label}: avviata (sessione nuova con il riassunto del lavoro interrotto). Modello: {model}; strumenti: {tools}.",
+      "interruptedSummaryLimit": "{label}: avviata (sessione nuova con il riassunto del lavoro interrotto). Modello: {model}; strumenti: {tools}; limite {limit} USD."
     },
     "defaultModel": "predefinito",
     "noTools": "nessuno",
@@ -111,7 +115,8 @@
         "restart": "{label}: app fermata (riavvio).",
         "startFailed": "{label}: app fermata (avvio non riuscito).",
         "manual": "{label}: app fermata (richiesta manuale).",
-        "cancelled": "{label}: app fermata (esecuzione annullata)."
+        "cancelled": "{label}: app fermata (esecuzione annullata).",
+        "suspended": "{label}: app fermata (esecuzione sospesa); verrà riavviata alla ripresa."
       },
       "simDone": "Comando completato con codice 0 (simulato).",
       "simLaunched": "App avviata (simulato).",
@@ -123,7 +128,17 @@
     },
     "skillsAvailable": "{label}: skill disponibili ({count}): {skills}.",
     "skillsMissing": "{label}: skill non trovate, la fase prosegue senza: {skills}.",
-    "skillsBundleFailed": "{label}: impossibile preparare le skill ({error}); la fase prosegue senza."
+    "skillsBundleFailed": "{label}: impossibile preparare le skill ({error}); la fase prosegue senza.",
+    "runSuspended": "Esecuzione sospesa: le fasi in corso si fermano e riprenderanno da dove erano.",
+    "runResumed": "Esecuzione ripresa. Ripartono da dove erano: {phases}.",
+    "runResumedNone": "Esecuzione ripresa.",
+    "interrupted": {
+      "session": "{label}: ripresa sulla stessa sessione (ultima attività {minutes} min fa, cache ancora valida).",
+      "summary": "{label}: ripresa con una sessione nuova e il riassunto del lavoro già fatto (ultima attività {minutes} min fa, cache scaduta).",
+      "noSession": "{label}: ripresa con una sessione nuova e il riassunto del lavoro già fatto (la sessione precedente non era ancora aperta).",
+      "sessionUnavailable": "{label}: la sessione precedente non si può riprendere, la fase riparte con il riassunto del lavoro già fatto."
+    },
+    "reference": "Esecuzione di riferimento: {name} ({id}). Il suo resoconto viene passato a ogni fase."
   },
   "interventions": {
     "budgetReached": "Limite di spesa dell'esecuzione raggiunto prima di avviare la fase.",
@@ -172,7 +187,14 @@
         "activeUrl": "App attiva: {url}\nComando: {command}",
         "active": "App avviata e aperta per la verifica.\nComando: {command}"
       }
-    }
+    },
+    "interrupted": {
+      "session": "Il lavoro sul compito \"{label}\" è stato interrotto e ora riprende. Alcune modifiche ai file potrebbero essere rimaste a metà: controlla lo stato attuale dei file che stavi modificando, poi completa il compito senza rifare il lavoro già fatto.\n\n{protocol}",
+      "summary": "## Lavoro già svolto in un tentativo interrotto\nUn tentativo precedente di questa fase è stato interrotto il {date}. Le modifiche che ha fatto sono ancora nella cartella del progetto e alcune potrebbero essere rimaste a metà. Prima di continuare controlla lo stato attuale dei file coinvolti: non ripartire da zero e non rifare il lavoro già fatto.\n\nUltimi passi registrati:\n{steps}",
+      "feedback": "Il tentativo interrotto stava applicando questa correzione, richiesta dalla persona che supervisiona il workflow:\n{feedback}",
+      "noSteps": "(nessun passo registrato)"
+    },
+    "reference": "## Esecuzione di riferimento\nQuesto lavoro parte dal risultato di un'esecuzione precedente, \"{name}\" del {date}. Usala per capire cosa doveva fare quel lavoro e quali scelte sono state fatte; per sapere cosa c'è davvero nel progetto conta lo stato attuale dei file.\n\n{report}"
   },
   "mock": {
     "decisions": {
@@ -231,7 +253,10 @@
     "noNodeInstall": "Nessuna installazione di Node disponibile",
     "noPackageJson": "Nessun package.json nella cartella",
     "copySuffix": "(copia)",
-    "groupMissing": "Gruppo da rinominare non indicato."
+    "groupMissing": "Gruppo da rinominare non indicato.",
+    "notSuspendable": "Si può sospendere solo un'esecuzione in corso.",
+    "notResumable": "Si può riprendere solo un'esecuzione sospesa o interrotta.",
+    "referenceNotFound": "Esecuzione di riferimento non trovata"
   },
   "nodeenv": {
     "source": {
@@ -263,7 +288,8 @@
     }
   },
   "notes": {
-    "unknownCost": "Alcune fasi si sono interrotte senza un risultato finale: il loro costo non è noto e non è incluso nel totale."
+    "unknownCost": "Alcune fasi si sono interrotte senza un risultato finale: il loro costo non è noto e non è incluso nel totale.",
+    "interrupted": "Esecuzione interrotta: Regia è stato chiuso mentre era attiva. Usa Riprendi per continuare da dove si era fermata."
   },
   "continuation": {
     "newPhase": "fase nuova",

@@ -47,7 +47,7 @@ poi riavvia con `npm start`. Il controllo legge solo il numero di versione pubbl
 
 ![Nuovo workflow](img/01-nuovo-workflow.png)
 
-1. Al primo avvio compare la schermata di benvenuto; in seguito apri il menu con il nome del workflow in alto a sinistra → **Nuovo workflow…**. Scegli un preset: *Correggi un bug*, *Nuova funzionalità*, *Revisione del codice* (sola lettura), *Aggiungi test*, *Refactoring sicuro* o *Vuoto*.
+1. Al primo avvio compare la schermata di benvenuto; in seguito apri il menu con il nome del workflow in alto a sinistra → **Nuovo workflow…**. Scegli un preset: *Correggi un bug*, *Nuova funzionalità*, *Revisione del codice* (sola lettura), *Aggiungi test*, *Refactoring sicuro*, *Allineamento e verifica* o *Vuoto*.
 2. Indica la **cartella del progetto**. Regia controlla se è un repository git e se ci sono modifiche non salvate.
    > Prima di un'esecuzione reale fai **commit o stash** delle tue modifiche: così potrai rivedere il lavoro degli agenti con `git diff` e annullarlo con `git checkout .`.
 3. Scrivi l'**obiettivo**: cosa va fatto e quando è finito. Più è preciso, meno passaggi servono.
@@ -101,6 +101,20 @@ Quando il workflow si ferma, la scheda **Stato** mostra cosa serve:
 - **Fase fallita o bloccata**: **Riprova da capo**, **Riprendi la sessione** (con un messaggio per l'agente), **Salta la fase** o **Annulla esecuzione**.
 
 Quando una fase comincia ad aspettarti, e quando l'esecuzione termina, Regia emette un breve suono, anche se stai guardando l'editor. Si attiva e disattiva con il pulsante a forma di campanella in alto a destra; la scelta viene ricordata.
+
+### Sospendere e riprendere il giorno dopo
+
+![Esecuzione sospesa](img/15-sospensione.png)
+
+Un lavoro lungo non deve per forza finire in giornata:
+
+1. Premi **Sospendi** in cima al pannello di esecuzione. Le fasi in corso si fermano e il loro lavoro resta registrato, le app avviate da Regia vengono chiuse, approvazioni e interventi in attesa restano dove sono.
+2. Puoi chiudere Regia e spegnere il PC. Se lo spegni senza sospendere, al riavvio l'esecuzione risulta **Interrotta** e si riprende allo stesso modo.
+3. Il giorno dopo apri l'esecuzione e premi **Riprendi**. Le fasi completate restano, quelle fermate a metà ripartono da dove erano, le app vengono riavviate e le approvazioni tornano disponibili.
+
+Come riparte una fase interrotta lo decide Regia. Se l'ultima attività è recente (entro la durata della cache del prompt, 5 minuti) riprende la stessa sessione dell'agente. Altrimenti apre una sessione nuova con il riassunto dei passi già fatti, invece di rimandare tutta la conversazione precedente. Il registro eventi dice quale delle due ha scelto e perché.
+
+Se nel frattempo il progetto ha cambiato ramo o commit (un pull, un checkout), prima di riprendere Regia te lo segnala e chiede conferma.
 
 ### Verificare l'app: web, desktop, mobile
 
@@ -177,6 +191,27 @@ Hai completato un'esecuzione e ti accorgi che mancava qualcosa, ad esempio antep
 2. Vai su **Esecuzione** e scegli l'esecuzione completata dal menu in cima al pannello.
 3. **Continua…**: le fasi già fatte e non modificate vengono riprese con i loro risultati, senza rifarle; vengono eseguite solo quelle nuove o cambiate. Il riepilogo prima dell'avvio ti dice quali e perché.
 
+**Riprendi** e **Continua…** sono diversi: Riprendi prosegue la stessa esecuzione sospesa o interrotta, Continua… ne crea una nuova con il workflow attuale.
+
+### Allineare una funzionalità con develop
+
+Il workflow della funzionalità si apre, si lavora e si chiude. Il backmerge da develop e il test funzionale che lo segue, magari giorni dopo, sono un lavoro a parte che si può ripetere ogni volta che develop si muove: per questo hanno un loro preset, **Allineamento e verifica**.
+
+1. Crea un workflow dal preset sulla cartella del progetto, con il ramo della funzionalità attivo. Nell'obiettivo indica i rami, ad esempio "Allinea feature/ordini con develop".
+2. Se il test funzionale richiede l'app, aggiungi prima di **Test funzionale** una fase **Avvio app** adatta al progetto, dalla palette.
+![Scelta dell'esecuzione di riferimento](img/16-riferimento.png)
+
+3. All'avvio Regia chiede l'**esecuzione di riferimento**: scegli quella della funzionalità. Il suo resoconto (obiettivo, risultati, decisioni, file modificati, interventi) arriva a ogni fase. Così l'agente risolve i conflitti sapendo cosa doveva fare la funzionalità, e la checklist del test funzionale parte da lì.
+4. Il flusso è:
+   - **Allineamento con develop**: fa il merge e risolve i conflitti, dichiarando ogni scelta; si ferma e ti chiede se un conflitto richiede una decisione di prodotto.
+   - **Test**, **Revisione del merge** e **Checklist del test funzionale**.
+   - **Test funzionale**: lo fai tu, seguendo la checklist. Se respingi, la correzione viene fatta sul ramo e i controlli vengono ripetuti.
+   - **Pubblicazione** (push).
+
+![Test funzionale con la checklist](img/17-test-funzionale.png)
+
+L'esecuzione di riferimento si attiva per qualsiasi workflow nelle impostazioni (**Esecuzione di riferimento**) e si vede nella scheda Stato dell'esecuzione e nel resoconto.
+
 ---
 
 ## 9. Regole generali
@@ -233,7 +268,7 @@ Le fasi con un agente possono usare le **skill** di Claude Code: procedure scrit
 | "Esegui" disattivato | Il workflow ha errori (badge in alto) |
 | Nessun login rilevato | Esegui `claude` una volta e accedi, oppure imposta `ANTHROPIC_API_KEY` prima di `npm start` |
 | L'app non parte o non risulta pronta | Leggi il motivo nella richiesta di intervento: comando terminato con errore, testo atteso mai comparso, indirizzo che non risponde, versione di Node, dipendenze, porta occupata. Usa i pulsanti proposti oppure correggi comando o criterio "Quando è pronta" nella fase |
-| L'esecuzione risulta "interrotta" | Regia è stato chiuso mentre era attiva: aprila e usa **Continua…** |
+| L'esecuzione risulta "interrotta" | Regia è stato chiuso mentre era attiva: aprila e usa **Riprendi** |
 | La spesa è vicina al limite | Alza il limite nelle impostazioni del workflow o guarda la scheda Ottimizza |
 
 Per dettagli su conteggio dei consumi, permessi, dati salvati e limiti noti: [dettagli tecnici](dettagli-tecnici.md).

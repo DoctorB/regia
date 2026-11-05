@@ -44,7 +44,8 @@
       "outcome": "esito {esito}",
       "noOutput": "Nessun risultato.",
       "commentPlaceholder": "Commento: obbligatorio per respingere, facoltativo per approvare",
-      "messagePlaceholder": "Messaggio per l'agente (per \"Riprendi la sessione\")"
+      "messagePlaceholder": "Messaggio per l'agente (per \"Riprendi la sessione\")",
+      "resumeToAct": "Riprendi l'esecuzione per intervenire."
     },
     "service": {
       "stop": "Ferma",
@@ -54,6 +55,26 @@
       "output": "Output",
       "external": "Servizio esterno: Regia lo verifica ma non lo avvia né lo ferma.",
       "openOnDevice": "Controlla l'app sul desktop, sull'emulatore o sul dispositivo, poi decidi."
+    },
+    "suspend": {
+      "label": "Sospendi",
+      "hint": "Ferma l'esecuzione per riprenderla più tardi, anche dopo aver chiuso Regia o spento il PC",
+      "done": "Esecuzione sospesa: usa Riprendi per continuare."
+    },
+    "resume": {
+      "label": "Riprendi",
+      "hint": "Continua questa esecuzione da dove si era fermata",
+      "done": "Esecuzione ripresa.",
+      "branchChanged": "Il ramo del progetto è cambiato: {before} → {now}.",
+      "headChanged": "Il commit del progetto è cambiato: {before} → {now}.",
+      "confirmChanged": "Gli agenti lavoreranno sullo stato attuale del progetto. Riprendere comunque?",
+      "calloutSuspended": "Esecuzione sospesa il {date}.",
+      "calloutInterrupted": "Esecuzione interrotta il {date}: Regia è stato chiuso mentre era attiva.",
+      "calloutPhases": "Con Riprendi le fasi completate restano e queste ripartono da dove erano: {phases}.",
+      "calloutNoPhases": "Con Riprendi le fasi completate restano e l'esecuzione continua da dove era."
+    },
+    "reference": {
+      "title": "Esecuzione di riferimento"
     }
   },
   "actions": {
@@ -204,13 +225,15 @@
       "riprova": "riprova",
       "ripresa_con_feedback": "ripresa con feedback",
       "dopo_correzione": "dopo correzione",
-      "riuso": "riuso"
+      "riuso": "riuso",
+      "ripresa_dopo_interruzione": "ripresa dopo interruzione"
     },
     "attemptStatus": {
       "attiva": "attiva",
       "ok": "ok",
       "errore": "errore",
-      "annullata": "annullata"
+      "annullata": "annullata",
+      "interrotta": "interrotta"
     },
     "attempt": {
       "data": "dati: {source}",
@@ -270,7 +293,8 @@
       "completata": "completata",
       "fallita": "fallita",
       "annullata": "annullata",
-      "interrotta": "interrotta"
+      "interrotta": "interrotta",
+      "sospesa": "sospesa"
     },
     "title": "Confronta due esecuzioni",
     "needTwo": "Servono almeno due esecuzioni di questo workflow.",
@@ -451,7 +475,9 @@
       "maxBudgetHint": "Stima del SDK, per esecuzione.",
       "parallel": "Fasi in parallelo",
       "agentLanguage": "Lingua degli agenti",
-      "agentLanguageHint": "Lingua del protocollo di risposta e delle regole inviate agli agenti."
+      "agentLanguageHint": "Lingua del protocollo di risposta e delle regole inviate agli agenti.",
+      "reference": "Esecuzione di riferimento",
+      "referenceHint": "All'avvio scegli un'esecuzione precedente, ad esempio la funzionalità da allineare con develop: il suo resoconto viene passato a ogni fase."
     },
     "rules": {
       "title": "Regole e contesto",
@@ -500,7 +526,8 @@
       "ended": "Fine",
       "duration": "Durata",
       "project": "Cartella del progetto",
-      "continuedFrom": "Continua da"
+      "continuedFrom": "Continua da",
+      "reference": "Esecuzione di riferimento"
     },
     "goal": "Obiettivo",
     "phases": "Fasi",

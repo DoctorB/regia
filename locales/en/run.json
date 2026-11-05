@@ -44,7 +44,8 @@
       "outcome": "outcome {esito}",
       "noOutput": "No result.",
       "commentPlaceholder": "Comment: required to reject, optional to approve",
-      "messagePlaceholder": "Message for the agent (for \"Resume session\")"
+      "messagePlaceholder": "Message for the agent (for \"Resume session\")",
+      "resumeToAct": "Resume the run to act."
     },
     "service": {
       "stop": "Stop",
@@ -54,6 +55,26 @@
       "output": "Output",
       "external": "External service: Regia checks it but neither starts nor stops it.",
       "openOnDevice": "Check the app on the desktop, emulator or device, then decide."
+    },
+    "suspend": {
+      "label": "Suspend",
+      "hint": "Stop the run and resume it later, even after closing Regia or shutting down the PC",
+      "done": "Run suspended: use Resume to continue."
+    },
+    "resume": {
+      "label": "Resume",
+      "hint": "Continue this run from where it stopped",
+      "done": "Run resumed.",
+      "branchChanged": "The project branch has changed: {before} → {now}.",
+      "headChanged": "The project commit has changed: {before} → {now}.",
+      "confirmChanged": "The agents will work on the current state of the project. Resume anyway?",
+      "calloutSuspended": "Run suspended on {date}.",
+      "calloutInterrupted": "Run interrupted on {date}: Regia was closed while it was active.",
+      "calloutPhases": "With Resume, completed phases are kept and these pick up where they stopped: {phases}.",
+      "calloutNoPhases": "With Resume, completed phases are kept and the run continues from where it stopped."
+    },
+    "reference": {
+      "title": "Reference run"
     }
   },
   "actions": {
@@ -204,13 +225,15 @@
       "riprova": "retry",
       "ripresa_con_feedback": "resumed with feedback",
       "dopo_correzione": "after correction",
-      "riuso": "reuse"
+      "riuso": "reuse",
+      "ripresa_dopo_interruzione": "resumed after interruption"
     },
     "attemptStatus": {
       "attiva": "active",
       "ok": "ok",
       "errore": "error",
-      "annullata": "cancelled"
+      "annullata": "cancelled",
+      "interrotta": "interrupted"
     },
     "attempt": {
       "data": "data: {source}",
@@ -270,7 +293,8 @@
       "completata": "completed",
       "fallita": "failed",
       "annullata": "cancelled",
-      "interrotta": "interrupted"
+      "interrotta": "interrupted",
+      "sospesa": "suspended"
     },
     "title": "Compare two runs",
     "needTwo": "At least two runs of this workflow are needed.",
@@ -451,7 +475,9 @@
       "maxBudgetHint": "SDK estimate, per run.",
       "parallel": "Parallel phases",
       "agentLanguage": "Agent language",
-      "agentLanguageHint": "Language of the response protocol and of the rules sent to the agents."
+      "agentLanguageHint": "Language of the response protocol and of the rules sent to the agents.",
+      "reference": "Reference run",
+      "referenceHint": "At start, pick an earlier run, for example the feature to sync with develop: its report is passed to every phase."
     },
     "rules": {
       "title": "Rules and context",
@@ -500,7 +526,8 @@
       "ended": "Ended",
       "duration": "Duration",
       "project": "Project folder",
-      "continuedFrom": "Continued from"
+      "continuedFrom": "Continued from",
+      "reference": "Reference run"
     },
     "goal": "Goal",
     "phases": "Phases",

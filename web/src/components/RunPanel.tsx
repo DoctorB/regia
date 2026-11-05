@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Activity, Bot, CircleAlert, CircleCheck, Clock, Coins, Copy, CornerDownRight, Download, ExternalLink, FileText, Flag, Gauge, Globe, Hand, Info, Lightbulb, ListTree,
-  MessageSquareText, OctagonX, Play, Recycle, RotateCcw, SkipForward, Square, Terminal, TriangleAlert, Undo2, Workflow as WorkflowIcon, X,
+  MessageSquareText, OctagonX, Pause, Play, Recycle, RotateCcw, SkipForward, Square, Terminal, TriangleAlert, Undo2, Workflow as WorkflowIcon, X,
   type LucideIcon,
 } from 'lucide-react';
-import { isAgentKind, type EventKind, type HumanAction, type Insight, type Run, type RunSummary } from '../../../shared/types.ts';
+import { isAgentKind, RESUMABLE, type EventKind, type HumanAction, type Insight, type Run, type RunSummary } from '../../../shared/types.ts';
 import { layoutGraph } from '../../../shared/layout.ts';
 import { runReport } from '../../../shared/report.ts';
 import { api, fmtDur, fmtTime, fmtTok, fmtUsd, runDuration } from '../api.ts';
@@ -66,9 +66,37 @@ export function RunPanel({ run, runs, selectedNode, onSelectNode, onOpenRun, onC
   const budgetPct = run.budgetUsd ? Math.min(100, (cost / run.budgetUsd) * 100) : 0;
   const totalTok = run.totals.inputTokens + run.totals.outputTokens + run.totals.cacheCreationInputTokens + run.totals.cacheReadInputTokens;
 
+  const resumable = RESUMABLE.includes(run.status);
+  const [busy, setBusy] = useState(false);
+
   const cancel = async () => {
     if (!confirm(t('run.confirmCancel'))) return;
-    try { await api.cancel(run.id); } catch (e) { toast((e as Error).message, 'bad'); }
+    try {
+      await api.cancel(run.id);
+      // Un'esecuzione sospesa non ha uno stream attivo: si ricarica dal file.
+      if (resumable) onOpenRun(run.id);
+    } catch (e) { toast((e as Error).message, 'bad'); }
+  };
+
+  const suspend = async () => {
+    setBusy(true);
+    try { await api.suspend(run.id); toast(t('run.suspend.done'), 'good'); } catch (e) { toast((e as Error).message, 'bad'); } finally { setBusy(false); }
+  };
+
+  const resume = async () => {
+    setBusy(true);
+    try {
+      // Avviso se nel frattempo il progetto ha cambiato ramo o commit (pull, checkout, commit manuali).
+      const g = await api.resumeCheck(run.id);
+      const changes = [
+        g.branchChanged ? t('run.resume.branchChanged', { before: g.before?.branch ?? '', now: g.now?.branch ?? '' }) : '',
+        g.headChanged ? t('run.resume.headChanged', { before: g.before?.head?.slice(0, 8) ?? '', now: g.now?.head?.slice(0, 8) ?? '' }) : '',
+      ].filter(Boolean);
+      if (changes.length && !confirm(`${changes.join('\n')}\n\n${t('run.resume.confirmChanged')}`)) return;
+      await api.resume(run.id, run.mode === 'reale');
+      onOpenRun(run.id);
+      toast(t('run.resume.done'), 'good');
+    } catch (e) { toast((e as Error).message, 'bad'); } finally { setBusy(false); }
   };
 
   const TABS: [Tab, string, LucideIcon, number?][] = [
@@ -86,10 +114,14 @@ export function RunPanel({ run, runs, selectedNode, onSelectNode, onOpenRun, onC
           <span className={`pill lg tone-${rs.tone}`}><span className={`dot ${live ? 'pulse' : ''}`} />{runStatusLabel(run.status)}</span>
           <span className={`tag ${run.mode === 'reale' ? 'tag-real' : ''}`}>{run.mode === 'prova' ? t('run.mode.prova') : t('run.mode.reale')}</span>
           <span className="muted small inline-ic"><Clock />{fmtDur(runDuration(run))}</span>
-          <span className="grow" />
-          <button className="btn sm ghost" onClick={() => setReport(true)} title={t('report.buttonTitle')}><FileText />{t('report.button')}</button>
-          {live && <button className="btn sm ghost danger" onClick={cancel}><Square />{t('run.cancel')}</button>}
-          {!live && onContinue && <button className="btn sm soft" onClick={onContinue} title={t('run.continueHint')}><Recycle />{t('run.continue')}</button>}
+          {/* Le azioni restano insieme a destra e vanno a capo insieme se lo spazio non basta. */}
+          <span className="run-head-actions">
+            <button className="btn sm ghost" onClick={() => setReport(true)} title={t('report.buttonTitle')}><FileText />{t('report.button')}</button>
+            {live && <button className="btn sm ghost" disabled={busy} onClick={suspend} title={t('run.suspend.hint')}><Pause />{t('run.suspend.label')}</button>}
+            {resumable && <button className="btn sm primary" disabled={busy} onClick={resume} title={t('run.resume.hint')}><Play />{t('run.resume.label')}</button>}
+            {(live || resumable) && <button className="btn sm ghost danger" disabled={busy} onClick={cancel}><Square />{t('run.cancel')}</button>}
+            {!live && onContinue && <button className="btn sm soft" onClick={onContinue} title={t('run.continueHint')}><Recycle />{t('run.continue')}</button>}
+          </span>
         </div>
         <select className="run-picker" value={run.id} onChange={(e) => onOpenRun(e.target.value)} aria-label={t('run.picker')}>
           {runs.map((r) => <option key={r.id} value={r.id}>{fmtTime(r.startedAt)} · {r.mode === 'prova' ? t('run.modeLower.prova') : t('run.modeLower.reale')} · {runStatusLabel(r.status).toLowerCase()} · {fmtUsd(r.costUsd, 2)}</option>)}
@@ -151,9 +183,20 @@ function StatusTab({ run, ordered, label, selectedNode, onSelectNode }: { run: R
   const services = ordered.map((id) => run.nodes[id])
     .filter((n) => n?.service && !n.pendingActions?.length)
     .filter((n) => !run.snapshot.edges.some((e) => e.source === n.nodeId && run.nodes[e.target]?.pendingActions?.includes('approva')));
+  const resumable = RESUMABLE.includes(run.status);
+  const interrupted = ordered.filter((id) => run.nodes[id]?.interrupted).map(label);
   return (
     <div className="stack">
-      {pending.map((n) => <InterventionCard key={n.nodeId} run={run} nodeId={n.nodeId} label={label(n.nodeId)} />)}
+      {resumable && (
+        <div className="callout tone-warn">
+          <Pause />
+          <span>
+            {t(run.status === 'sospesa' ? 'run.resume.calloutSuspended' : 'run.resume.calloutInterrupted', { date: fmtTime(run.suspendedAt ?? run.endedAt) })}{' '}
+            {interrupted.length ? t('run.resume.calloutPhases', { phases: interrupted.join(', ') }) : t('run.resume.calloutNoPhases')}
+          </span>
+        </div>
+      )}
+      {pending.map((n) => <InterventionCard key={n.nodeId} run={run} nodeId={n.nodeId} label={label(n.nodeId)} readOnly={resumable} />)}
       {services.map((n) => <ServiceCard key={n.nodeId} run={run} nodeId={n.nodeId} />)}
       {run.notes.map((n, i) => <div key={i} className="callout tone-warn"><TriangleAlert /><span>{n}</span></div>)}
       {run.rateLimit && run.rateLimit.status !== 'allowed' && (
@@ -177,13 +220,19 @@ function StatusTab({ run, ordered, label, selectedNode, onSelectNode }: { run: R
           );
         })}
       </div>
+      {run.reference && (
+        <details className="pred">
+          <summary><FileText /><strong>{t('run.reference.title')}</strong><span className="muted small">{run.reference.workflowName} · {fmtTime(run.reference.startedAt)}</span></summary>
+          <p className="pre">{run.reference.text}</p>
+        </details>
+      )}
       <AppliedRulesView rules={run.rules} />
       {run.continuedFrom && <p className="muted small">{t('run.continuedFrom', { id: run.continuedFrom })}</p>}
     </div>
   );
 }
 
-function InterventionCard({ run, nodeId, label }: { run: Run; nodeId: string; label: string }) {
+function InterventionCard({ run, nodeId, label, readOnly = false }: { run: Run; nodeId: string; label: string; readOnly?: boolean }) {
   const { t, tm } = useI18n();
   const n = run.nodes[nodeId];
   const [fb, setFb] = useState('');
@@ -224,10 +273,11 @@ function InterventionCard({ run, nodeId, label }: { run: Run; nodeId: string; la
           </details>
         );
       })}
-      {needsText && (
+      {readOnly && <p className="muted small">{t('run.intervention.resumeToAct')}</p>}
+      {needsText && !readOnly && (
         <textarea rows={3} placeholder={isApproval ? t('run.intervention.commentPlaceholder') : t('run.intervention.messagePlaceholder')} value={fb} onChange={(e) => setFb(e.target.value)} />
       )}
-      <div className="actions">
+      {!readOnly && <div className="actions">
         {primary.map((a) => {
           const m = ACTION[a];
           const Icon = m.icon;
@@ -235,7 +285,7 @@ function InterventionCard({ run, nodeId, label }: { run: Run; nodeId: string; la
         })}
         <span className="grow" />
         {n.pendingActions!.includes('annulla') && <button className="btn ghost danger" disabled={busy} onClick={() => act('annulla')}><X />{t('actions.annulla.label')}</button>}
-      </div>
+      </div>}
     </div>
   );
 }

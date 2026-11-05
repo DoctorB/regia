@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import {
-  ArrowRight, CircleAlert, CircleCheck, FolderGit2, FolderOpen, Loader2, Play, Recycle, ScrollText, ShieldCheck, TriangleAlert, Workflow as WorkflowIcon,
+  ArrowRight, CircleAlert, CircleCheck, FolderGit2, FolderOpen, Link2, Loader2, Play, Recycle, ScrollText, ShieldCheck, TriangleAlert, Workflow as WorkflowIcon,
 } from 'lucide-react';
-import type { AppliedRules, ContinuationPlan, FolderInfo, RulesInfo, RunMode, WorkflowTemplate } from '../../../shared/types.ts';
-import { api } from '../api.ts';
+import type { AppliedRules, ContinuationPlan, FolderInfo, RulesInfo, RunMode, RunSummary, WorkflowTemplate } from '../../../shared/types.ts';
+import { api, fmtTime } from '../api.ts';
 import { useI18n } from '../i18n.tsx';
-import { Field, KindTile, Modal } from '../ui.tsx';
+import { Field, KindTile, Modal, runStatusLabel } from '../ui.tsx';
 import { PrinciplePicker } from './Principles.tsx';
 
 /** Stato di una cartella di progetto: esistenza, git, modifiche non salvate, CLAUDE.md. */
@@ -202,6 +202,42 @@ export function AppliedRulesView({ rules }: { rules?: AppliedRules }) {
         {rules.projectPath && <p className="small">{t('rules.projectLoaded')} <code>{rules.projectPath}</code></p>}
       </div>
     </details>
+  );
+}
+
+/**
+ * Scelta dell'esecuzione di riferimento all'avvio (workflow con referenceRun): un'esecuzione di un altro workflow,
+ * ad esempio la funzionalità da allineare con develop. Proposta la più recente completata.
+ */
+export function ReferenceDialog({ workflowId, busy, onCancel, onConfirm }: { workflowId: string; busy: boolean; onCancel: () => void; onConfirm: (runId: string | null) => void }) {
+  const { t } = useI18n();
+  const [runs, setRuns] = useState<RunSummary[] | null>(null);
+  const [sel, setSel] = useState('');
+  useEffect(() => {
+    api.runs().then((all) => {
+      const list = all.filter((r) => r.workflowId !== workflowId && r.status !== 'in_corso' && r.status !== 'attesa_intervento');
+      setRuns(list);
+      setSel(list.find((r) => r.status === 'completata')?.id ?? list[0]?.id ?? '');
+    }).catch(() => setRuns([]));
+  }, [workflowId]);
+  return (
+    <Modal title={t('reference.title')} icon={<span className="kind-tile kind-workflow"><Link2 /></span>} onClose={onCancel}
+      footer={<>
+        <span className="grow" />
+        <button className="btn ghost" onClick={onCancel}>{t('common.cancel')}</button>
+        <button className="btn primary" disabled={!runs || busy} onClick={() => onConfirm(sel || null)}><Play />{t('common.start')}</button>
+      </>}>
+      <p className="lead">{t('reference.lead')}</p>
+      {!runs ? <p className="muted">{t('reference.loading')}</p> : (
+        <Field label={t('reference.label')}>
+          <select value={sel} onChange={(e) => setSel(e.target.value)}>
+            {runs.map((r) => <option key={r.id} value={r.id}>{r.workflowName} · {fmtTime(r.startedAt)} · {runStatusLabel(r.status).toLowerCase()}</option>)}
+            <option value="">{t('reference.none')}</option>
+          </select>
+        </Field>
+      )}
+      {runs?.length === 0 && <p className="hint">{t('reference.empty')}</p>}
+    </Modal>
   );
 }
 

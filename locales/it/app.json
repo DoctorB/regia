@@ -54,7 +54,8 @@
     "completata": "Completata",
     "fallita": "Fallita",
     "annullata": "Annullata",
-    "interrotta": "Interrotta"
+    "interrotta": "Interrotta",
+    "sospesa": "Sospesa"
   },
   "service": {
     "avvio": "Avvio in corso",
@@ -261,5 +262,13 @@
     "restart": "Poi riavvia Regia (npm start).",
     "changes": "Vedi le modifiche su GitHub",
     "toast": "È disponibile Regia v{version}: dettagli accanto al nome in alto."
+  },
+  "reference": {
+    "title": "Esecuzione di riferimento",
+    "lead": "Scegli l'esecuzione su cui lavora questo workflow, ad esempio quella della funzionalità da allineare con develop. Il suo resoconto (obiettivo, risultati, decisioni, file modificati, interventi) viene passato a ogni fase.",
+    "label": "Esecuzione",
+    "none": "Nessuna",
+    "loading": "Caricamento delle esecuzioni…",
+    "empty": "Non ci sono esecuzioni di altri workflow: puoi avviare senza riferimento."
   }
 }

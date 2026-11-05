@@ -1,0 +1,42 @@
+{
+  "id": "allineamento-verifica",
+  "name": "Sync and verify",
+  "description": "Brings the latest develop changes into the feature branch, resolves conflicts, repeats tests and review and prepares the checklist for your functional test. At start you pick the feature's run as the reference.",
+  "goalHint": "Name the branch to sync and the integration branch (e.g. \"Sync feature/orders with develop\"), plus anything to check carefully in the functional test.",
+  "settings": { "runBudgetUsd": 3, "maxParallel": 2, "loadProjectSettings": true, "applyGeneralRules": true, "referenceRun": true },
+  "nodes": [
+    { "id": "allineamento", "position": { "x": 0, "y": 120 }, "data": {
+      "label": "Sync with develop", "kind": "implementazione", "role": "Integrator: brings the integration branch's changes into the current branch without losing the feature's work.",
+      "instructions": "This phase is allowed to make the merge commit, not to push. 1) Check git status: if there are uncommitted changes, stop with outcome \"bloccato\" and list them. 2) Update the remote references (git fetch) and merge the integration branch into the current branch: develop, unless the goal says otherwise (e.g. git merge origin/develop). Do not rebase or push, do not switch branches. 3) Resolve conflicts one at a time, keeping both the integration branch's changes and the intent of the feature described in the reference run; for each conflict write a DECISION line with the file and the choice made. If a conflict needs a product decision, stop with outcome \"bloccato\" and describe it. 4) Complete the merge with git's default message. 5) If the project has a build or quick checks, run them. In the summary list the commits brought in, the conflicting files and how you resolved them.",
+      "model": "sonnet", "allowedTools": ["Read", "Glob", "Grep", "Edit", "Write", "Bash"], "maxTurns": 40, "maxBudgetUsd": 1.5, "contextMode": "sintesi", "reuseResult": false } },
+    { "id": "test", "position": { "x": 300, "y": 0 }, "data": {
+      "label": "Tests", "kind": "test", "role": "Tester: runs the tests and reports the outcome without changing the code.",
+      "instructions": "Run the project's test suite and report the outcome. Outcome 'ko' if at least one test fails. Do not change files.",
+      "model": "haiku", "allowedTools": ["Read", "Glob", "Bash"], "maxTurns": 8, "maxBudgetUsd": 0.3, "contextMode": "nessuno", "reuseResult": false } },
+    { "id": "revisione", "position": { "x": 300, "y": 120 }, "data": {
+      "label": "Merge review", "kind": "revisione", "role": "Reviewer: checks that the sync lost neither the integration branch's changes nor the feature's work.",
+      "instructions": "Review the conflicting files reported by the previous phase, together with the declared resolutions. Check that every resolution keeps both the behaviour coming from the integration branch and that of the feature described in the reference run. Report concrete problems with file and reason. Do not change files.",
+      "model": "sonnet", "allowedTools": ["Read", "Glob", "Grep"], "maxTurns": 12, "maxBudgetUsd": 0.6, "contextMode": "completo", "reuseResult": false } },
+    { "id": "checklist", "position": { "x": 300, "y": 240 }, "data": {
+      "label": "Functional test checklist", "kind": "analisi", "role": "Test analyst: prepares the manual checks that show the feature still works.",
+      "instructions": "Prepare the checklist for the manual functional test in the app. Start from what the feature was meant to do (reference run and goal) and from what changed with the sync. List the cases to try, one per line, with steps and expected result; put first those touched by the resolved conflicts. Do not change files.",
+      "model": "sonnet", "allowedTools": ["Read", "Glob", "Grep"], "maxTurns": 12, "maxBudgetUsd": 0.5, "contextMode": "completo", "reuseResult": false } },
+    { "id": "test_funzionale", "position": { "x": 600, "y": 120 }, "data": {
+      "label": "Functional test", "kind": "approvazione", "role": "",
+      "instructions": "Start the app (or add a Run app phase suited to the project before this one) and follow the checklist. Approve if the feature behaves as expected; otherwise reject describing what is wrong: the fix will be made on the branch and tests, review and checklist will be repeated.",
+      "model": "", "allowedTools": [], "contextMode": "sintesi", "reuseResult": false } },
+    { "id": "pubblicazione", "position": { "x": 900, "y": 120 }, "data": {
+      "label": "Publish", "kind": "personalizzata", "role": "Release manager: publishes the approved work in a verifiable way.",
+      "instructions": "This phase is allowed to commit and push. 1) Check git status and git diff: include only files related to the goal, report and leave out the rest. 2) If there are fixes not yet committed, commit them with a descriptive message that follows the repository's style (see git log). 3) Push to the current branch; never force push and do not switch branches. In the summary give the hash of the last commit, the branch and the push outcome. Outcome \"ko\" if a step fails.",
+      "model": "sonnet", "allowedTools": ["Read", "Glob", "Grep", "Bash"], "maxTurns": 15, "maxBudgetUsd": 0.4, "contextMode": "sintesi", "reuseResult": false } }
+  ],
+  "edges": [
+    { "id": "e1", "source": "allineamento", "target": "test" },
+    { "id": "e2", "source": "allineamento", "target": "revisione" },
+    { "id": "e3", "source": "allineamento", "target": "checklist" },
+    { "id": "e4", "source": "test", "target": "test_funzionale" },
+    { "id": "e5", "source": "revisione", "target": "test_funzionale" },
+    { "id": "e6", "source": "checklist", "target": "test_funzionale" },
+    { "id": "e7", "source": "test_funzionale", "target": "pubblicazione" }
+  ]
+}

@@ -30,7 +30,11 @@
       "resumed": "{label}: started (session resumed with feedback). Model: {model}; tools: {tools}.",
       "resumedLimit": "{label}: started (session resumed with feedback). Model: {model}; tools: {tools}; limit {limit} USD.",
       "retry": "{label}: started (new attempt). Model: {model}; tools: {tools}.",
-      "retryLimit": "{label}: started (new attempt). Model: {model}; tools: {tools}; limit {limit} USD."
+      "retryLimit": "{label}: started (new attempt). Model: {model}; tools: {tools}; limit {limit} USD.",
+      "interruptedSession": "{label}: started (resuming the interrupted session). Model: {model}; tools: {tools}.",
+      "interruptedSessionLimit": "{label}: started (resuming the interrupted session). Model: {model}; tools: {tools}; limit {limit} USD.",
+      "interruptedSummary": "{label}: started (new session with a summary of the interrupted work). Model: {model}; tools: {tools}.",
+      "interruptedSummaryLimit": "{label}: started (new session with a summary of the interrupted work). Model: {model}; tools: {tools}; limit {limit} USD."
     },
     "defaultModel": "default",
     "noTools": "none",
@@ -111,7 +115,8 @@
         "restart": "{label}: app stopped (restart).",
         "startFailed": "{label}: app stopped (start failed).",
         "manual": "{label}: app stopped (manual request).",
-        "cancelled": "{label}: app stopped (run cancelled)."
+        "cancelled": "{label}: app stopped (run cancelled).",
+        "suspended": "{label}: app stopped (run suspended); it will restart on resume."
       },
       "simDone": "Command completed with code 0 (simulated).",
       "simLaunched": "App launched (simulated).",
@@ -123,7 +128,17 @@
     },
     "skillsAvailable": "{label}: skills available ({count}): {skills}.",
     "skillsMissing": "{label}: skills not found, the phase continues without them: {skills}.",
-    "skillsBundleFailed": "{label}: could not prepare the skills ({error}); the phase continues without them."
+    "skillsBundleFailed": "{label}: could not prepare the skills ({error}); the phase continues without them.",
+    "runSuspended": "Run suspended: running phases stop and will pick up where they were.",
+    "runResumed": "Run resumed. Picking up where they were: {phases}.",
+    "runResumedNone": "Run resumed.",
+    "interrupted": {
+      "session": "{label}: resumed on the same session (last activity {minutes} min ago, cache still valid).",
+      "summary": "{label}: resumed with a new session and a summary of the work already done (last activity {minutes} min ago, cache expired).",
+      "noSession": "{label}: resumed with a new session and a summary of the work already done (the previous session had not opened yet).",
+      "sessionUnavailable": "{label}: the previous session cannot be resumed, the phase restarts with a summary of the work already done."
+    },
+    "reference": "Reference run: {name} ({id}). Its report is passed to every phase."
   },
   "interventions": {
     "budgetReached": "The run's spending limit was reached before starting the phase.",
@@ -172,7 +187,14 @@
         "activeUrl": "App running: {url}\nCommand: {command}",
         "active": "App launched and open for review.\nCommand: {command}"
       }
-    }
+    },
+    "interrupted": {
+      "session": "Work on the task \"{label}\" was interrupted and is now resuming. Some file changes may be half done: check the current state of the files you were changing, then complete the task without redoing work already done.\n\n{protocol}",
+      "summary": "## Work already done in an interrupted attempt\nA previous attempt at this phase was interrupted on {date}. The changes it made are still in the project folder and some may be half done. Before continuing, check the current state of the files involved: do not start over and do not redo work already done.\n\nLast recorded steps:\n{steps}",
+      "feedback": "The interrupted attempt was applying this correction, requested by the person supervising the workflow:\n{feedback}",
+      "noSteps": "(no steps recorded)"
+    },
+    "reference": "## Reference run\nThis work starts from the result of an earlier run, \"{name}\" of {date}. Use it to understand what that work was meant to do and which choices were made; what is actually in the project is given by the current state of the files.\n\n{report}"
   },
   "mock": {
     "decisions": {
@@ -231,7 +253,10 @@
     "noNodeInstall": "No Node installation available",
     "noPackageJson": "No package.json in the folder",
     "copySuffix": "(copy)",
-    "groupMissing": "No group to rename was given."
+    "groupMissing": "No group to rename was given.",
+    "notSuspendable": "Only a running execution can be suspended.",
+    "notResumable": "Only a suspended or interrupted run can be resumed.",
+    "referenceNotFound": "Reference run not found"
   },
   "nodeenv": {
     "source": {
@@ -263,7 +288,8 @@
     }
   },
   "notes": {
-    "unknownCost": "Some phases stopped without a final result: their cost is unknown and is not included in the total."
+    "unknownCost": "Some phases stopped without a final result: their cost is unknown and is not included in the total.",
+    "interrupted": "Run interrupted: Regia was closed while it was active. Use Resume to continue from where it stopped."
   },
   "continuation": {
     "newPhase": "new phase",

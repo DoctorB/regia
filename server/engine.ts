@@ -3,9 +3,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { query } from '@anthropic-ai/claude-agent-sdk';
 import type {
-  Attempt, ContinuationPlan, ServiceState, DeclaredOutcome, EventKind, HumanAction, NodeRunState, ReadyCheck, Run, RunEvent, RunMode, Workflow, WorkflowNode,
+  Attempt, ContinuationPlan, RunReference, ServiceState, DeclaredOutcome, EventKind, HumanAction, InterruptedWork, NodeRunState, ReadyCheck, Run, RunEvent, RunMode, Workflow, WorkflowNode,
 } from '../shared/types.ts';
-import { emptyTotals } from '../shared/types.ts';
+import { emptyTotals, isAgentKind, RESUMABLE } from '../shared/types.ts';
 import { msg, type Msg, type Params, type Translate } from '../shared/i18n.ts';
 import { serverT } from './i18n.ts';
 import { mockQuery } from './mockQuery.ts';
@@ -13,7 +13,10 @@ import { clip, redact } from './redact.ts';
 import { buildSkillBundle, discoverSkills, phaseSkills, PLUGIN_NAME, removeSkillBundles, skillSources, type SkillBundle } from './skills.ts';
 import { rulesPrompt, snapshotRules } from './rules.ts';
 import { activePrinciples, principlesText } from '../shared/principles.ts';
-import { readReuseCache, saveRun, writeReuseEntry } from './store.ts';
+import { runReport } from '../shared/report.ts';
+import { getRun, readReuseCache, saveRun, writeReuseEntry } from './store.ts';
+import { gitState } from './folder.ts';
+import { cacheTtlMs, interruptedSummary, interruptNodes, isInterruptedNote } from './resume.ts';
 import { AttemptAccounting, sumTotals, type SessionSnapshot } from './usage.ts';
 import { topoOrder } from './validate.ts';
 import { pushLog, startService, waitForUrl, type ServiceHandle } from './service.ts';
@@ -68,7 +71,19 @@ export function planContinuation(wf: Workflow, from: Run): ContinuationPlan {
   return plan;
 }
 
-export function startRun(wf: Workflow, mode: RunMode, budgetUsd?: number, from?: Run): RunEngine {
+/** Resoconto compatto di un'esecuzione precedente, fotografato per passarlo agli agenti. */
+export function makeReference(ref: Run, lang: string): RunReference {
+  return {
+    runId: ref.id, workflowName: ref.workflowName, startedAt: ref.startedAt, status: ref.status,
+    text: clip(runReport(ref, serverT(lang), lang, { compact: true }), 12000),
+  };
+}
+
+/**
+ * reference: esecuzione di riferimento scelta all'avvio (solo per i workflow con referenceRun);
+ * in una continuazione senza nuova scelta resta quella dell'esecuzione di partenza.
+ */
+export function startRun(wf: Workflow, mode: RunMode, budgetUsd?: number, from?: Run, reference?: Run): RunEngine {
   const plan = from ? planContinuation(wf, from) : undefined;
   const run: Run = {
     id: `run_${new Date().toISOString().replace(/[-:T.Z]/g, '').slice(0, 14)}_${randomUUID().slice(0, 6)}`,
@@ -85,6 +100,7 @@ export function startRun(wf: Workflow, mode: RunMode, budgetUsd?: number, from?:
     notes: [],
     rules: snapshotRules(wf.settings),
     continuedFrom: from?.id,
+    reference: wf.settings.referenceRun ? (reference ? makeReference(reference, workflowLang(wf)) : from?.reference) : undefined,
   };
   // Fasi riprese: risultato, decisioni e sessione dell'esecuzione precedente, nessuna chiamata.
   for (const r of plan?.reused ?? []) {
@@ -111,6 +127,24 @@ export function startRun(wf: Workflow, mode: RunMode, budgetUsd?: number, from?:
   return eng;
 }
 
+/**
+ * Riprende un'esecuzione sospesa o interrotta: le fasi completate restano, quelle fermate a metà ripartono
+ * (sulla stessa sessione se la cache del prompt è ancora valida, altrimenti con il riassunto del lavoro fatto),
+ * approvazioni e interventi in attesa tornano disponibili.
+ */
+export function resumeRun(id: string): RunEngine {
+  const run = getRun(id);
+  if (!run || active.has(id) || !RESUMABLE.includes(run.status)) {
+    const m = msg(run ? 'api.notResumable' : 'api.runNotFound');
+    throw new RegiaError(m, serverT(run ? workflowLang(run.snapshot) : 'it')(m.key));
+  }
+  interruptNodes(run);
+  const eng = new RunEngine(run);
+  active.set(run.id, eng);
+  eng.resume();
+  return eng;
+}
+
 export class RunEngine {
   private listeners = new Set<Broadcast>();
   private controllers = new Map<string, AbortController>();
@@ -124,6 +158,8 @@ export class RunEngine {
   /** Fasi intermedie da rieseguire dopo una correzione richiesta in approvazione. */
   private afterCorrection = new Set<string>();
   private saveTimer: NodeJS.Timeout | null = null;
+  /** Dopo una sospensione l'esecuzione appartiene al file salvato: nessuna scrittura tardiva. */
+  private frozen = false;
   private wf: Workflow;
   /** Lingua dell'esecuzione: istruzioni agli agenti e testi di riserva dei messaggi. */
   private lang: string;
@@ -146,6 +182,7 @@ export class RunEngine {
   }
 
   private persist(immediate = false) {
+    if (this.frozen) return;
     if (immediate) {
       if (this.saveTimer) clearTimeout(this.saveTimer);
       this.saveTimer = null;
@@ -153,7 +190,7 @@ export class RunEngine {
       return;
     }
     if (this.saveTimer) return;
-    this.saveTimer = setTimeout(() => { this.saveTimer = null; saveRun(this.run); }, 800);
+    this.saveTimer = setTimeout(() => { this.saveTimer = null; if (!this.frozen) saveRun(this.run); }, 800);
   }
 
   private event(kind: EventKind, text: string, extra: Partial<RunEvent> = {}) {
@@ -222,6 +259,8 @@ export class RunEngine {
         ? msg('events.continued', { from: this.run.continuedFrom, count: reused.length, phases })
         : msg('events.continuedNone', { from: this.run.continuedFrom }));
     }
+    const ref = this.run.reference;
+    if (ref) this.say('run', msg('events.reference', { name: ref.workflowName, id: ref.runId }));
     if (this.run.budgetUsd) this.say('limite', msg('events.budget', { amount: this.run.budgetUsd.toFixed(2) }));
     const r = this.run.rules;
     if (r?.applied) {
@@ -236,7 +275,73 @@ export class RunEngine {
     const principles = activePrinciples(this.wf.settings.principles);
     if (principles.length) this.say('run', msg('events.principles', { list: principles.map((p) => p.toUpperCase()).join(', ') }));
     this.persist(true);
+    void this.captureGit();
     this.schedule();
+  }
+
+  /** Ripresa dopo una sospensione o un'interruzione (l'esecuzione è già stata preparata da interruptNodes). */
+  resume() {
+    this.run.notes = this.run.notes.filter((n) => !isInterruptedNote(this.run, n));
+    this.run.status = 'in_corso';
+    this.run.endedAt = undefined;
+    const phases = Object.values(this.run.nodes).filter((s) => s.interrupted).map((s) => this.node(s.nodeId).data.label).join(', ');
+    this.say('run', phases ? msg('events.runResumed', { phases }) : msg('events.runResumedNone'));
+    this.persist(true);
+    this.schedule();
+  }
+
+  /**
+   * Sospende l'esecuzione: le fasi in corso si fermano e il loro lavoro resta registrato, le app avviate
+   * vengono chiuse, approvazioni e interventi restano in attesa. Riprendi riparte da qui, anche dopo un riavvio.
+   */
+  async suspend() {
+    if (this.run.status !== 'in_corso' && this.run.status !== 'attesa_intervento') throw this.fail(msg('api.notSuspendable'));
+    const now = new Date().toISOString();
+    this.run.status = 'sospesa';
+    this.run.suspendedAt = now;
+    this.run.endedAt = now;
+    // Salvata subito: l'elenco delle esecuzioni, riletto dall'interfaccia al cambio di stato, la mostra già sospesa.
+    this.persist(true);
+    this.say('run', msg('events.runSuspended'));
+    for (const c of this.controllers.values()) c.abort();
+    // Le fasi in corso registrano l'interruzione appena il loro flusso si chiude (di solito in pochi istanti).
+    const t0 = Date.now();
+    while (this.running.size && Date.now() - t0 < 10000) await new Promise((r) => setTimeout(r, 50));
+    interruptNodes(this.run, now);
+    this.stopAllServices('suspended');
+    await this.captureGit();
+    for (const id of Object.keys(this.run.nodes)) this.send({ t: 'node', node: this.run.nodes[id] });
+    this.runChanged();
+    this.persist(true);
+    this.frozen = true;
+    active.delete(this.run.id);
+  }
+
+  /** Letto dopo un await: lo stato può essere cambiato nel frattempo (TypeScript non lo vede). */
+  private isSuspended() {
+    return this.run.status === 'sospesa';
+  }
+
+  /** Ramo e commit del progetto, per avvisare alla ripresa se sono cambiati nel frattempo. */
+  private async captureGit() {
+    const g = await gitState(this.wf.settings.projectDir);
+    if (g && !this.frozen) { this.run.git = g; this.persist(); }
+  }
+
+  /** Riparte una fase agente interrotta: stessa sessione se la cache è ancora valida, altrimenti sessione nuova con il riassunto. */
+  private resumeInterrupted(n: WorkflowNode) {
+    const st = this.run.nodes[n.id];
+    const intr = st.interrupted!;
+    st.interrupted = undefined;
+    const idle = Date.now() - Date.parse(intr.lastActivityAt);
+    const p = { label: n.data.label, minutes: Math.max(0, Math.round(idle / 60000)) };
+    if (intr.sessionId && idle < cacheTtlMs()) {
+      this.say('fase', msg('events.interrupted.session', p), { nodeId: n.id });
+      const prompt = this.t('agent.interrupted.session', { label: n.data.label, protocol: agentProtocol(this.lang) });
+      return this.runAgent(n, 'ripresa_dopo_interruzione', { sessionId: intr.sessionId, feedback: intr.feedback ?? '', prompt }, { feedback: intr.feedback, fallback: intr });
+    }
+    this.say('fase', msg(intr.sessionId ? 'events.interrupted.summary' : 'events.interrupted.noSession', p), { nodeId: n.id });
+    return this.runAgent(n, 'ripresa_dopo_interruzione', undefined, { extra: interruptedSummary(this.run, n.id, intr, this.t, this.lang), feedback: intr.feedback });
   }
 
   private spent() {
@@ -244,7 +349,7 @@ export class RunEngine {
   }
 
   private schedule() {
-    if (['annullata', 'completata', 'fallita', 'interrotta'].includes(this.run.status)) return;
+    if (['annullata', 'completata', 'fallita', 'interrotta', 'sospesa'].includes(this.run.status)) return;
     const states = this.run.nodes;
     for (const n of this.wf.nodes) {
       const st = states[n.id];
@@ -255,6 +360,10 @@ export class RunEngine {
         continue;
       }
       if (this.running.size >= this.wf.settings.maxParallel) break;
+      if (st.interrupted && isAgentKind(n.data.kind)) {
+        void this.resumeInterrupted(n);
+        continue;
+      }
       const reason = this.afterCorrection.delete(n.id) ? 'dopo_correzione' : st.attempts.length ? 'riprova' : 'iniziale';
       void this.startNode(n, reason);
     }
@@ -263,7 +372,7 @@ export class RunEngine {
 
   private updateRunStatus() {
     const states = Object.values(this.run.nodes);
-    if (['annullata', 'interrotta'].includes(this.run.status)) return;
+    if (['annullata', 'interrotta', 'sospesa'].includes(this.run.status)) return;
     let next = this.run.status;
     if (states.every((s) => DONE.has(s.status))) next = 'completata';
     else if (this.running.size > 0) next = 'in_corso';
@@ -299,12 +408,18 @@ export class RunEngine {
     return parts.length ? this.t('agent.previousResults', { results: parts.join('\n\n') }) : '';
   }
 
-  private buildPrompt(n: WorkflowNode): string {
+  private buildPrompt(n: WorkflowNode, extra?: string): string {
     const ctx = this.upstreamContext(n);
     return [
       this.wf.settings.goal ? this.t('agent.goal', { goal: this.wf.settings.goal }) : '',
+      this.run.reference ? this.t('agent.reference', {
+        name: this.run.reference.workflowName,
+        date: new Date(this.run.reference.startedAt).toLocaleString(this.lang, { dateStyle: 'short', timeStyle: 'short' }),
+        report: this.run.reference.text,
+      }) : '',
       this.t('agent.task', { label: n.data.label, instructions: n.data.instructions }),
       ctx,
+      extra,
       agentProtocol(this.lang),
     ].filter(Boolean).join('\n\n');
   }
@@ -338,7 +453,13 @@ export class RunEngine {
     return a;
   }
 
-  private async runAgent(n: WorkflowNode, reason: Attempt['reason'], resume?: { sessionId: string; feedback: string }) {
+  /**
+   * resume: riprende una sessione (prompt = feedback, o il testo indicato). opts.extra: testo aggiunto al prompt di
+   * una sessione nuova; opts.feedback: correzione in corso da ricordare se la fase viene interrotta;
+   * opts.fallback: se la sessione non si può riprendere, la fase riparte con il riassunto.
+   */
+  private async runAgent(n: WorkflowNode, reason: Attempt['reason'], resume?: { sessionId: string; feedback: string; prompt?: string }, opts: { extra?: string; feedback?: string; fallback?: InterruptedWork } = {}) {
+    if (this.run.status === 'sospesa') return;
     const st = this.run.nodes[n.id];
     const d = n.data;
     // Limite di spesa dell'esecuzione: la parte rimanente è divisa tra le fasi attive.
@@ -359,11 +480,11 @@ export class RunEngine {
     }
 
     const prompt = resume
-      ? this.t('agent.feedback', { feedback: resume.feedback, label: d.label, protocol: agentProtocol(this.lang) })
-      : this.buildPrompt(n);
+      ? resume.prompt ?? this.t('agent.feedback', { feedback: resume.feedback, label: d.label, protocol: agentProtocol(this.lang) })
+      : this.buildPrompt(n, opts.extra);
 
     let key: string | undefined;
-    if (d.reuseResult && !resume) {
+    if (d.reuseResult && !resume && !opts.extra) {
       key = this.reuseKey(n, prompt);
       const hit = readReuseCache()[key];
       if (hit) {
@@ -387,6 +508,8 @@ export class RunEngine {
 
     const a = this.newAttempt(n.id, reason);
     if (resume) a.resumedSessionId = resume.sessionId;
+    const feedback = reason === 'ripresa_con_feedback' ? resume?.feedback : opts.feedback;
+    if (feedback) a.feedback = feedback;
     st.status = 'attiva';
     st.pendingActions = undefined;
     this.setPending(st, undefined);
@@ -400,7 +523,8 @@ export class RunEngine {
       label: d.label, model: d.model || this.t('events.defaultModel'), tools: d.allowedTools.join(', ') || this.t('events.noTools'),
       limit: nodeBudget !== undefined ? nodeBudget.toFixed(3) : undefined,
     };
-    const how = resume ? 'resumed' : reason === 'riprova' ? 'retry' : 'initial';
+    const how = reason === 'ripresa_dopo_interruzione' ? (resume ? 'interruptedSession' : 'interruptedSummary')
+      : resume ? 'resumed' : reason === 'riprova' ? 'retry' : 'initial';
     this.say('fase', msg(`events.phaseStarted.${how}${nodeBudget !== undefined ? 'Limit' : ''}`, startParams), { nodeId: n.id, attemptId: a.id });
     this.nodeChanged(n.id);
     this.updateRunStatus();
@@ -547,7 +671,26 @@ export class RunEngine {
 
     a.endedAt = new Date().toISOString();
     st.activity = undefined;
+    // Sospensione: il tentativo resta interrotto e la fase riprenderà da qui (interruptNodes).
+    if (this.isSuspended()) {
+      a.status = 'interrotta';
+      a.error = undefined;
+      this.nodeChanged(n.id);
+      this.runChanged();
+      return;
+    }
     if (a.status !== 'annullata') a.status = a.error ? 'errore' : 'ok';
+    // Sessione non più disponibile (es. dati della CLI cancellati): si riparte subito con il riassunto.
+    if (a.status === 'errore' && opts.fallback && a.live.steps === 0) {
+      this.say('fase', msg('events.interrupted.sessionUnavailable', { label: d.label }), { nodeId: n.id, attemptId: a.id });
+      st.interrupted = { ...opts.fallback, sessionId: undefined };
+      st.status = 'in_attesa';
+      this.nodeChanged(n.id);
+      this.runChanged();
+      this.schedule();
+      return;
+    }
+    void this.captureGit();
     const declared = a.declared;
     const where = { nodeId: n.id, attemptId: a.id };
     if (a.status === 'annullata') {
@@ -598,6 +741,7 @@ export class RunEngine {
   }
 
   private startNode(n: WorkflowNode, reason: Attempt['reason']) {
+    if (this.run.status === 'sospesa') return Promise.resolve();
     return n.data.kind === 'server' ? this.runService(n, reason) : this.runAgent(n, reason);
   }
 
@@ -640,6 +784,7 @@ export class RunEngine {
       a.endedAt = new Date().toISOString();
       st.activity = undefined;
       if (this.run.status === 'annullata') { a.status = 'annullata'; this.nodeChanged(n.id); return; }
+      if (this.run.status === 'sospesa') { a.status = 'interrotta'; this.nodeChanged(n.id); return; }
       if (ok) {
         a.status = 'ok';
         st.status = 'completata';
@@ -1074,7 +1219,7 @@ export class RunEngine {
 }
 
 /** Motivo dell'arresto di un server locale (chiave events.service.stopped.*). */
-type StopReason = 'completed' | 'restart' | 'startFailed' | 'manual' | 'cancelled';
+type StopReason = 'completed' | 'restart' | 'startFailed' | 'manual' | 'cancelled' | 'suspended';
 
 /**
  * Protocollo di risposta chiesto agli agenti, nella lingua del workflow.

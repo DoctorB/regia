@@ -14,7 +14,7 @@ import { Compare } from './components/Compare.tsx';
 import { PhaseInspector, WorkflowSettingsForm } from './components/Inspector.tsx';
 import { RunPanel } from './components/RunPanel.tsx';
 import { WorkflowManager, groupNames, grouped } from './components/WorkflowManager.tsx';
-import { ContinueDialog, FolderStatus, NewWorkflowDialog, RulesDialog } from './components/Setup.tsx';
+import { ContinueDialog, FolderStatus, NewWorkflowDialog, ReferenceDialog, RulesDialog } from './components/Setup.tsx';
 import { KindTile, Modal, Toasts, applyTheme, kindHint, kindLabel, readTheme, toast, type ThemeChoice } from './ui.tsx';
 
 type View = 'editor' | 'run' | 'compare';
@@ -152,6 +152,8 @@ export function App() {
   const [run, setRun] = useState<Run | null>(null);
   const [runs, setRuns] = useState<RunSummary[]>([]);
   const [realDialog, setRealDialog] = useState(false);
+  /** Workflow con esecuzione di riferimento: scelta dell'esecuzione prima dell'avvio. */
+  const [refDialog, setRefDialog] = useState<'prova' | 'reale' | null>(null);
   const [busy, setBusy] = useState(false);
   const [newDialog, setNewDialog] = useState(false);
   const [rulesDialog, setRulesDialog] = useState(false);
@@ -232,13 +234,20 @@ export function App() {
   }
   useEffect(() => () => esRef.current?.close(), []);
 
-  async function start(mode: 'prova' | 'reale') {
+  /** ref: esecuzione di riferimento scelta (null = nessuna); undefined = non ancora chiesta. */
+  async function start(mode: 'prova' | 'reale', ref?: string | null) {
     if (!wf) return;
+    if (wf.settings.referenceRun && ref === undefined) {
+      setRealDialog(false);
+      setRefDialog(mode);
+      return;
+    }
     setBusy(true);
     try {
       if (dirty) await save();
-      const { id } = await api.startRun(wf.id, mode, mode === 'reale');
+      const { id } = await api.startRun(wf.id, mode, mode === 'reale', undefined, ref ?? undefined);
       setRealDialog(false);
+      setRefDialog(null);
       openRun(id);
       toast(mode === 'prova' ? t('toast.testStarted') : t('toast.realStarted'), 'good');
     } catch (e) {
@@ -484,6 +493,7 @@ export function App() {
       {newDialog && <NewWorkflowDialog groups={groupNames(workflows)} onCancel={() => setNewDialog(false)} onCreated={onCreated} />}
       {manager && <WorkflowManager workflows={workflows} currentId={wf.id} onOpen={openFromManager} onChanged={afterManage} onClose={() => setManager(false)} />}
       {rulesDialog && <RulesDialog projectDir={wf.settings.projectDir} onClose={() => setRulesDialog(false)} />}
+      {refDialog && <ReferenceDialog workflowId={wf.id} busy={busy} onCancel={() => setRefDialog(null)} onConfirm={(id) => start(refDialog, id)} />}
       {realDialog && <RealRunDialog env={env} wf={wf} busy={busy} onCancel={() => setRealDialog(false)} onConfirm={() => start('reale')} />}
       <Toasts />
     </div>

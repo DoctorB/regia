@@ -18,6 +18,8 @@ Regia is a local app for designing development workflows as a diagram, running t
 - **Optimization**: suggestions based on measured data, each with its quality trade-off, and a side-by-side comparison of two runs.
 - **Run report**: a Markdown summary of the run (results, decisions, files edited, interventions, costs), to copy into a pull request or download.
 - **Continue**: add phases to finished work without re-running everything.
+- **Sync a feature with develop**: a dedicated preset merges develop into the feature branch, resolves conflicts, repeats tests and review and prepares the checklist for your functional test, using the feature's run as reference.
+- **Suspend and resume**: stop a long run in the evening and resume it the next day, even after shutting down the PC. Interrupted phases pick up where they were, on the same agent session while the prompt cache is still valid, otherwise from a summary of the work already done.
 - **General rules**: your personal rules and Regia's own rules are applied to every agent.
 - **Design principles**: turn on KISS, YAGNI, DRY or SOLID for a workflow; each phase gets guidance suited to its task and approvals get a checklist, without touching your instructions.
 - **Skills**: phases can use the Claude Code skills of the project or your personal ones, chosen per phase.

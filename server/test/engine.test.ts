@@ -408,3 +408,148 @@ test('motivi della continuazione e risposte di errore localizzabili', async () =
   wf2.settings.language = 'en';
   assert.equal(planContinuation(wf2, eng.run).toRun[0].reason, 'configuration changed');
 });
+
+test('sospendi e riprendi: stessa sessione con la cache valida, riassunto con la cache scaduta, approvazioni in attesa', async () => {
+  const { resumeRun, getEngine } = await import('../engine.ts');
+  const { interruptedSummary } = await import('../resume.ts');
+  const speed = process.env.REGIA_MOCK_SPEED;
+  process.env.REGIA_MOCK_SPEED = '60';
+  try {
+    // 1. Sospensione durante l'analisi, ripresa entro la durata della cache: stessa sessione.
+    const eng = startRun(bugWf(), 'prova', 5);
+    const id = eng.run.id;
+    const analisi = () => eng.run.nodes.analisi;
+    await waitFor(() => Boolean(analisi().attempts[0]?.sessionId) && eng.run.events.some((e) => e.kind === 'strumento' && e.nodeId === 'analisi'));
+    await eng.suspend();
+    assert.equal(getEngine(id), undefined);
+    const saved = store.getRun(id)!;
+    assert.equal(saved.status, 'sospesa');
+    assert.ok(saved.suspendedAt);
+    assert.equal(saved.nodes.analisi.status, 'in_attesa');
+    assert.equal(saved.nodes.analisi.attempts[0].status, 'interrotta');
+    assert.equal(saved.nodes.analisi.interrupted?.sessionId, saved.nodes.analisi.attempts[0].sessionId);
+    assert.equal(saved.nodes.correzione.attempts.length, 0, 'le fasi successive non partono');
+
+    // Il riassunto per una sessione nuova contiene i passi registrati.
+    const summary = interruptedSummary(saved, 'analisi', saved.nodes.analisi.interrupted!, serverT('it'));
+    assert.match(summary, /^## Lavoro già svolto in un tentativo interrotto/);
+    assert.match(summary, /\n- (Read|Grep|Glob) /);
+
+    process.env.REGIA_CACHE_TTL_SEC = '3600';
+    const eng2 = resumeRun(id);
+    const r2 = eng2.run;
+    assert.equal(r2.status, 'in_corso');
+    await waitFor(() => r2.nodes.approvazione.status === 'attesa_intervento');
+    const a = r2.nodes.analisi.attempts;
+    assert.equal(a.length, 2);
+    assert.equal(a[1].reason, 'ripresa_dopo_interruzione');
+    assert.equal(a[1].resumedSessionId, a[0].sessionId);
+    assert.equal(r2.nodes.analisi.interrupted, undefined);
+    assert.ok(r2.events.some((e) => e.msg?.key === 'events.interrupted.session'));
+
+    // 2. Sospensione con un'approvazione in attesa: resta in attesa e torna disponibile alla ripresa.
+    await eng2.suspend();
+    const s2 = store.getRun(id)!;
+    assert.equal(s2.nodes.approvazione.status, 'attesa_intervento');
+    assert.deepEqual(s2.nodes.approvazione.pendingActions, ['approva', 'respingi', 'annulla']);
+    assert.equal(getEngine(id), undefined, 'una sospesa non accetta azioni finché non viene ripresa');
+    const eng3 = resumeRun(id);
+    await eng3.human('approvazione', 'approva');
+    await waitFor(() => eng3.run.status === 'completata');
+
+    // 3. Cache scaduta: sessione nuova con il riassunto del lavoro interrotto.
+    process.env.REGIA_CACHE_TTL_SEC = '0';
+    const eng4 = startRun(bugWf(), 'prova', 5);
+    await waitFor(() => Boolean(eng4.run.nodes.analisi.attempts[0]?.sessionId));
+    await eng4.suspend();
+    const eng5 = resumeRun(eng4.run.id);
+    await waitFor(() => eng5.run.nodes.analisi.attempts.length === 2 && eng5.run.nodes.analisi.status !== 'attiva');
+    const b = eng5.run.nodes.analisi.attempts[1];
+    assert.equal(b.reason, 'ripresa_dopo_interruzione');
+    assert.equal(b.resumedSessionId, undefined);
+    assert.notEqual(b.sessionId, eng5.run.nodes.analisi.attempts[0].sessionId);
+    assert.ok(eng5.run.events.some((e) => e.msg?.key === 'events.interrupted.summary'));
+    eng5.cancel();
+  } finally {
+    process.env.REGIA_MOCK_SPEED = speed;
+    delete process.env.REGIA_CACHE_TTL_SEC;
+  }
+});
+
+test('Regia chiuso durante un\'esecuzione: all\'avvio diventa interrotta e si riprende', async () => {
+  const { resumeRun } = await import('../engine.ts');
+  const { recoverInterruptedRuns } = await import('../resume.ts');
+  const speed = process.env.REGIA_MOCK_SPEED;
+  process.env.REGIA_MOCK_SPEED = '60';
+  try {
+    const eng = startRun(bugWf(), 'prova', 5);
+    await waitFor(() => Boolean(eng.run.nodes.analisi.attempts[0]?.sessionId));
+    // Stato salvato al momento della chiusura improvvisa: fase attiva, tentativo attivo.
+    const crashed = structuredClone(eng.run);
+    eng.cancel();
+    await new Promise((r) => setTimeout(r, 400));
+    store.saveRun(crashed);
+    recoverInterruptedRuns();
+    const r = store.getRun(crashed.id)!;
+    assert.equal(r.status, 'interrotta');
+    assert.equal(r.nodes.analisi.status, 'in_attesa');
+    assert.equal(r.nodes.analisi.attempts[0].status, 'interrotta');
+    assert.ok(r.nodes.analisi.interrupted);
+    assert.ok(r.notes.some((n) => n.includes('Riprendi')));
+
+    process.env.REGIA_CACHE_TTL_SEC = '3600';
+    const eng2 = resumeRun(r.id);
+    assert.ok(!eng2.run.notes.some((n) => n.includes('Riprendi')), 'la nota sull\'interruzione viene tolta');
+    await waitFor(() => eng2.run.nodes.approvazione.status === 'attesa_intervento');
+    assert.equal(eng2.run.nodes.analisi.attempts[1].resumedSessionId, crashed.nodes.analisi.attempts[0].sessionId);
+    eng2.cancel();
+  } finally {
+    process.env.REGIA_MOCK_SPEED = speed;
+    delete process.env.REGIA_CACHE_TTL_SEC;
+  }
+});
+
+test('allineamento e verifica: esecuzione di riferimento passata alle fasi, correzione dal test funzionale', async () => {
+  // Esecuzione della funzionalità da allineare.
+  const feat = startRun(bugWf(), 'prova', 5);
+  await waitFor(() => feat.run.nodes.approvazione.status === 'attesa_intervento');
+  await feat.human('approvazione', 'approva');
+  await waitFor(() => feat.run.status === 'completata');
+
+  const tpl = templates.find((t) => t.id === 'allineamento-verifica')!;
+  assert.equal(tpl.settings.referenceRun, true);
+  assert.ok(store.listTemplates('en').some((t) => t.id === 'allineamento-verifica' && t.name === 'Sync and verify'));
+  const wf = fromTemplate(tpl);
+  assert.deepEqual(validateWorkflow(wf, 'prova'), [], 'il preset non ha errori né avvisi');
+  const eng = startRun(wf, 'prova', 5, undefined, feat.run);
+  const r = eng.run;
+  const ref = r.reference!;
+  assert.equal(ref.runId, feat.run.id);
+  // Resoconto compatto: obiettivo, risultati e file, senza intestazione né costi.
+  assert.match(ref.text, /^## Obiettivo\n\nObiettivo di prova/);
+  assert.ok(ref.text.includes('. Correzione\n'));
+  assert.ok(ref.text.includes('- `src/modulo.js`'));
+  assert.ok(!ref.text.includes('$') && !ref.text.includes('| |'));
+  assert.ok(r.events.some((e) => e.msg?.key === 'events.reference'));
+
+  // Il test funzionale respinto torna alla fase di allineamento; test, revisione e checklist vengono rifatti.
+  await waitFor(() => r.nodes.test_funzionale.status === 'attesa_intervento');
+  assert.match(r.nodes.test_funzionale.pendingReason ?? '', /checklist/);
+  await eng.human('test_funzionale', 'respingi', 'Il totale ordine non si aggiorna');
+  await waitFor(() => r.nodes.test_funzionale.status === 'attesa_intervento' && r.nodes.checklist.attempts.length === 2);
+  assert.equal(r.nodes.allineamento.attempts.at(-1)!.reason, 'ripresa_con_feedback');
+  assert.equal(r.nodes.allineamento.attempts.at(-1)!.feedback, 'Il totale ordine non si aggiorna');
+  await eng.human('test_funzionale', 'approva');
+  await waitFor(() => r.status === 'completata');
+  assert.equal(r.nodes.pubblicazione.status, 'completata');
+  const report = runReport(r, serverT('it'), 'it-IT');
+  assert.ok(report.includes(`| Esecuzione di riferimento | ${feat.run.workflowName} · \`${feat.run.id}\` |`));
+
+  // Una continuazione mantiene il riferimento; senza l'impostazione nel workflow il riferimento è ignorato.
+  const cont = startRun(wf, 'prova', 5, r);
+  assert.equal(cont.run.reference?.runId, feat.run.id);
+  cont.cancel();
+  const off = startRun({ ...wf, settings: { ...wf.settings, referenceRun: false } }, 'prova', 5, undefined, feat.run);
+  assert.equal(off.run.reference, undefined);
+  off.cancel();
+});

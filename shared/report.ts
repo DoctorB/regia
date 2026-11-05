@@ -19,7 +19,12 @@ const cell = (s: string) => s.replace(/\r?\n+/g, ' ').replace(/\|/g, '\\|').trim
 /** Testo su più righe come citazione Markdown. */
 const quote = (s: string) => s.trim().split(/\r?\n/).map((l) => `> ${l}`.trimEnd()).join('\n');
 
-export function runReport(run: Run, t: Translate, locale: string): string {
+/**
+ * compact: versione per gli agenti (esecuzione di riferimento): solo obiettivo, risultati, decisioni,
+ * file modificati e interventi, senza intestazione, costi, tempi e modelli.
+ */
+export function runReport(run: Run, t: Translate, locale: string, opts: { compact?: boolean } = {}): string {
+  const compact = Boolean(opts.compact);
   const date = (iso?: string) => (iso ? new Date(iso).toLocaleString(locale, { dateStyle: 'short', timeStyle: 'medium' }) : '—');
   const num = (n: number) => n.toLocaleString(locale);
   const label = (id?: string) => run.snapshot.nodes.find((n) => n.id === id)?.data.label ?? id ?? '';
@@ -29,7 +34,7 @@ export function runReport(run: Run, t: Translate, locale: string): string {
   const settings = run.snapshot.settings;
 
   const out: string[] = [];
-  out.push(`# ${t('report.title', { name: run.workflowName })}`, '');
+  if (!compact) out.push(`# ${t('report.title', { name: run.workflowName })}`, '');
 
   const rows: [string, string][] = [
     [t('report.fields.run'), `\`${run.id}\` · ${t(`run.mode.${run.mode}`)}`],
@@ -43,7 +48,8 @@ export function runReport(run: Run, t: Translate, locale: string): string {
     [t('run.metrics.tokens'), num(tokens)],
   ];
   if (run.continuedFrom) rows.push([t('report.fields.continuedFrom'), `\`${run.continuedFrom}\``]);
-  out.push(`| | |`, `|---|---|`, ...rows.map(([k, v]) => `| ${cell(k)} | ${cell(v)} |`), '');
+  if (run.reference) rows.push([t('report.fields.reference'), `${run.reference.workflowName} · \`${run.reference.runId}\``]);
+  if (!compact) out.push(`| | |`, `|---|---|`, ...rows.map(([k, v]) => `| ${cell(k)} | ${cell(v)} |`), '');
 
   if (settings.goal?.trim()) out.push(`## ${t('report.goal')}`, '', settings.goal.trim(), '');
 
@@ -61,7 +67,7 @@ export function runReport(run: Run, t: Translate, locale: string): string {
     const reused = all.find((a) => a.reusedFrom)?.reusedFrom;
     const facts = [`${t(`kinds.${n.data.kind}.label`)}`, t(`status.${status}`)];
     if (reused) facts.push(t('report.reusedFrom', { id: `\`${reused.runId}\`` }));
-    if (attempts.length) {
+    if (attempts.length && !compact) {
       const ms = attempts.reduce((s, a) => s + (a.durationMs ?? (a.endedAt ? Date.parse(a.endedAt) - Date.parse(a.startedAt) : 0)), 0);
       const costs = attempts.map((a) => a.usage.costUsd);
       const cost = costs.some((c) => c === null) ? null : costs.reduce((s: number, c) => s + (c ?? 0), 0);
@@ -96,6 +102,7 @@ export function runReport(run: Run, t: Translate, locale: string): string {
   }
   out.push('');
 
+  if (compact) return out.join('\n').trim();
   if (run.notes.length) out.push(`## ${t('report.notes')}`, '', ...run.notes.map((x) => `- ${cell(x)}`), '');
 
   out.push('---', '', `_${t('report.footer', { date: date(new Date().toISOString()) })}_`, '');

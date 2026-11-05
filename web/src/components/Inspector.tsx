@@ -290,6 +290,7 @@ export function WorkflowSettingsForm({ wf, groups = [], onChange, onShowRules }:
           <Field label={t('settings.run.maxBudget')} hint={t('settings.run.maxBudgetHint')}><Num value={s.runBudgetUsd} onChange={(v) => set('runBudgetUsd', v)} step={0.1} placeholder={t('inspector.limits.noneF')} /></Field>
           <Field label={t('settings.run.parallel')}><Num value={s.maxParallel} onChange={(v) => set('maxParallel', v ?? 1)} min={1} /></Field>
         </div>
+        <Switch checked={Boolean(s.referenceRun)} onChange={(v) => set('referenceRun', v || undefined)} label={t('settings.run.reference')} hint={t('settings.run.referenceHint')} />
         <Field label={t('settings.run.agentLanguage')} hint={t('settings.run.agentLanguageHint')}>
           <select value={lang} onChange={(e) => set('language', e.target.value)}>
             {languages.map((l) => <option key={l.code} value={l.code}>{l.name}</option>)}

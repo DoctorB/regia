@@ -101,6 +101,21 @@ export interface WorkflowSettings {
   skillSources?: { project?: boolean; personal?: boolean };
   /** Principi di progettazione seguiti dal workflow (es. kiss, yagni): le fasi ne ricevono le indicazioni. Assente = nessuno. */
   principles?: string[];
+  /**
+   * All'avvio si sceglie un'esecuzione precedente (es. la funzionalità da allineare con develop):
+   * il suo resoconto viene passato a tutte le fasi. Assente = no.
+   */
+  referenceRun?: boolean;
+}
+
+/** Esecuzione precedente su cui lavora un'esecuzione: il resoconto è fotografato all'avvio. */
+export interface RunReference {
+  runId: string;
+  workflowName: string;
+  startedAt: string;
+  status: RunStatus;
+  /** Resoconto compatto (obiettivo, risultati, decisioni, file modificati, interventi) passato agli agenti. */
+  text: string;
 }
 
 export interface WorkflowTemplate {
@@ -172,7 +187,14 @@ export type NodeStatus =
   | 'attesa_intervento'
   | 'saltata'
   | 'riusata';
-export type RunStatus = 'in_corso' | 'attesa_intervento' | 'completata' | 'fallita' | 'annullata' | 'interrotta';
+/**
+ * sospesa: fermata dalla persona con Sospendi; interrotta: Regia è stato chiuso (o il PC spento) mentre era attiva.
+ * Entrambe si possono riprendere con Riprendi.
+ */
+export type RunStatus = 'in_corso' | 'attesa_intervento' | 'completata' | 'fallita' | 'annullata' | 'interrotta' | 'sospesa';
+
+/** Esecuzioni che si possono riprendere. */
+export const RESUMABLE: readonly RunStatus[] = ['sospesa', 'interrotta'];
 
 export interface ModelUsageEntry {
   inputTokens: number;
@@ -213,12 +235,15 @@ export interface Attempt {
   id: string;
   nodeId: string;
   index: number;
-  reason: 'iniziale' | 'riprova' | 'ripresa_con_feedback' | 'dopo_correzione' | 'riuso';
+  reason: 'iniziale' | 'riprova' | 'ripresa_con_feedback' | 'dopo_correzione' | 'riuso' | 'ripresa_dopo_interruzione';
   startedAt: string;
   endedAt?: string;
-  status: 'attiva' | 'ok' | 'errore' | 'annullata';
+  /** interrotta: fermato da una sospensione o dalla chiusura di Regia; la fase riparte con Riprendi. */
+  status: 'attiva' | 'ok' | 'errore' | 'annullata' | 'interrotta';
   sessionId?: string;
   resumedSessionId?: string;
+  /** Correzione richiesta dalla persona che il tentativo applica (ripresa con feedback, o sua ripresa dopo un'interruzione). */
+  feedback?: string;
   models: string[];
   usage: UsageTotals;
   usageSource: UsageSource;
@@ -255,6 +280,34 @@ export interface NodeRunState {
   feedbackRounds: number;
   /** Solo fase "server": processo gestito da Regia. */
   service?: ServiceState;
+  /** Fase agente fermata a metà (sospensione o chiusura di Regia): da dove riprenderla. */
+  interrupted?: InterruptedWork;
+}
+
+export interface InterruptedWork {
+  /** Tentativo interrotto. */
+  attemptId: string;
+  /** Sessione dell'agente, se era già stata aperta. */
+  sessionId?: string;
+  /** Correzione che il tentativo stava applicando (ripresa con feedback). */
+  feedback?: string;
+  /** Ultima attività registrata della sessione: dice se la cache del prompt è ancora valida. */
+  lastActivityAt: string;
+}
+
+/** Stato git della cartella del progetto in un dato momento. */
+export interface GitState {
+  branch?: string;
+  head?: string;
+  at: string;
+}
+
+/** Controllo prima di riprendere: ramo e commit registrati e quelli attuali. */
+export interface ResumeCheck {
+  before?: GitState;
+  now?: GitState;
+  branchChanged: boolean;
+  headChanged: boolean;
 }
 
 export type HumanAction = 'approva' | 'respingi' | 'riprova' | 'riprendi' | 'salta' | 'annulla' | 'installa_node' | 'installa_dipendenze';
@@ -307,6 +360,12 @@ export interface Run {
   rules?: AppliedRules;
   /** Esecuzione da cui sono state riprese le fasi già completate. */
   continuedFrom?: string;
+  /** Esecuzione di riferimento scelta all'avvio (workflow con referenceRun). */
+  reference?: RunReference;
+  /** Ultima sospensione o interruzione. */
+  suspendedAt?: string;
+  /** Ramo e commit del progetto, aggiornati alla fine di ogni fase e alla sospensione. */
+  git?: GitState;
   rateLimit?: { status: string; type?: string; utilization?: number; resetsAt?: number };
 }
 

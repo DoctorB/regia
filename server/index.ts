@@ -4,18 +4,20 @@ import { randomUUID } from 'node:crypto';
 import express, { type NextFunction, type Request, type Response } from 'express';
 import { msg, type Msg } from '../shared/i18n.ts';
 import type { ApiErrorBody, HumanAction, Run, RunMode, ValidationIssue, Workflow } from '../shared/types.ts';
-import { RegiaError, getEngine, planContinuation, startRun } from './engine.ts';
+import { RESUMABLE } from '../shared/types.ts';
+import { RegiaError, getEngine, planContinuation, resumeRun, startRun } from './engine.ts';
 import { envInfo } from './env.ts';
 import { versionInfo } from './version.ts';
 import { activePrinciples } from '../shared/principles.ts';
 import { computeInsights } from './insights.ts';
-import { folderInfo } from './folder.ts';
+import { folderInfo, gitState } from './folder.ts';
+import { compareGit, recoverInterruptedRuns } from './resume.ts';
 import { withLayout } from '../shared/layout.ts';
 import { killAllServices } from './service.ts';
 import { languages, mergedDict, serverT, systemLanguage } from './i18n.ts';
 import { ensureRegiaRules, getRules, saveRegiaRules } from './rules.ts';
 import {
-  ROOT, deleteRunsOf, deleteWorkflow, getRun, getWorkflow, initStore, listRuns, listTemplates, listWorkflows, saveWorkflow,
+  ROOT, deleteRunsOf, deleteWorkflow, getRun, getWorkflow, initStore, listRuns, listTemplates, listWorkflows, saveRun, saveWorkflow,
 } from './store.ts';
 import { validateWorkflow } from './validate.ts';
 import { discoverSkills, personalSkillsDir, removeSkillBundles } from './skills.ts';
@@ -24,6 +26,8 @@ const PORT = Number(process.env.PORT ?? 4317);
 const HOST = '127.0.0.1';
 
 initStore();
+// Esecuzioni rimaste attive da un avvio precedente (Regia chiuso, PC spento): diventano interrotte e riprendibili.
+recoverInterruptedRuns();
 // Le skill preparate per le fasi sono temporanee: quelle rimaste da un arresto improvviso vengono rimosse.
 removeSkillBundles();
 ensureRegiaRules();
@@ -184,17 +188,15 @@ app.get('/api/runs/:id/insights', (req, res) => {
 });
 
 app.post('/api/runs', h(async (req, res) => {
-  const { workflowId, mode, confirmReal, continueFrom } = req.body as { workflowId: string; mode: RunMode; confirmReal?: boolean; continueFrom?: string };
+  const { workflowId, mode, confirmReal, continueFrom, referenceRunId } = req.body as { workflowId: string; mode: RunMode; confirmReal?: boolean; continueFrom?: string; referenceRunId?: string };
   const wf = getWorkflow(workflowId);
   if (!wf) return void sendError(res, 404, msg('api.workflowNotFound'));
   if (mode !== 'prova' && mode !== 'reale') return void sendError(res, 400, msg('api.invalidMode'));
   const issues = validateWorkflow(wf, mode);
   if (issues.some((i) => i.level === 'errore')) return void sendError(res, 400, msg('api.workflowHasErrors'), issues);
   if (mode === 'reale') {
-    const env = await envInfo();
-    if (!env.realRunsEnabled) return void sendError(res, 403, msg('api.realDisabled'));
-    if (!confirmReal) return void sendError(res, 400, msg('api.confirmReal'));
-    if (!env.auth.loggedIn && !env.auth.apiKeyEnv) return void sendError(res, 400, msg('api.noAuth'));
+    const denied = await realRunDenied(Boolean(confirmReal));
+    if (denied) return void sendError(res, denied.status, denied.msg);
   }
   let from: Run | undefined;
   if (continueFrom) {
@@ -202,8 +204,49 @@ app.post('/api/runs', h(async (req, res) => {
     if ('error' in r) return void sendError(res, 400, r.error);
     from = r.run;
   }
-  const eng = startRun(wf, mode, wf.settings.runBudgetUsd, from);
+  let reference: Run | undefined;
+  if (referenceRunId) {
+    reference = getRun(referenceRunId) ?? undefined;
+    if (!reference) return void sendError(res, 400, msg('api.referenceNotFound'));
+  }
+  const eng = startRun(wf, mode, wf.settings.runBudgetUsd, from, reference);
   res.json({ id: eng.run.id });
+}));
+
+/** Motivo per cui un'esecuzione reale non può partire (o riprendere), se c'è. */
+async function realRunDenied(confirmed: boolean): Promise<{ status: number; msg: Msg } | null> {
+  const env = await envInfo();
+  if (!env.realRunsEnabled) return { status: 403, msg: msg('api.realDisabled') };
+  if (!confirmed) return { status: 400, msg: msg('api.confirmReal') };
+  if (!env.auth.loggedIn && !env.auth.apiKeyEnv) return { status: 400, msg: msg('api.noAuth') };
+  return null;
+}
+
+/** Sospende un'esecuzione attiva: si riprende con /resume, anche dopo aver chiuso Regia. */
+app.post('/api/runs/:id/suspend', h(async (req, res) => {
+  const eng = getEngine(req.params.id);
+  if (!eng) return void sendError(res, 409, msg('api.runNotActive'));
+  try { await eng.suspend(); } catch (e) { return void sendThrown(res, 400, e as Error); }
+  res.json({ ok: true });
+}));
+
+/** Prima di riprendere: ramo e commit registrati confrontati con quelli attuali del progetto. */
+app.get('/api/runs/:id/resume-check', h(async (req, res) => {
+  const run = getRun(req.params.id);
+  if (!run) return void sendError(res, 404, msg('api.runNotFound'));
+  res.json(compareGit(run.git, await gitState(run.snapshot.settings.projectDir)));
+}));
+
+app.post('/api/runs/:id/resume', h(async (req, res) => {
+  const run = getRun(req.params.id);
+  if (!run) return void sendError(res, 404, msg('api.runNotFound'));
+  if (getEngine(run.id) || !RESUMABLE.includes(run.status)) return void sendError(res, 409, msg('api.notResumable'));
+  if (run.mode === 'reale') {
+    const denied = await realRunDenied(Boolean((req.body as { confirmReal?: boolean }).confirmReal));
+    if (denied) return void sendError(res, denied.status, denied.msg);
+  }
+  try { resumeRun(run.id); } catch (e) { return void sendThrown(res, 400, e as Error); }
+  res.json({ ok: true });
 }));
 
 app.get('/api/runs/:id/stream', (req, res) => {
@@ -245,8 +288,18 @@ app.post('/api/runs/:id/service/:nodeId', h(async (req, res) => {
 
 app.post('/api/runs/:id/cancel', (req, res) => {
   const eng = getEngine(req.params.id);
-  if (!eng) return void sendError(res, 409, msg('api.runNotActive'));
-  eng.cancel();
+  if (eng) { eng.cancel(); return void res.json({ ok: true }); }
+  // Un'esecuzione sospesa o interrotta si annulla direttamente sul file salvato.
+  const run = getRun(req.params.id);
+  if (!run || !RESUMABLE.includes(run.status)) return void sendError(res, 409, msg('api.runNotActive'));
+  run.status = 'annullata';
+  run.endedAt = new Date().toISOString();
+  for (const s of Object.values(run.nodes)) {
+    s.pendingActions = undefined;
+    s.interrupted = undefined;
+    if (s.status === 'in_attesa' || s.status === 'attesa_intervento') s.status = 'saltata';
+  }
+  saveRun(run);
   res.json({ ok: true });
 });
 

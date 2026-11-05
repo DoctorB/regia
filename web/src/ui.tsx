@@ -56,7 +56,8 @@ export const RUN_STATUS_META = withLabels<RunStatus, { tone: string }>({
   completata: { tone: 'good' },
   fallita: { tone: 'bad' },
   annullata: { tone: 'idle' },
-  interrotta: { tone: 'bad' },
+  interrotta: { tone: 'warn' },
+  sospesa: { tone: 'warn' },
 }, runStatusLabel);
 
 export function KindTile({ kind, size = 'md' }: { kind: PhaseKind; size?: 'sm' | 'md' | 'lg' }) {
