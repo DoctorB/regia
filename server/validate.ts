@@ -71,6 +71,15 @@ export function validateWorkflow(wf: Workflow, mode: 'prova' | 'reale' = 'prova'
     if (wf.nodes.length > 1 && !hasIn.has(n.id) && !hasOut.has(n.id)) warn(msg('validate.notConnected', { name }), n.id);
     if (d.kind === 'server') {
       const check = d.readyCheck ?? 'url';
+      if (d.show) {
+        // Fase "mostra": il comando è composto da Regia; progetto e dispositivo si verificano all'avvio.
+        if (d.show.target === 'browser' && d.show.existing && !d.url?.trim()) err(msg('validate.showNeedsUrl', { name }), n.id);
+        if (d.url?.trim() && !/^https?:\/\/[^\s]+$/i.test(d.url.trim())) err(msg('validate.invalidUrl', { name }), n.id);
+        if (d.subdir?.trim() && (path.isAbsolute(d.subdir.trim()) || d.subdir.includes('..'))) err(msg('validate.subdirNotRelative', { name }), n.id);
+        if (d.readyTimeoutSec !== undefined && !(d.readyTimeoutSec >= 5 && d.readyTimeoutSec <= 3600)) err(msg('validate.readyTimeoutRange', { name }), n.id);
+        if (!wf.edges.some((e) => e.source === n.id)) warn(msg('validate.serverNoSuccessor', { name }), n.id);
+        continue;
+      }
       if (!d.command?.trim()) {
         if (!d.url?.trim()) err(msg('validate.serverNoCommand', { name }), n.id);
         else if (check !== 'url') err(msg('validate.externalNeedsUrl', { name }), n.id);

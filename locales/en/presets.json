@@ -45,29 +45,19 @@
       "instructions": "This phase is authorized to commit and push. 1) Check git status and git diff: include only the files related to the goal, report and leave out the rest. 2) Commit with a descriptive message that follows the repository's style (look at git log). 3) Push to the current branch; never force push and never switch branch. 4) If the project has a release or a GitHub Action to trigger (e.g. gh workflow run, npm publish) and the goal requires it, run it and report the outcome and links. In the summary, give the commit hash, branch, and the outcome of the push and actions. Outcome \"ko\" if a step fails."
     },
     "app-web": {
-      "label": "Web preview",
-      "hint": "Development server (e.g. npm run dev) with a link to open in the browser.",
-      "phaseLabel": "Web preview"
-    },
-    "app-iis": {
-      "label": "Site on IIS",
-      "hint": "Checks a site already served by IIS (or a container): no command.",
-      "phaseLabel": "Check IIS site"
+      "label": "Open in browser",
+      "hint": "Starts the site (or uses one already running, e.g. on IIS) and opens it in the browser. Nothing to configure.",
+      "phaseLabel": "Open in browser"
     },
     "app-desktop": {
-      "label": "Desktop app",
-      "hint": "Starts the app (e.g. dotnet run) and keeps it open until you approve.",
-      "phaseLabel": "Desktop app"
-    },
-    "app-ios": {
-      "label": "iOS app (simulator)",
-      "hint": "Mac with Xcode only: builds, installs and opens the app in the simulator. Adjust scheme, app name and bundle id.",
-      "phaseLabel": "iOS app"
+      "label": "Launch desktop app",
+      "hint": "Builds and launches the desktop app and keeps it open until you approve. Nothing to configure.",
+      "phaseLabel": "Launch desktop app"
     },
     "app-mobile": {
-      "label": "Mobile app",
-      "hint": "Starts the app on an emulator or device (e.g. flutter run) and waits until it is ready.",
-      "phaseLabel": "Mobile app"
+      "label": "Show on phone",
+      "hint": "Builds and installs the app (APK or iOS) on the connected phone and opens it. Nothing to configure.",
+      "phaseLabel": "Show on phone"
     }
   }
 }

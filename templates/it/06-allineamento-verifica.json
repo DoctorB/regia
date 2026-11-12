@@ -23,7 +23,7 @@
       "model": "sonnet", "allowedTools": ["Read", "Glob", "Grep"], "maxTurns": 12, "contextMode": "completo", "reuseResult": false } },
     { "id": "test_funzionale", "position": { "x": 600, "y": 120 }, "data": {
       "label": "Test funzionale", "kind": "approvazione", "role": "",
-      "instructions": "Avvia l'app (oppure aggiungi prima di questa fase una fase Avvio app adatta al progetto) e segui la checklist. Approva se la funzionalità si comporta come previsto; altrimenti respingi descrivendo cosa non va: la correzione verrà fatta sul ramo e test, revisione e checklist verranno ripetuti.",
+      "instructions": "Avvia l'app (oppure aggiungi prima di questa fase Apri nel browser, Mostra sul telefono o Avvia app desktop) e segui la checklist. Approva se la funzionalità si comporta come previsto; altrimenti respingi descrivendo cosa non va: la correzione verrà fatta sul ramo e test, revisione e checklist verranno ripetuti.",
       "model": "", "allowedTools": [], "contextMode": "sintesi", "reuseResult": false } },
     { "id": "pubblicazione", "position": { "x": 900, "y": 120 }, "data": {
       "label": "Pubblicazione", "kind": "personalizzata", "role": "Release manager: pubblica il lavoro approvato in modo verificabile.",

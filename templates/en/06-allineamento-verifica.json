@@ -23,7 +23,7 @@
       "model": "sonnet", "allowedTools": ["Read", "Glob", "Grep"], "maxTurns": 12, "contextMode": "completo", "reuseResult": false } },
     { "id": "test_funzionale", "position": { "x": 600, "y": 120 }, "data": {
       "label": "Functional test", "kind": "approvazione", "role": "",
-      "instructions": "Start the app (or add a Run app phase suited to the project before this one) and follow the checklist. Approve if the feature behaves as expected; otherwise reject describing what is wrong: the fix will be made on the branch and tests, review and checklist will be repeated.",
+      "instructions": "Start the app (or add an Open in browser, Show on phone or Launch desktop app phase before this one) and follow the checklist. Approve if the feature behaves as expected; otherwise reject describing what is wrong: the fix will be made on the branch and tests, review and checklist will be repeated.",
       "model": "", "allowedTools": [], "contextMode": "sintesi", "reuseResult": false } },
     { "id": "pubblicazione", "position": { "x": 900, "y": 120 }, "data": {
       "label": "Publish", "kind": "personalizzata", "role": "Release manager: publishes the approved work in a verifiable way.",

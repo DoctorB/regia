@@ -3,7 +3,7 @@ import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import express, { type NextFunction, type Request, type Response } from 'express';
 import { msg, type Msg } from '../shared/i18n.ts';
-import type { ApiErrorBody, HumanAction, Run, RunMode, ValidationIssue, Workflow } from '../shared/types.ts';
+import type { ApiErrorBody, HumanAction, LaunchPlan, Run, RunMode, ShowConfig, ValidationIssue, Workflow } from '../shared/types.ts';
 import { RESUMABLE } from '../shared/types.ts';
 import { RegiaError, getEngine, planContinuation, resumeRun, startRun } from './engine.ts';
 import { envInfo } from './env.ts';
@@ -11,6 +11,7 @@ import { versionInfo } from './version.ts';
 import { activePrinciples } from '../shared/principles.ts';
 import { computeInsights } from './insights.ts';
 import { folderInfo, gitState } from './folder.ts';
+import { planLaunch } from './launch.ts';
 import { compareGit, recoverInterruptedRuns } from './resume.ts';
 import { withLayout } from '../shared/layout.ts';
 import { killAllServices } from './service.ts';
@@ -118,6 +119,33 @@ app.get('/api/skills', (req, res) => {
   res.json({ personalDir: personalSkillsDir(), skills: discoverSkills(dir, { project: req.query.project !== '0', personal: req.query.personal === '1' }) });
 });
 app.get('/api/folder-info', h(async (req, res) => res.json(await folderInfo(String(req.query.path ?? '')))));
+
+/** Fase "mostra": cosa verrebbe eseguito ora (progetto, dispositivo, comando) per telefono, browser o desktop. */
+app.get('/api/launch-plan', h(async (req, res) => {
+  const q = (k: string) => (typeof req.query[k] === 'string' && req.query[k] ? String(req.query[k]) : undefined);
+  const target = q('target');
+  if (target !== 'dispositivo' && target !== 'browser' && target !== 'desktop') return void sendError(res, 400, msg('api.invalidTarget'));
+  const dir = q('projectDir') ?? '';
+  const sub = q('subdir')?.trim() ?? '';
+  const empty: LaunchPlan = { target, dir: '', check: 'url', notes: [] };
+  const base = sub ? path.resolve(dir, sub) : dir;
+  if (!dir || !path.isAbsolute(dir) || sub.includes('..') || path.isAbsolute(sub) || !fs.existsSync(base)) {
+    return void res.json({ ...empty, problem: msg('mobile.problem.noFolder') });
+  }
+  const platform = q('platform');
+  const build = q('build');
+  const browser = q('browser');
+  const show: ShowConfig = {
+    target,
+    platform: platform === 'android' || platform === 'ios' ? platform : undefined,
+    build: build === 'debug' || build === 'release' ? build : undefined,
+    device: q('device'),
+    browser: browser === 'chrome' || browser === 'edge' || browser === 'firefox' || browser === 'safari' ? browser : undefined,
+    existing: q('existing') === '1',
+    noCompanion: q('noCompanion') === '1',
+  };
+  res.json(await planLaunch(base, show, q('url') ?? ''));
+}));
 app.put('/api/workflows/:id', (req, res) => {
   const wf = req.body as Workflow;
   if (wf.id !== req.params.id) return void sendError(res, 400, msg('api.idMismatch'));

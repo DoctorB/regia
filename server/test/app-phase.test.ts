@@ -144,18 +144,15 @@ test('modalità di prova: ogni criterio simulato senza eseguire comandi', async 
   }
 });
 
-test('fasi pronte della palette (web, IIS, desktop, iOS, mobile): valide così come sono', async () => {
+test('fasi pronte della palette (telefono, browser, desktop): valide così come sono', async () => {
   const { phaseSnippets } = await import('../../shared/presets.ts');
   const { serverT } = await import('../i18n.ts');
   for (const lang of ['it', 'en']) {
     const apps = phaseSnippets(serverT(lang)).filter((s) => s.data.kind === 'server');
-    assert.deepEqual(apps.map((s) => s.id), ['app-web', 'app-iis', 'app-desktop', 'app-ios', 'app-mobile']);
+    assert.deepEqual(apps.map((s) => [s.id, s.data.show?.target]), [['app-mobile', 'dispositivo'], ['app-web', 'browser'], ['app-desktop', 'desktop']]);
     for (const s of apps) {
       const errs = validateWorkflow(wfWith(s.data)).filter((i) => i.level === 'errore');
       assert.deepEqual(errs, [], `${lang} ${s.id}`);
     }
   }
-  const ios = phaseSnippets(serverT('it')).find((s) => s.id === 'app-ios')!.data;
-  assert.equal(ios.readyCheck, 'exit');
-  assert.match(ios.command!, /^xcodebuild .*xcrun simctl install booted .*xcrun simctl launch booted /);
 });

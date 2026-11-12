@@ -178,7 +178,22 @@
       "one": "{count} skill",
       "other": "{count} skills"
     },
-    "skillsAll": "all skills"
+    "skillsAll": "all skills",
+    "show": {
+      "dispositivo": "On the connected phone",
+      "browser": "In the browser",
+      "desktop": "As a desktop app"
+    },
+    "edgeDelete": "Delete connection",
+    "goal": "Goal",
+    "goalEmpty": "No goal: it is included in every phase's instructions.",
+    "goalEdit": "Edit",
+    "goalAdd": "Add",
+    "goalExpand": "Show all",
+    "goalCollapse": "Collapse",
+    "deleteKey": "Del",
+    "goalHide": "Shrink to a button",
+    "goalShow": "Show the goal"
   },
   "welcome": {
     "title": "Welcome to Regia",

@@ -34,7 +34,8 @@
     "skillsMissing": "{name}: some selected skills are no longer available ({skills}); the phase will run without them.",
     "skillsNone": "{name}: no skills found in the workflow's active sources.",
     "readyPatternMissing": "Phase \"{name}\" waits for a text in the output: enter which one.",
-    "externalNeedsUrl": "Phase \"{name}\" starts nothing: it needs the address to check, with the \"An address responds\" criterion."
+    "externalNeedsUrl": "Phase \"{name}\" starts nothing: it needs the address to check, with the \"An address responds\" criterion.",
+    "showNeedsUrl": "\"{name}\": enter the address of the site already running."
   },
   "insights": {
     "corrections": {

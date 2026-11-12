@@ -1,5 +1,5 @@
 import { currentLocaleTag, tm } from './i18n.tsx';
-import type { ApiErrorBody, ContinuationPlan, EnvInfo, FolderInfo, HumanAction, Insight, ResumeCheck, RulesInfo, Run, RunMode, RunSummary, SkillInfo, ValidationIssue, VersionInfo, Workflow, WorkflowTemplate } from '../../shared/types.ts';
+import type { ApiErrorBody, ContinuationPlan, EnvInfo, FolderInfo, HumanAction, Insight, LaunchPlan, ResumeCheck, ShowConfig,  RulesInfo, Run, RunMode, RunSummary, SkillInfo, ValidationIssue, VersionInfo, Workflow, WorkflowTemplate } from '../../shared/types.ts';
 
 async function req<T>(method: string, url: string, body?: unknown): Promise<T> {
   const r = await fetch(url, { method, headers: body ? { 'Content-Type': 'application/json' } : undefined, body: body ? JSON.stringify(body) : undefined });
@@ -26,6 +26,13 @@ export const api = {
   saveRules: (text: string) => req<RulesInfo>('PUT', '/api/rules', { text }),
   skills: (projectDir: string, sources: { project: boolean; personal: boolean }) => req<{ personalDir: string; skills: SkillInfo[] }>('GET', `/api/skills?projectDir=${encodeURIComponent(projectDir)}&project=${sources.project ? 1 : 0}&personal=${sources.personal ? 1 : 0}`),
   folderInfo: (path: string) => req<FolderInfo>('GET', `/api/folder-info?path=${encodeURIComponent(path)}`),
+  launchPlan: (projectDir: string, subdir: string, url: string, s: ShowConfig) => {
+    const p = new URLSearchParams({
+      projectDir, subdir, url, target: s.target, platform: s.platform ?? '', device: s.device ?? '', build: s.build ?? '',
+      browser: s.browser ?? '', existing: s.existing ? '1' : '', noCompanion: s.noCompanion ? '1' : '',
+    });
+    return req<LaunchPlan>('GET', `/api/launch-plan?${p}`);
+  },
   saveWorkflow: (wf: Workflow) => req<Workflow>('PUT', `/api/workflows/${wf.id}`, wf),
   deleteWorkflow: (id: string, withRuns = false) => req<{ ok: boolean; removedRuns: number }>('DELETE', `/api/workflows/${id}${withRuns ? '?runs=1' : ''}`),
   validate: (workflow: Workflow, mode: RunMode) => req<ValidationIssue[]>('POST', '/api/validate', { workflow, mode }),

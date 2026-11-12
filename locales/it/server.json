@@ -84,7 +84,9 @@
       "install": "Installazione: {command}",
       "correction": "Correzione in corso: {phases}",
       "subagent": "Subagente · {summary}",
-      "checking": "Verifica di {url}…"
+      "checking": "Verifica di {url}…",
+      "detectingDevice": "Ricerca del progetto e del dispositivo…",
+      "detectingProject": "Ricerca del progetto…"
     },
     "service": {
       "withLabel": "{label}: {text}",
@@ -117,7 +119,16 @@
       "checking": "{label}: verifica di {url}. Regia non avvia né ferma questo servizio.",
       "reachable": "{label}: {url} risponde.",
       "activeNoUrl": "{label}: app avviata. Resta aperta fino alla fine dell'esecuzione.",
-      "done": "{label}: comando completato."
+      "done": "{label}: comando completato.",
+      "mobilePlan": "{label}: progetto {framework}, installazione su {device} ({platform}).",
+      "mobilePlanSim": "{label}: progetto {framework}, installazione su un dispositivo {platform} simulato.",
+      "mobileSimCommand": "installazione simulata",
+      "launchPlan": "{label}: progetto {project}.",
+      "browserOpened": "{label}: aperto {url} in {browser}.",
+      "browserOpenedDefault": "{label}: aperto {url} nel browser predefinito.",
+      "browserFallback": "{label}: {browser} non trovato, aperto {url} nel browser predefinito.",
+      "companion": "{label}: avvio anche il backend {project} ({dir}).",
+      "companionExited": "{label}: il backend {project} si è chiuso (codice {code})."
     },
     "skillsAvailable": "{label}: skill disponibili ({count}): {skills}.",
     "skillsMissing": "{label}: skill non trovate, la fase prosegue senza: {skills}.",
@@ -246,7 +257,8 @@
     "groupMissing": "Gruppo da rinominare non indicato.",
     "notSuspendable": "Si può sospendere solo un'esecuzione in corso.",
     "notResumable": "Si può riprendere solo un'esecuzione sospesa o interrotta.",
-    "referenceNotFound": "Esecuzione di riferimento non trovata"
+    "referenceNotFound": "Esecuzione di riferimento non trovata",
+    "invalidTarget": "Destinazione non valida."
   },
   "nodeenv": {
     "source": {
@@ -288,5 +300,37 @@
     "serverRestart": "server locale: va riavviato",
     "notCompleted": "non completata nell'esecuzione precedente ({status})",
     "upstreamRerun": "una fase precedente verrà rieseguita"
+  },
+  "mobile": {
+    "problem": {
+      "noFolder": "Imposta la cartella del progetto nelle impostazioni del workflow.",
+      "noProject": "Nessun progetto mobile riconosciuto nella cartella (né nelle sottocartelle dirette). Sono supportati Flutter, React Native, Expo, Capacitor e Android con Gradle.",
+      "platformMissing": "Il progetto non contiene la piattaforma {platform}.",
+      "iosNeedsMac": "Il progetto è solo iOS: l'installazione su iPhone richiede un Mac con Xcode.",
+      "noPlatform": "Il progetto non contiene né la cartella android né quella ios. Per Flutter puoi crearle con: flutter create --platforms=android,ios .",
+      "deviceNotFound": "Il dispositivo scelto ({device}) non è collegato. Collegalo, oppure torna alla scelta automatica.",
+      "unauthorized": "Il telefono è collegato ma non ha autorizzato questo computer: sbloccalo e accetta la richiesta \"Consentire il debug USB?\", poi riprova.",
+      "noDeviceAndroid": "Nessun dispositivo Android collegato. Collega il telefono via USB con il debug USB attivo (Impostazioni › Opzioni sviluppatore), oppure avvia un emulatore, poi riprova.",
+      "noDeviceIos": "Nessun iPhone collegato. Collegalo via cavo, sbloccalo e scegli \"Autorizza\", con la Modalità sviluppatore attiva, poi riprova.",
+      "noDeviceAny": "Nessun dispositivo collegato. Collega un telefono Android con il debug USB attivo o un iPhone in Modalità sviluppatore, oppure avvia un emulatore, poi riprova.",
+      "toolMissing": "Non trovo {tool}: installalo (per Android serve l'Android SDK con platform-tools) e assicurati che sia nel PATH."
+    },
+    "note": {
+      "metro": "build di debug: l'app ha bisogno di Metro in esecuzione sul computer per aprirsi.",
+      "capacitorDebug": "Capacitor installa sempre la build di debug.",
+      "releaseSigning": "la build di release richiede una firma configurata in Gradle.",
+      "noLaunch": "applicationId non trovato: l'app viene installata ma non aperta.",
+      "manyDevices": {
+        "one": "{count} dispositivo collegato, uso {device}.",
+        "other": "{count} dispositivi collegati, uso {device}. Puoi sceglierne un altro nella fase."
+      }
+    }
+  },
+  "launch": {
+    "problem": {
+      "noUrl": "Indica l'indirizzo del sito già attivo.",
+      "noWeb": "Nessun progetto web riconosciuto nella cartella (né nelle sottocartelle dirette). Sono supportati progetti Node con script dev o start (Vite, Next.js, Angular, Astro…), ASP.NET Core, Django, Laravel, Rails e pagine statiche con index.html. Per un sito già attivo scegli \"Un sito già attivo\".",
+      "noDesktop": "Nessuna app desktop riconosciuta nella cartella (né nelle sottocartelle dirette). Sono supportati Electron, Tauri, .NET (WPF, Windows Forms, WinUI, Avalonia, MAUI), Flutter con la cartella della piattaforma e Compose Desktop."
+    }
   }
 }

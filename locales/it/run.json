@@ -447,6 +447,46 @@
         "progetto": "progetto",
         "personale": "personale"
       }
+    },
+    "show": {
+      "title": {
+        "dispositivo": "Mostra sul telefono",
+        "browser": "Apri nel browser",
+        "desktop": "Avvia app desktop"
+      },
+      "refresh": "Rileva di nuovo",
+      "project": "Progetto",
+      "device": "Dispositivo",
+      "command": "Comando",
+      "address": "Indirizzo",
+      "emulator": "emulatore",
+      "deviceChoice": "Su quale dispositivo",
+      "autoDevice": "Automatico: il primo collegato, preferendo un telefono",
+      "auto": "Automatica",
+      "notConnected": "non collegato",
+      "platform": "Piattaforma",
+      "buildLabel": "Build",
+      "build": {
+        "debug": "debug",
+        "release": "release"
+      },
+      "what": "Cosa aprire",
+      "whatProject": "Il progetto, avviato da Regia",
+      "whatExisting": "Un sito già attivo (es. IIS)",
+      "addressHint": "Vuoto: l'indirizzo stampato dal server di sviluppo.",
+      "browser": "Browser",
+      "browserDefault": "Predefinito del sistema",
+      "more": "Altre opzioni",
+      "custom": "Usa un comando personalizzato",
+      "hint": {
+        "dispositivo": "Quando la fase parte Regia riconosce il progetto (Flutter, React Native, Expo, Capacitor, Android con Gradle) e il telefono collegato, poi compila, installa e apre l'app. Le scelte qui sopra sono facoltative.",
+        "browser": "Quando la fase parte Regia riconosce il progetto web (Vite, Next.js, Angular, Astro, ASP.NET Core, Django, Laravel, pagina statica…), lo avvia e apre la pagina nel browser appena risponde. Il sito resta attivo fino a fine esecuzione.",
+        "desktop": "Quando la fase parte Regia riconosce l'app (Electron, Tauri, WPF, Windows Forms, WinUI, Avalonia, MAUI, Flutter, Compose Desktop) e la avvia. La finestra resta aperta finché non approvi."
+      },
+      "backend": "Backend",
+      "backendOff": "non avviato",
+      "startBackend": "Avvia anche il backend ({project}, {dir})",
+      "startBackendHint": "Il sito usa le sue API: Regia avvia il backend insieme e lo ferma con la fase."
     }
   },
   "settings": {
@@ -476,7 +516,7 @@
       "projectSettings": "Carica il CLAUDE.md del progetto",
       "projectSettingsHint": "E il file .claude/settings.json, se presente."
     },
-    "edgesHint": "Collega le fasi trascinando dal punto in basso di una al punto in alto della successiva. Seleziona un collegamento e premi Canc per rimuoverlo.",
+    "edgesHint": "Collega le fasi trascinando dal punto in basso di una al punto in alto della successiva. Per spostare un collegamento trascinane un'estremità su un'altra fase (rilasciato nel vuoto viene eliminato). Per eliminarlo cliccalo con il tasto destro, oppure selezionalo e premi Canc.",
     "skills": {
       "title": "Skill",
       "found": {

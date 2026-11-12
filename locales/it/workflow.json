@@ -34,7 +34,8 @@
     "skillsMissing": "{name}: alcune skill scelte non sono più disponibili ({skills}); la fase proseguirà senza.",
     "skillsNone": "{name}: nessuna skill trovata nelle fonti attive del workflow.",
     "readyPatternMissing": "La fase \"{name}\" attende un testo nell'output: indica quale.",
-    "externalNeedsUrl": "La fase \"{name}\" non avvia nulla: serve l'indirizzo da verificare, con il criterio \"Risponde un indirizzo\"."
+    "externalNeedsUrl": "La fase \"{name}\" non avvia nulla: serve l'indirizzo da verificare, con il criterio \"Risponde un indirizzo\".",
+    "showNeedsUrl": "\"{name}\": indica l'indirizzo del sito già attivo."
   },
   "insights": {
     "corrections": {

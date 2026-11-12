@@ -160,6 +160,8 @@ server/            API Express + SSE, motore di esecuzione, contabilità, simula
   folder.ts        controllo della cartella di progetto (git, modifiche in sospeso)
   resume.ts        sospensione e ripresa: stato riprendibile, riassunto del lavoro interrotto
   service.ts       processi della fase Avvio app (avvio, indirizzo, raggiungibilità, arresto)
+  launch.ts        fasi "mostra" (telefono, browser, desktop): riconoscimento del progetto, comando, apertura del browser
+  mobile.ts        telefono: progetto mobile, dispositivi collegati, comando di build e installazione
   nodeenv.ts       versione di Node richiesta dal progetto, installazioni, diagnosi degli errori
   skills.ts        ricerca delle skill e plugin temporaneo per fase
   version.ts       versione in uso e controllo di quella pubblicata su GitHub

@@ -695,3 +695,30 @@ input[type="checkbox"] { width: 16px; height: 16px; min-height: 0; accent-color:
 .principles-preview { margin-top: 4px; }
 .principles-preview summary { display: flex; align-items: center; justify-content: space-between; gap: 8px; cursor: pointer; font-size: 12px; font-weight: 600; color: var(--text-2); padding: 4px 0; }
 .principles-preview .reason { margin-top: 6px; max-height: 260px; }
+.show-kv dd { min-width: 0; overflow-wrap: anywhere; }
+.show-cmd { font-size: 12px; font-weight: 450; }
+
+/* Collegamenti modificabili: selezione evidente, menu contestuale con il tasto destro. */
+.react-flow__edge.selected .react-flow__edge-path, .react-flow__edge:focus-visible .react-flow__edge-path { stroke: var(--accent); stroke-width: 2.5; }
+.react-flow__edge:hover .react-flow__edge-path { stroke: color-mix(in srgb, var(--accent) 60%, var(--border-strong)); }
+.react-flow__edgeupdater { cursor: grab; }
+
+/* Obiettivo del workflow sopra il diagramma. */
+.goal-card { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); z-index: 5; display: flex; align-items: flex-start; gap: 8px; width: min(640px, calc(100% - 32px)); padding: 8px 8px 8px 12px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-md); box-shadow: var(--shadow-md); }
+.goal-card > svg { flex: none; width: 16px; height: 16px; margin-top: 3px; color: var(--accent); }
+.goal-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.goal-text:disabled { cursor: default; }
+.goal-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+.goal-body { font-size: 13px; line-height: 1.45; white-space: pre-wrap; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.goal-card.open .goal-body { -webkit-line-clamp: unset; display: block; max-height: 40vh; overflow: auto; }
+.goal-card .btn { flex: none; }
+.edge-menu { position: absolute; z-index: 20; min-width: 200px; }
+.edge-menu .menu-item { display: flex; align-items: center; gap: 8px; }
+.edge-menu .menu-item svg { width: 15px; height: 15px; }
+.edge-menu .menu-item.danger { color: var(--bad-ink, var(--text)); }
+.edge-menu kbd { margin-left: auto; font-size: 11px; color: var(--muted); }
+.goal-card .goal-hide { flex: none; width: 28px; height: 28px; border: 0; box-shadow: none; background: transparent; }
+.goal-card .goal-hide:hover { background: var(--surface-3); }
+.goal-chip { position: absolute; top: 12px; left: 14px; z-index: 5; display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; font: inherit; font-size: 13px; font-weight: 600; color: var(--text-2); background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-md); box-shadow: var(--shadow-md); cursor: pointer; }
+.goal-chip:hover { color: var(--text); background: var(--surface-2); }
+.goal-chip svg { width: 15px; height: 15px; color: var(--accent); }

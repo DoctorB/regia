@@ -84,7 +84,9 @@
       "install": "Installing: {command}",
       "correction": "Correction in progress: {phases}",
       "subagent": "Subagent · {summary}",
-      "checking": "Checking {url}…"
+      "checking": "Checking {url}…",
+      "detectingDevice": "Looking for the project and the device…",
+      "detectingProject": "Looking for the project…"
     },
     "service": {
       "withLabel": "{label}: {text}",
@@ -117,7 +119,16 @@
       "checking": "{label}: checking {url}. Regia neither starts nor stops this service.",
       "reachable": "{label}: {url} is responding.",
       "activeNoUrl": "{label}: app launched. It stays open until the end of the run.",
-      "done": "{label}: command completed."
+      "done": "{label}: command completed.",
+      "mobilePlan": "{label}: {framework} project, installing on {device} ({platform}).",
+      "mobilePlanSim": "{label}: {framework} project, installing on a simulated {platform} device.",
+      "mobileSimCommand": "simulated installation",
+      "launchPlan": "{label}: {project} project.",
+      "browserOpened": "{label}: opened {url} in {browser}.",
+      "browserOpenedDefault": "{label}: opened {url} in the default browser.",
+      "browserFallback": "{label}: {browser} not found, opened {url} in the default browser.",
+      "companion": "{label}: also starting the {project} backend ({dir}).",
+      "companionExited": "{label}: the {project} backend closed (code {code})."
     },
     "skillsAvailable": "{label}: skills available ({count}): {skills}.",
     "skillsMissing": "{label}: skills not found, the phase continues without them: {skills}.",
@@ -246,7 +257,8 @@
     "groupMissing": "No group to rename was given.",
     "notSuspendable": "Only a running execution can be suspended.",
     "notResumable": "Only a suspended or interrupted run can be resumed.",
-    "referenceNotFound": "Reference run not found"
+    "referenceNotFound": "Reference run not found",
+    "invalidTarget": "Invalid target."
   },
   "nodeenv": {
     "source": {
@@ -288,5 +300,37 @@
     "serverRestart": "local server: needs restarting",
     "notCompleted": "not completed in the previous run ({status})",
     "upstreamRerun": "a previous phase will be run again"
+  },
+  "mobile": {
+    "problem": {
+      "noFolder": "Set the project folder in the workflow settings.",
+      "noProject": "No mobile project found in the folder (or its direct subfolders). Supported: Flutter, React Native, Expo, Capacitor and Android with Gradle.",
+      "platformMissing": "The project does not contain the {platform} platform.",
+      "iosNeedsMac": "The project is iOS only: installing on an iPhone requires a Mac with Xcode.",
+      "noPlatform": "The project contains neither an android nor an ios folder. For Flutter you can create them with: flutter create --platforms=android,ios .",
+      "deviceNotFound": "The chosen device ({device}) is not connected. Connect it, or go back to automatic selection.",
+      "unauthorized": "The phone is connected but has not authorized this computer: unlock it and accept \"Allow USB debugging?\", then retry.",
+      "noDeviceAndroid": "No Android device connected. Connect the phone over USB with USB debugging on (Settings › Developer options), or start an emulator, then retry.",
+      "noDeviceIos": "No iPhone connected. Connect it with a cable, unlock it and tap \"Trust\", with Developer Mode on, then retry.",
+      "noDeviceAny": "No device connected. Connect an Android phone with USB debugging on or an iPhone in Developer Mode, or start an emulator, then retry.",
+      "toolMissing": "{tool} not found: install it (Android needs the Android SDK with platform-tools) and make sure it is on the PATH."
+    },
+    "note": {
+      "metro": "debug build: the app needs Metro running on the computer to open.",
+      "capacitorDebug": "Capacitor always installs the debug build.",
+      "releaseSigning": "the release build needs signing configured in Gradle.",
+      "noLaunch": "applicationId not found: the app is installed but not opened.",
+      "manyDevices": {
+        "one": "{count} device connected, using {device}.",
+        "other": "{count} devices connected, using {device}. You can pick another one in the phase."
+      }
+    }
+  },
+  "launch": {
+    "problem": {
+      "noUrl": "Enter the address of the site already running.",
+      "noWeb": "No web project found in the folder (or its direct subfolders). Supported: Node projects with a dev or start script (Vite, Next.js, Angular, Astro…), ASP.NET Core, Django, Laravel, Rails and static pages with index.html. For a site already running choose \"A site already running\".",
+      "noDesktop": "No desktop app found in the folder (or its direct subfolders). Supported: Electron, Tauri, .NET (WPF, Windows Forms, WinUI, Avalonia, MAUI), Flutter with the platform folder, and Compose Desktop."
+    }
   }
 }

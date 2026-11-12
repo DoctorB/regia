@@ -1,9 +1,10 @@
 import { createHash, randomUUID } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { query } from '@anthropic-ai/claude-agent-sdk';
 import type {
-  Attempt, ContinuationPlan, RunReference, ServiceState, DeclaredOutcome, EventKind, HumanAction, InterruptedWork, NodeRunState, ReadyCheck, Run, RunEvent, RunMode, Workflow, WorkflowNode,
+  Attempt, ContinuationPlan, LaunchPlan, RunReference, ServiceState, DeclaredOutcome, EventKind, HumanAction, InterruptedWork, NodeRunState, ReadyCheck, Run, RunEvent, RunMode, ShowTarget, Workflow, WorkflowNode,
 } from '../shared/types.ts';
 import { emptyTotals, isAgentKind, RESUMABLE } from '../shared/types.ts';
 import { msg, type Msg, type Params, type Translate } from '../shared/i18n.ts';
@@ -21,6 +22,7 @@ import { AttemptAccounting, sumTotals, type SessionSnapshot } from './usage.ts';
 import { topoOrder } from './validate.ts';
 import { pushLog, startService, waitForUrl, type ServiceHandle } from './service.ts';
 import { depsPlan, diagnose, envWithNode, needsDeps, resolveNode, runOnce, type InstallPlan } from './nodeenv.ts';
+import { openBrowser, planLaunch } from './launch.ts';
 
 const MAX_EVENTS = 6000;
 const MAX_FEEDBACK_ROUNDS = 3;
@@ -143,6 +145,9 @@ export function resumeRun(id: string): RunEngine {
   eng.resume();
   return eng;
 }
+
+/** Attesa predefinita della fase "mostra": le build mobili e desktop sono lente la prima volta. */
+const SHOW_TIMEOUT_SEC: Record<ShowTarget, number> = { dispositivo: 1200, browser: 180, desktop: 600 };
 
 export class RunEngine {
   private listeners = new Set<Broadcast>();
@@ -727,14 +732,18 @@ export class RunEngine {
     const st = this.run.nodes[n.id];
     const d = n.data;
     this.stopService(n.id, 'restart');
-    const cwd = d.subdir?.trim() ? path.resolve(this.wf.settings.projectDir, d.subdir.trim()) : this.wf.settings.projectDir;
-    const command = (d.command ?? '').trim();
-    const check: ReadyCheck = d.readyCheck ?? 'url';
+    const baseCwd = d.subdir?.trim() ? path.resolve(this.wf.settings.projectDir, d.subdir.trim()) : this.wf.settings.projectDir;
+    let cwd = baseCwd;
+    // Fase "mostra" (telefono, browser, desktop): comando, cartella e criterio sono decisi dal rilevamento, più avanti.
+    const show = d.show;
+    let command = show ? '' : (d.command ?? '').trim();
+    let check: ReadyCheck = d.readyCheck ?? 'url';
+    let readyPattern = d.readyPattern ?? '';
     // Senza comando la fase verifica soltanto un servizio già attivo (sito su IIS, container, ambiente di test).
-    const external = !command;
-    const timeoutSec = d.readyTimeoutSec ?? (check === 'exit' ? 600 : 90);
+    let external = !command && !show;
+    const timeoutSec = d.readyTimeoutSec ?? (show ? SHOW_TIMEOUT_SEC[show.target] : check === 'exit' ? 600 : 90);
     // La preparazione di Node (versione, dipendenze, diagnosi) vale solo per i progetti Node.
-    const nodeProject = !external && (Boolean(d.nodeVersion?.trim()) || fs.existsSync(path.join(cwd, 'package.json')));
+    let nodeProject = !external && !show && (Boolean(d.nodeVersion?.trim()) || fs.existsSync(path.join(cwd, 'package.json')));
     const fix = this.serviceFixes.get(n.id) ?? {};
     this.serviceFixes.set(n.id, fix);
     const a = this.newAttempt(n.id, reason);
@@ -772,6 +781,13 @@ export class RunEngine {
           : svc.status === 'completato' ? msg('events.service.done')
           : svc.url ? msg('events.service.active', { url: svc.url })
           : msg('events.service.activeNoUrl'));
+        // Apri nel browser: la pagina pronta si apre da sola (non nelle prove).
+        if (show?.target === 'browser' && svc.url && !sim) {
+          const o = openBrowser(svc.url, show.browser);
+          ev(o.fallback ? msg('events.service.browserFallback', { url: svc.url, browser: show.browser ?? '' })
+            : o.browser ? msg('events.service.browserOpened', { url: svc.url, browser: o.browser })
+            : msg('events.service.browserOpenedDefault', { url: svc.url }));
+        }
       } else {
         const reasonText = failure ? this.tx(failure) : '';
         a.status = 'errore';
@@ -788,6 +804,37 @@ export class RunEngine {
       this.schedule();
     };
 
+    // 0. Fase "mostra": progetto (e dispositivo) rilevati, comando e criterio di pronto.
+    let planEnv: Record<string, string> | undefined;
+    let companion: LaunchPlan['companion'];
+    if (show) {
+      st.activity = this.t(show.target === 'dispositivo' ? 'events.activity.detectingDevice' : 'events.activity.detectingProject');
+      this.nodeChanged(n.id);
+      const plan = await planLaunch(baseCwd, show, d.url ?? '', { simulate: sim });
+      if (this.run.status === 'annullata' || this.run.status === 'sospesa') return finish(false, msg('interventions.service.cancelled'));
+      cwd = path.join(baseCwd, plan.dir);
+      svc.cwd = cwd;
+      if (plan.problem && !sim) return finish(false, plan.problem);
+      if (plan.problem) ev(msg('events.service.simNeedsIntervention', { reason: this.tx(plan.problem) }));
+      else if (show.target === 'dispositivo') ev(msg(sim ? 'events.service.mobilePlanSim' : 'events.service.mobilePlan', { framework: plan.project, device: plan.device?.name, platform: plan.platform === 'ios' ? 'iOS' : 'Android' }));
+      else if (plan.project) ev(msg('events.service.launchPlan', { project: plan.project }));
+      for (const note of plan.notes) ev(msg('events.service.withLabel', { text: this.tx(note) }));
+      command = plan.command ?? (plan.problem ? this.t('events.service.mobileSimCommand') : '');
+      check = plan.check;
+      readyPattern = plan.readyPattern ?? '';
+      external = !command;
+      svc.command = command;
+      svc.readyCheck = external ? 'url' : check;
+      svc.external = external || undefined;
+      if (plan.url) svc.url = plan.url;
+      planEnv = plan.env;
+      if (plan.companion?.enabled) {
+        companion = plan.companion;
+        ev(msg('events.service.companion', { project: companion.project, dir: companion.dir || '.' }));
+      }
+      nodeProject = !external && (Boolean(d.nodeVersion?.trim()) || fs.existsSync(path.join(cwd, 'package.json')));
+    }
+
     // 1. Versione di Node richiesta dal progetto (.nvmrc / .node-version / engines, o quella dedotta da un errore precedente).
     let env: NodeJS.ProcessEnv = process.env;
     if (nodeProject) {
@@ -803,6 +850,7 @@ export class RunEngine {
       }
       env = envWithNode(res.ok ? res.dir : undefined);
     }
+    if (planEnv) env = { ...env, ...planEnv };
 
     if (sim) {
       await new Promise((r) => setTimeout(r, Number(process.env.REGIA_MOCK_SPEED ?? 600)));
@@ -834,7 +882,7 @@ export class RunEngine {
       this.nodeChanged(n.id);
       const ctrl = new AbortController();
       this.controllers.set(n.id, ctrl);
-      const ok = await waitForUrl(url, timeoutSec * 1000, () => true, ctrl.signal);
+      const ok = url.startsWith('file:') ? fs.existsSync(fileURLToPath(url)) : await waitForUrl(url, timeoutSec * 1000, () => true, ctrl.signal);
       this.controllers.delete(n.id);
       svc.status = ok ? 'attivo' : 'errore';
       if (this.run.status === 'annullata') return finish(false, msg('interventions.service.cancelled'));
@@ -863,7 +911,7 @@ export class RunEngine {
     this.nodeChanged(n.id);
     const ctrl = new AbortController();
     this.controllers.set(n.id, ctrl);
-    const pattern = check === 'output' ? readyMatcher(d.readyPattern ?? '') : undefined;
+    const pattern = check === 'output' ? readyMatcher(readyPattern) : undefined;
     let lines = 0;
     let lastPush = 0;
     let urlResolve: (u: string) => void = () => undefined;
@@ -872,6 +920,24 @@ export class RunEngine {
     const matched = new Promise<void>((r) => { matchedResolve = r; });
     let exitResolve: () => void = () => undefined;
     const exited = new Promise<void>((r) => { exitResolve = r; });
+    // Backend del sito (es. be/ accanto a fe/): parte insieme e si ferma con la fase; il suo output va nel log.
+    let side: ServiceHandle | undefined;
+    if (companion) {
+      const c = companion;
+      let shown = 0;
+      side = startService(c.command, path.join(baseCwd, c.dir), {
+        onLine: (line) => {
+          pushLog(svc.log, `[${c.dir || '.'}] ${line}`);
+          if (++shown <= 10) this.event('servizio', `${c.project}: ${line}`, { nodeId: n.id, attemptId: a.id });
+        },
+        onUrl: () => undefined,
+        onExit: (code) => {
+          if (this.services.get(n.id) === handle) this.say('errore', msg('events.service.companionExited', { label: d.label, project: c.project, code: String(code ?? '?') }), { nodeId: n.id });
+        },
+      }, env);
+      ev(msg('events.service.start', { command: c.command, cwd: path.join(baseCwd, c.dir) }));
+    }
+    let handle: ServiceHandle | undefined;
     const h = startService(command, cwd, {
       onLine: (line) => {
         pushLog(svc.log, line);
@@ -887,7 +953,8 @@ export class RunEngine {
       },
       onExit: (code) => {
         svc.exitCode = code;
-        if (this.services.get(n.id) === h) this.services.delete(n.id);
+        // Se l'app si chiude, si ferma anche il backend avviato con lei.
+        if (this.services.get(n.id) === handle) { this.services.delete(n.id); side?.stop(); }
         if (svc.status === 'attivo') {
           svc.status = 'terminato';
           this.say('errore', msg('events.service.exited', { label: d.label, code: String(code ?? '?') }), { nodeId: n.id });
@@ -897,11 +964,21 @@ export class RunEngine {
         ctrl.abort();
       },
     }, env, check === 'process' || check === 'output');
-    this.services.set(n.id, h);
+    const both = side;
+    handle = both ? { pid: h.pid, get exited() { return h.exited; }, stop: () => { h.stop(); both.stop(); } } : h;
+    this.services.set(n.id, handle);
     svc.pid = h.pid;
     const deadline = Date.now() + timeoutSec * 1000;
     const stopped = new Promise<void>((r) => ctrl.signal.addEventListener('abort', () => r(), { once: true }));
-    const within = (p: Promise<unknown>, ms: number) => Promise.race([p, stopped, new Promise((r) => setTimeout(r, Math.max(0, ms)))]);
+    // Il timer dell'attesa massima viene cancellato appena l'attesa finisce, altrimenti resterebbe attivo fino alla scadenza.
+    const within = async (p: Promise<unknown>, ms: number) => {
+      let t: ReturnType<typeof setTimeout> | undefined;
+      try {
+        return await Promise.race([p, stopped, new Promise((r) => { t = setTimeout(r, Math.max(0, ms)); })]);
+      } finally {
+        clearTimeout(t);
+      }
+    };
     let ok = false;
     let detached = false;
     let failure: Msg | undefined;
@@ -978,7 +1055,7 @@ export class RunEngine {
     const st = this.run.nodes[n.id];
     const d = n.data;
     const fix = this.serviceFixes.get(n.id) ?? {};
-    const cwd = d.subdir?.trim() ? path.resolve(this.wf.settings.projectDir, d.subdir.trim()) : this.wf.settings.projectDir;
+    const cwd = st.service?.cwd ?? (d.subdir?.trim() ? path.resolve(this.wf.settings.projectDir, d.subdir.trim()) : this.wf.settings.projectDir);
     const svc = st.service ?? { command: d.command ?? '', cwd, status: 'avvio' as const, startedAt: new Date().toISOString(), log: [] };
     st.service = svc;
     st.status = 'attiva';

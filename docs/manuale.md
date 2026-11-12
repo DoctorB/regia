@@ -60,7 +60,8 @@ poi riavvia con `npm start`. Il controllo legge solo il numero di versione pubbl
 ![Editor](img/02-editor.png)
 
 - **Aggiungi** fasi dalla palette a sinistra: trascinale sul diagramma, oppure fai clic. Se una fase è selezionata, la nuova viene collegata subito dopo. **Riordina** dispone il diagramma dall'alto verso il basso.
-- **Collega** due fasi trascinando dal punto in basso di una al punto in alto dell'altra; seleziona un collegamento o una fase e premi **Canc** per eliminarli.
+- **Collega** due fasi trascinando dal punto in basso di una al punto in alto dell'altra. Per **spostare** un collegamento trascinane un'estremità su un'altra fase (rilasciato nel vuoto viene eliminato). Per **eliminarlo** cliccalo con il tasto destro e scegli *Elimina collegamento*, oppure selezionalo e premi **Canc** (vale anche per una fase).
+- L'**obiettivo** del workflow resta visibile in alto sul diagramma: clic per leggerlo tutto, **Modifica** per cambiarlo. Puoi ridurlo a un pulsante; durante l'esecuzione parte già ridotto, per non coprire le fasi.
 - **Configura** la fase selezionata nel pannello a destra:
   - *Istruzioni*: cosa deve fare, idealmente con i file da guardare.
   - *Modello*: Haiku ($) per compiti semplici (test, controlli), Sonnet ($$) come scelta equilibrata, Opus ($$$) per i compiti più difficili.
@@ -129,20 +130,38 @@ Regia non è legata a una tecnologia: gli agenti lavorano con gli strumenti del 
 | **Il programma resta aperto** | App desktop (`dotnet run`, `npm run electron`, `python app.py`): la finestra resta aperta finché non approvi |
 | **Il comando termina con successo** | Build, installazione su un dispositivo (`gradlew installDebug`), app iOS nel simulatore (`xcodebuild` + `xcrun simctl`), deploy locale su IIS (`msdeploy`, script PowerShell) |
 
-Nella palette, tra le fasi **pronte all'uso**, trovi **Anteprima web**, **Sito su IIS**, **App desktop**, **App iOS (simulatore)** e **App mobile** già impostate: basta adattare comando e indirizzo.
+Nella palette, tra le fasi **pronte all'uso**, trovi **Mostra sul telefono**, **Apri nel browser** e **Avvia app desktop**: non chiedono niente, Regia riconosce da sola il progetto (vedi sotto). Per un caso particolare parti da una fase **Avvio app** e scegli tu comando e criterio.
 
 Nella richiesta di approvazione compaiono il link (se c'è), lo stato, le ultime righe di output e i pulsanti Ferma / Riavvia. L'app viene chiusa a fine esecuzione; dopo una correzione chiesta in un'approvazione viene riavviata, così verifichi la versione aggiornata.
 
 Per i progetti Node (con `package.json`) Regia fa anche di più: sceglie da sola la versione di Node richiesta (`.nvmrc`, `engines`), installa le dipendenze se mancano e, se manca la versione giusta, ti propone di installarla.
+
+### Mostrare il risultato: telefono, browser, desktop
+
+Tre fasi pronte servono a vedere il risultato in un punto preciso del workflow, di solito dopo implementazione e revisione e prima di un'**Approvazione**: provi e decidi. Non c'è niente da configurare. Quando la fase parte Regia riconosce il progetto nella cartella del workflow (o in una sua sottocartella diretta), compone il comando giusto e aspetta che sia pronto.
+
+| Fase pronta | Cosa fa | Progetti riconosciuti |
+|---|---|---|
+| **Mostra sul telefono** | Compila l'app (APK o iOS), la installa sul telefono collegato e la apre | Flutter, React Native, Expo, Capacitor, Android con Gradle (anche Kotlin Multiplatform) |
+| **Apri nel browser** | Avvia il sito e apre la pagina nel browser appena risponde; il sito resta attivo fino a fine esecuzione | Node con script `dev` o `start` (Vite, Next.js, Angular, Astro, Nuxt, SvelteKit…), ASP.NET Core, Blazor, Flutter web, Django, Laravel, Rails, pagine statiche con `index.html` |
+| **Avvia app desktop** | Compila e avvia l'app; la finestra resta aperta finché non approvi | Electron, Tauri, .NET (WPF, Windows Forms, WinUI, Avalonia, MAUI), Flutter desktop, Compose Desktop |
+
+Nel pannello della fase vedi subito cosa ha rilevato (progetto, dispositivo, comando) e, se manca qualcosa, cosa fare. Le scelte sono tutte facoltative:
+
+- **Telefono**: Regia trova i telefoni Android collegati via USB (con `adb` dell'Android SDK) e, su Mac, gli iPhone; preferisce un telefono vero a un emulatore. Puoi scegliere un dispositivo preciso, la piattaforma e la build. La build predefinita è quella che funziona da sola sul telefono: release per Flutter, React Native ed Expo (non serve Metro), debug per Capacitor e Android con Gradle. Se il telefono non è collegato o non ha autorizzato il computer, la fase si ferma e ti dice cosa fare; dopo, **Riprova**.
+- **Browser**: scegli il browser (Chrome, Edge, Firefox, Safari o quello predefinito) e, se serve, l'indirizzo da aprire, ad esempio una pagina interna. Se il progetto ha frontend e backend in cartelle separate (es. `fe` e `be`), Regia apre il frontend e avvia insieme il backend, che si ferma con la fase; puoi disattivarlo. Per un sito già attivo, ad esempio su **IIS**, scegli **Un sito già attivo** e indica l'indirizzo: Regia lo verifica e lo apre senza avviare niente.
+- **Desktop**: niente da scegliere.
+
+In **Altre opzioni** puoi indicare una sottocartella, cambiare l'attesa massima o passare a un **comando personalizzato**, che parte da quello rilevato.
 
 ### App iOS su Mac
 
 Su un Mac con **Xcode** (e i suoi strumenti da riga di comando: `xcode-select --install`) Regia orchestra anche le app iOS: Regia si installa e si avvia come su Windows.
 
 - **Agenti**: compilano e lanciano i test con `xcodebuild` tramite Bash; abilita Bash nelle fasi che devono farlo. Le compilazioni sono lente: alza il numero massimo di turni delle fasi interessate.
-- **Fase pronta App iOS (simulatore)**: compila per il simulatore, lo avvia, installa e apre l'app, con criterio "Il comando termina con successo" (attesa fino a 15 minuti). Prima di usarla adatta tre valori nel comando: lo **schema** (`-scheme App`), il **nome dell'app** (`App.app`) e il **bundle id** (`com.example.App`); se serve cambia anche il simulatore (`iPhone 16`, l'elenco è in `xcrun simctl list devices`). Per un workspace CocoaPods aggiungi `-workspace NomeApp.xcworkspace`.
-- **Altri framework**: Flutter → `flutter run -d "iPhone 16"` con testo atteso `Flutter run key commands`; React Native → `npx react-native run-ios` con "Il comando termina con successo"; Expo → `npx expo run:ios` con testo atteso `Logs for your project`.
-- **Dopo la fase** metti un'**Approvazione**: guardi l'app nel simulatore e decidi.
+- **Mostra sul telefono** funziona anche con un iPhone collegato e con un simulatore già avviato, per Flutter, React Native, Expo e Capacitor.
+- **Progetto Xcode nativo**: usa una fase **Avvio app** con criterio "Il comando termina con successo", ad esempio `xcodebuild -scheme App -destination 'platform=iOS Simulator,name=iPhone 16' -derivedDataPath build build && xcrun simctl install booted build/Build/Products/Debug-iphonesimulator/App.app && xcrun simctl launch booted com.example.App` (adatta schema, nome dell'app e bundle id).
+- **Dopo la fase** metti un'**Approvazione**: guardi l'app e decidi.
 - **Dispositivo fisico, TestFlight, App Store**: servono account Apple Developer, certificati e profili già configurati sul Mac; Regia e gli agenti usano quelli presenti, non li creano. La prima volta macOS può chiedere permessi per Xcode o per il simulatore: vanno accettati a mano.
 
 ---

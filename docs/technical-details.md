@@ -160,6 +160,8 @@ server/            Express API + SSE, execution engine, usage accounting, simula
   folder.ts        project folder check (git, pending changes)
   resume.ts        suspend and resume: resumable state, summary of interrupted work
   service.ts       Run app phase processes (start, address, reachability, shutdown)
+  launch.ts        "show" phases (phone, browser, desktop): project detection, command, opening the browser
+  mobile.ts        phone: mobile project, connected devices, build and install command
   nodeenv.ts       Node version required by the project, installations, error diagnosis
   skills.ts        skill discovery and temporary per-phase plugin
   version.ts       version in use and check of the one published on GitHub

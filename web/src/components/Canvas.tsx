@@ -3,7 +3,7 @@ import {
   Background, BackgroundVariant, Handle, MarkerType, Position, ReactFlow, applyNodeChanges, useReactFlow,
   type Connection, type Edge, type EdgeChange, type Node, type NodeChange, type NodeProps,
 } from '@xyflow/react';
-import { Crosshair, ExternalLink, LayoutGrid, Maximize2, Minus, Plus, TriangleAlert } from 'lucide-react';
+import { ChevronUp, Crosshair, ExternalLink, LayoutGrid, Maximize2, Minus, Plus, Target, Trash2, TriangleAlert } from 'lucide-react';
 import { isAgentKind, type NodeRunState, type PhaseConfig, type PhaseKind, type ServiceStatus, type ValidationIssue, type Workflow } from '../../../shared/types.ts';
 import { layoutGraph, NODE_W } from '../../../shared/layout.ts';
 import { fmtTok, fmtUsd } from '../api.ts';
@@ -55,7 +55,9 @@ function PhaseNode({ data, selected }: NodeProps<Node<PhaseData>>) {
       {!live && (
         <div className="node-foot">
           {agent && <><span>{t('canvas.tools', { count: cfg.allowedTools.length })}</span><span>{cfg.maxTurns ? t('canvas.turns', { count: cfg.maxTurns }) : t('canvas.freeTurns')}</span>{cfg.skills === 'all' ? <span>{t('canvas.skillsAll')}</span> : cfg.skills?.length ? <span>{t('canvas.skills', { count: cfg.skills.length })}</span> : null}{cfg.reuseResult && <span>{t('canvas.reuse')}</span>}</>}
-          {cfg.kind === 'server' && <code className="node-cmd">{cfg.command?.trim() || cfg.url?.trim() || t('canvas.noCommand')}</code>}
+          {cfg.kind === 'server' && (cfg.show
+            ? <span>{t(`canvas.show.${cfg.show.target}`)}</span>
+            : <code className="node-cmd">{cfg.command?.trim() || cfg.url?.trim() || t('canvas.noCommand')}</code>)}
           {cfg.kind === 'approvazione' && <span>{t('canvas.waitsForYou')}</span>}
         </div>
       )}
@@ -88,6 +90,7 @@ function PhaseNode({ data, selected }: NodeProps<Node<PhaseData>>) {
 
 const nodeTypes = { phase: PhaseNode };
 
+
 interface Props {
   workflow: Workflow;
   runNodes?: Record<string, NodeRunState>;
@@ -98,9 +101,42 @@ interface Props {
   onChange?: (wf: Workflow) => void;
   /** Rilascio di una fase trascinata dalla palette. */
   onDropPhase?: (payload: string, position: { x: number; y: number }) => void;
+  /** Porta alla modifica dell'obiettivo (impostazioni del workflow). */
+  onEditGoal?: () => void;
 }
 
-export function Canvas({ workflow, runNodes, issues, selectedId, editable, onSelect, onChange, onDropPhase }: Props) {
+/** Spazio in alto riservato al riquadro dell'obiettivo quando si inquadra il diagramma. */
+const GOAL_SPACE = 64;
+
+/** Obiettivo del workflow, sempre visibile sopra il diagramma: due righe, si espande al clic; nell'editor porta alla modifica. */
+function GoalCard({ goal, onEdit, live }: { goal: string; onEdit?: () => void; live: boolean }) {
+  const { t } = useI18n();
+  const [open, setOpen] = useState(false);
+  // In esecuzione la vista segue la fase attiva: l'obiettivo parte ridotto a un pulsante per non coprire le fasi.
+  const [hidden, setHidden] = useState(live);
+  const text = goal.trim();
+  if (!text && !onEdit) return null;
+  if (hidden) {
+    return (
+      <button className="goal-chip" onClick={() => setHidden(false)} title={t('canvas.goalShow')}>
+        <Target />{t('canvas.goal')}
+      </button>
+    );
+  }
+  return (
+    <div className={`goal-card ${open ? 'open' : ''}`}>
+      <Target />
+      <button className="goal-text" onClick={() => setOpen(!open)} aria-expanded={open} title={open ? t('canvas.goalCollapse') : t('canvas.goalExpand')} disabled={!text}>
+        <span className="goal-label">{t('canvas.goal')}</span>
+        {text ? <span className="goal-body">{text}</span> : <span className="goal-body muted">{t('canvas.goalEmpty')}</span>}
+      </button>
+      {onEdit && <button className="btn sm ghost" onClick={onEdit}>{text ? t('canvas.goalEdit') : t('canvas.goalAdd')}</button>}
+      <button className="icon-btn goal-hide" onClick={() => { setHidden(true); setOpen(false); }} title={t('canvas.goalHide')} aria-label={t('canvas.goalHide')}><ChevronUp /></button>
+    </div>
+  );
+}
+
+export function Canvas({ workflow, runNodes, issues, selectedId, editable, onSelect, onChange, onDropPhase, onEditGoal }: Props) {
   const { t } = useI18n();
   const rf = useReactFlow();
   const live = Boolean(runNodes);
@@ -114,19 +150,35 @@ export function Canvas({ workflow, runNodes, issues, selectedId, editable, onSel
     data: { cfg: n.data, run: runNodes?.[n.id], issues: issues.filter((i) => i.nodeId === n.id), live },
   })), [workflow.nodes, runNodes, issues, selectedId, autoPos, live]);
 
+  // Collegamento selezionato e menu contestuale: i collegamenti vengono dal workflow, quindi la selezione è tenuta qui.
+  const [selEdge, setSelEdge] = useState<string | null>(null);
+  const [edgeMenu, setEdgeMenu] = useState<{ id: string; x: number; y: number } | null>(null);
+  useEffect(() => {
+    if (!edgeMenu) return;
+    const close = (e: Event) => { if (e instanceof KeyboardEvent && e.key !== 'Escape') return; setEdgeMenu(null); };
+    window.addEventListener('keydown', close);
+    window.addEventListener('wheel', close, { passive: true });
+    return () => { window.removeEventListener('keydown', close); window.removeEventListener('wheel', close); };
+  }, [edgeMenu]);
+  const deleteEdge = (id: string) => {
+    setEdgeMenu(null);
+    setSelEdge(null);
+    if (onChange) onChange({ ...workflow, edges: workflow.edges.filter((e) => e.id !== id) });
+  };
+
   const edges: Edge[] = useMemo(() => workflow.edges.map((e) => {
     const s = runNodes?.[e.source]?.status;
     const t = runNodes?.[e.target]?.status;
     const done = s === 'completata' || s === 'riusata' || s === 'saltata';
     const flowing = done && (t === 'attiva' || t === 'attesa_intervento');
     return {
-      id: e.id, source: e.source, target: e.target, type: 'smoothstep',
+      id: e.id, source: e.source, target: e.target, type: 'smoothstep', selected: editable && e.id === selEdge, interactionWidth: editable ? 24 : undefined,
       animated: flowing,
       className: flowing ? 'edge-flow' : done ? 'edge-done' : '',
       markerEnd: { type: MarkerType.ArrowClosed, width: 16, height: 16 },
       pathOptions: { borderRadius: 14 },
     } as Edge;
-  }), [workflow.edges, runNodes]);
+  }), [workflow.edges, runNodes, editable, selEdge]);
 
   // Segue la fase attiva (o quella che attende un intervento) durante l'esecuzione.
   const focusId = useMemo(() => {
@@ -154,12 +206,13 @@ export function Canvas({ workflow, runNodes, issues, selectedId, editable, onSel
     const pts = workflow.nodes.map((n) => autoPos?.[n.id] ?? n.position);
     const x0 = Math.min(...pts.map((p) => p.x)), x1 = Math.max(...pts.map((p) => p.x)) + NODE_W;
     const y0 = Math.min(...pts.map((p) => p.y)), y1 = Math.max(...pts.map((p) => p.y)) + estH;
-    const fitZoom = Math.min((width - 80) / (x1 - x0), (height - 80) / (y1 - y0), 1);
-    if (fitZoom >= 0.72) { rf.setViewport({ x: width / 2 - ((x0 + x1) / 2) * fitZoom, y: height / 2 - ((y0 + y1) / 2) * fitZoom, zoom: fitZoom }); return; }
+    const top = live ? 0 : GOAL_SPACE;
+    const fitZoom = Math.min((width - 80) / (x1 - x0), (height - 80 - top) / (y1 - y0), 1);
+    if (fitZoom >= 0.72) { rf.setViewport({ x: width / 2 - ((x0 + x1) / 2) * fitZoom, y: top + (height - top) / 2 - ((y0 + y1) / 2) * fitZoom, zoom: fitZoom }); return; }
     const z = 0.85;
     const p = live && focusId ? autoPos?.[focusId] : null;
     if (p) { lastFocus.current = focusId; rf.setViewport({ x: width / 2 - (p.x + NODE_W / 2) * z, y: height / 2 - (p.y + 60) * z, zoom: z }); return; }
-    rf.setViewport({ x: width / 2 - ((x0 + x1) / 2) * z, y: 32 - y0 * z, zoom: z });
+    rf.setViewport({ x: width / 2 - ((x0 + x1) / 2) * z, y: 32 + top - y0 * z, zoom: z });
   }, [workflow.nodes, autoPos, live, focusId, rf]);
 
   const onNodesChange = (changes: NodeChange<Node<PhaseData>>[]) => {
@@ -178,6 +231,7 @@ export function Canvas({ workflow, runNodes, issues, selectedId, editable, onSel
   };
 
   const onEdgesChange = (changes: EdgeChange[]) => {
+    for (const c of changes) if (c.type === 'select') setSelEdge((cur) => (c.selected ? c.id : cur === c.id ? null : cur));
     if (!editable || !onChange) return;
     const removed = changes.filter((c) => c.type === 'remove').map((c) => c.id);
     if (removed.length) onChange({ ...workflow, edges: workflow.edges.filter((e) => !removed.includes(e.id)) });
@@ -187,6 +241,19 @@ export function Canvas({ workflow, runNodes, issues, selectedId, editable, onSel
     if (!onChange || !c.source || !c.target || c.source === c.target) return;
     if (workflow.edges.some((e) => e.source === c.source && e.target === c.target)) return;
     onChange({ ...workflow, edges: [...workflow.edges, { id: `e_${Math.random().toString(36).slice(2, 8)}`, source: c.source, target: c.target }] });
+  };
+
+  // Spostare un collegamento: si trascina un'estremità su un'altra fase; rilasciato nel vuoto, il collegamento viene eliminato.
+  const reconnected = useRef(true);
+  const onReconnect = (old: Edge, c: Connection) => {
+    reconnected.current = true;
+    if (!onChange || !c.source || !c.target || c.source === c.target) return;
+    if (workflow.edges.some((e) => e.id !== old.id && e.source === c.source && e.target === c.target)) return;
+    onChange({ ...workflow, edges: workflow.edges.map((e) => (e.id === old.id ? { ...e, source: c.source, target: c.target } : e)) });
+  };
+  const onReconnectEnd = (_: unknown, old: Edge) => {
+    if (!reconnected.current && onChange) onChange({ ...workflow, edges: workflow.edges.filter((e) => e.id !== old.id) });
+    reconnected.current = true;
   };
 
   const onDragOver = (e: DragEvent) => {
@@ -218,7 +285,20 @@ export function Canvas({ workflow, runNodes, issues, selectedId, editable, onSel
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
-        onPaneClick={() => onSelect(null)}
+        edgesReconnectable={editable}
+        reconnectRadius={14}
+        onReconnectStart={() => { reconnected.current = false; }}
+        onReconnect={onReconnect}
+        onReconnectEnd={onReconnectEnd}
+        onPaneClick={() => { onSelect(null); setSelEdge(null); setEdgeMenu(null); }}
+        onEdgeContextMenu={editable ? (e, edge) => {
+          e.preventDefault();
+          const box = wrapRef.current?.getBoundingClientRect();
+          setSelEdge(edge.id);
+          setEdgeMenu({ id: edge.id, x: e.clientX - (box?.left ?? 0), y: e.clientY - (box?.top ?? 0) });
+        } : undefined}
+        onNodeClick={() => { setSelEdge(null); setEdgeMenu(null); }}
+        onMoveStart={() => setEdgeMenu(null)}
         onInit={() => requestAnimationFrame(frame)}
         nodesDraggable={editable}
         nodesConnectable={editable}
@@ -244,6 +324,16 @@ export function Canvas({ workflow, runNodes, issues, selectedId, editable, onSel
           </button>
         )}
       </div>
+
+      <GoalCard goal={workflow.settings.goal} onEdit={editable ? onEditGoal : undefined} live={live} />
+
+      {edgeMenu && (
+        <div className="popover menu edge-menu" role="menu" style={{ left: edgeMenu.x, top: edgeMenu.y }} onContextMenu={(e) => e.preventDefault()}>
+          <button role="menuitem" className="menu-item danger" autoFocus onClick={() => deleteEdge(edgeMenu.id)}>
+            <Trash2 /><span className="menu-main">{t('canvas.edgeDelete')}</span><kbd>{t('canvas.deleteKey')}</kbd>
+          </button>
+        </div>
+      )}
 
       {editable && workflow.nodes.length === 0 && (
         <div className="canvas-empty">

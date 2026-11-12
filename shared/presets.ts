@@ -31,13 +31,11 @@ export interface PhaseSnippet { id: string; label: string; hint: string; data: P
 
 const APP: Base = { kind: 'server', model: '', allowedTools: [], contextMode: 'nessuno', reuseResult: false, subdir: '' };
 
+// Fasi "mostra": nessun comando da scrivere, progetto e dispositivo sono rilevati all'avvio della fase.
 const SNIPPETS: { id: string; base: Base }[] = [
-  { id: 'app-web', base: { ...APP, command: 'npm run dev', url: '', readyCheck: 'url', readyTimeoutSec: 90 } },
-  { id: 'app-iis', base: { ...APP, command: '', url: 'http://localhost/', readyCheck: 'url', readyTimeoutSec: 30 } },
-  { id: 'app-desktop', base: { ...APP, command: 'dotnet run', url: '', readyCheck: 'process', readyTimeoutSec: 120 } },
-  // Solo su macOS con Xcode: compila per il simulatore, installa e apre l'app. Da adattare: schema, nome dell'app e bundle id.
-  { id: 'app-ios', base: { ...APP, command: "xcodebuild -scheme App -destination 'platform=iOS Simulator,name=iPhone 16' -derivedDataPath build build && (xcrun simctl boot 'iPhone 16' || true) && open -a Simulator && xcrun simctl install booted build/Build/Products/Debug-iphonesimulator/App.app && xcrun simctl launch booted com.example.App", url: '', readyCheck: 'exit', readyTimeoutSec: 900 } },
-  { id: 'app-mobile', base: { ...APP, command: 'flutter run', url: '', readyCheck: 'output', readyPattern: 'Flutter run key commands', readyTimeoutSec: 600 } },
+  { id: 'app-mobile', base: { ...APP, show: { target: 'dispositivo' } } },
+  { id: 'app-web', base: { ...APP, show: { target: 'browser' } } },
+  { id: 'app-desktop', base: { ...APP, show: { target: 'desktop' } } },
   {
     id: 'pubblicazione',
     base: { kind: 'personalizzata', model: 'sonnet', allowedTools: ['Read', 'Glob', 'Grep', 'Bash'], maxTurns: 15, contextMode: 'sintesi', reuseResult: false },

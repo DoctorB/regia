@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { AppWindow, CircleCheck, Globe, TextSearch, FileCode2, Lock, PencilLine, ScrollText, Sparkles, Trash2, TriangleAlert, CircleAlert, X } from 'lucide-react';
-import { KNOWN_TOOLS, READY_CHECKS, WRITE_TOOLS, type PhaseConfig, type PhaseKind, type SkillInfo, type ValidationIssue, type Workflow, type WorkflowSettings } from '../../../shared/types.ts';
+import { AppWindow, CircleCheck, Globe, TextSearch, FileCode2, Info, Lock, PencilLine, RefreshCw, ScrollText, Sparkles, Terminal, Trash2, TriangleAlert, CircleAlert, X } from 'lucide-react';
+import { KNOWN_TOOLS, READY_CHECKS, WRITE_TOOLS, type LaunchPlan, type PhaseConfig, type ShowConfig, type PhaseKind, type SkillInfo, type ValidationIssue, type Workflow, type WorkflowSettings } from '../../../shared/types.ts';
 import { useI18n } from '../i18n.tsx';
 import { Field, KIND_META, KindTile, Section, Switch, kindLabel } from '../ui.tsx';
 import { FolderStatus } from './Setup.tsx';
@@ -126,6 +126,133 @@ function Issues({ issues }: { issues: ValidationIssue[] }) {
   );
 }
 
+/** Fase "mostra" (telefono, browser, desktop): cosa Regia ha rilevato e solo scelte facoltative. */
+function ShowSection({ cfg, settings, onChange }: { cfg: PhaseConfig; settings: WorkflowSettings; onChange: (c: PhaseConfig) => void }) {
+  const { t, tm } = useI18n();
+  const s = cfg.show!;
+  const [plan, setPlan] = useState<LaunchPlan | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    let alive = true;
+    setLoading(true);
+    const h = setTimeout(() => {
+      api.launchPlan(settings.projectDir, cfg.subdir ?? '', cfg.url ?? '', { target: s.target, platform: s.platform, device: s.device, build: s.build, browser: s.browser, existing: s.existing, noCompanion: s.noCompanion })
+        .then((p) => { if (alive) setPlan(p); })
+        .catch(() => { if (alive) setPlan(null); })
+        .finally(() => { if (alive) setLoading(false); });
+    }, 300);
+    return () => { alive = false; clearTimeout(h); };
+  }, [settings.projectDir, cfg.subdir, cfg.url, s.target, s.platform, s.device, s.build, s.browser, s.existing, s.noCompanion, tick]);
+
+  const setS = (patch: Partial<ShowConfig>) => {
+    const next: ShowConfig = { ...s, ...patch };
+    for (const k of Object.keys(next) as (keyof ShowConfig)[]) if (k !== 'target' && !next[k]) delete next[k];
+    onChange({ ...cfg, show: next });
+  };
+  // Via di fuga: diventa una normale fase Avvio app con il comando rilevato, modificabile a mano.
+  const toCustom = () => {
+    const { show, ...rest } = cfg;
+    void show;
+    const base = cfg.subdir?.trim().replace(/[\\/]+$/, '') ?? '';
+    const dir = plan?.dir ? (base ? `${base}/${plan.dir}` : plan.dir) : base;
+    onChange({
+      ...rest, command: plan?.command ?? '', readyCheck: plan?.check ?? 'url', readyPattern: plan?.readyPattern?.replace(/^\/(.*)\/$/, '$1') || undefined,
+      url: cfg.url || (plan?.url?.startsWith('http') ? plan.url : ''), subdir: dir, readyTimeoutSec: cfg.readyTimeoutSec ?? SHOW_WAIT[s.target],
+    });
+  };
+  const platformName = (p: string) => (p === 'ios' ? 'iOS' : 'Android');
+  const devices = plan?.devices ?? [];
+  const buildDefault = plan?.build && !s.build ? t(`inspector.show.build.${plan.build}`) : '';
+  const deviceText = (d: { name: string; platform: string; emulator: boolean }) =>
+    `${d.name} · ${platformName(d.platform)}${d.emulator ? ` · ${t('inspector.show.emulator')}` : ''}`;
+  const pending = loading ? '…' : '—';
+
+  return (
+    <Section title={t(`inspector.show.title.${s.target}`)} aside={<button className="btn sm ghost" onClick={() => setTick((x) => x + 1)} disabled={loading}><RefreshCw className={loading ? 'spin' : ''} />{t('inspector.show.refresh')}</button>}>
+      <dl className="kv show-kv">
+        {!(s.target === 'browser' && s.existing) && <><dt>{t('inspector.show.project')}</dt><dd>{plan?.project ? `${plan.project}${plan.dir ? ` · ${plan.dir}` : ''}` : pending}</dd></>}
+        {s.target === 'dispositivo' && <><dt>{t('inspector.show.device')}</dt><dd>{plan?.device ? deviceText(plan.device) : pending}</dd></>}
+        {plan?.command && <><dt>{t('inspector.show.command')}</dt><dd><code className="show-cmd">{plan.command}</code></dd></>}
+        {s.target === 'browser' && plan?.url && <><dt>{t('inspector.show.address')}</dt><dd><code className="show-cmd">{plan.url}</code></dd></>}
+        {plan?.companion && <><dt>{t('inspector.show.backend')}</dt><dd>{plan.companion.project} · {plan.companion.dir}{plan.companion.enabled ? <> <code className="show-cmd">{plan.companion.command}</code></> : ` · ${t('inspector.show.backendOff')}`}</dd></>}
+      </dl>
+      {!loading && plan?.problem && <div className="callout tone-warn"><TriangleAlert /><span>{tm(plan.problem)}</span></div>}
+      {!loading && plan?.notes.map((n, i) => <div key={i} className="callout tone-info"><Info /><span>{tm(n)}</span></div>)}
+
+      {s.target === 'dispositivo' && (
+        <>
+          <Field label={t('inspector.show.deviceChoice')}>
+            <select value={s.device ?? ''} onChange={(e) => setS({ device: e.target.value || undefined })}>
+              <option value="">{t('inspector.show.autoDevice')}</option>
+              {devices.map((d) => <option key={d.id} value={d.id}>{deviceText(d)}</option>)}
+              {s.device && !devices.some((d) => d.id === s.device) && <option value={s.device}>{s.device} ({t('inspector.show.notConnected')})</option>}
+            </select>
+          </Field>
+          <div className="grid2">
+            {(plan?.platforms?.length ?? 0) > 1 || s.platform ? (
+              <Field label={t('inspector.show.platform')}>
+                <select value={s.platform ?? ''} onChange={(e) => setS({ platform: (e.target.value || undefined) as ShowConfig['platform'], device: undefined })}>
+                  <option value="">{t('inspector.show.auto')}</option>
+                  <option value="android">Android</option>
+                  <option value="ios">iOS</option>
+                </select>
+              </Field>
+            ) : null}
+            <Field label={t('inspector.show.buildLabel')}>
+              <select value={s.build ?? ''} onChange={(e) => setS({ build: (e.target.value || undefined) as ShowConfig['build'] })}>
+                <option value="">{buildDefault ? `${t('inspector.show.auto')} (${buildDefault})` : t('inspector.show.auto')}</option>
+                <option value="debug">{t('inspector.show.build.debug')}</option>
+                <option value="release">{t('inspector.show.build.release')}</option>
+              </select>
+            </Field>
+          </div>
+        </>
+      )}
+
+      {s.target === 'browser' && (
+        <>
+          <Field label={t('inspector.show.what')}>
+            <select value={s.existing ? 'existing' : ''} onChange={(e) => setS({ existing: e.target.value === 'existing' || undefined })}>
+              <option value="">{t('inspector.show.whatProject')}</option>
+              <option value="existing">{t('inspector.show.whatExisting')}</option>
+            </select>
+          </Field>
+          {!s.existing && plan?.companion && (
+            <Switch checked={!s.noCompanion} onChange={(v) => setS({ noCompanion: !v || undefined })} label={t('inspector.show.startBackend', { project: plan.companion.project, dir: plan.companion.dir })} hint={t('inspector.show.startBackendHint')} />
+          )}
+          <Field label={t('inspector.show.browser')}>
+            <select value={s.browser ?? ''} onChange={(e) => setS({ browser: (e.target.value || undefined) as ShowConfig['browser'] })}>
+              <option value="">{t('inspector.show.browserDefault')}</option>
+              <option value="chrome">Chrome</option>
+              <option value="edge">Edge</option>
+              <option value="firefox">Firefox</option>
+              <option value="safari">Safari</option>
+            </select>
+          </Field>
+          <Field label={t('inspector.show.address')} hint={s.existing ? undefined : t('inspector.show.addressHint')}>
+            <input value={cfg.url ?? ''} onChange={(e) => onChange({ ...cfg, url: e.target.value })} placeholder={s.existing ? 'http://localhost/miosito' : t('inspector.show.auto').toLowerCase()} />
+          </Field>
+        </>
+      )}
+
+      {!(s.target === 'browser' && s.existing) && (
+        <details className="principles-preview">
+          <summary>{t('inspector.show.more')}</summary>
+          <div className="grid2">
+            <Field label={t('inspector.server.subdir')}><input value={cfg.subdir ?? ''} onChange={(e) => onChange({ ...cfg, subdir: e.target.value })} placeholder={t('inspector.show.auto').toLowerCase()} /></Field>
+            <Field label={t('inspector.server.wait')}><Num value={cfg.readyTimeoutSec} onChange={(v) => onChange({ ...cfg, readyTimeoutSec: v })} min={5} placeholder={String(SHOW_WAIT[s.target])} /></Field>
+          </div>
+          <button className="btn sm ghost" onClick={toCustom}><Terminal />{t('inspector.show.custom')}</button>
+        </details>
+      )}
+      <p className="hint">{t(`inspector.show.hint.${s.target}`)}</p>
+    </Section>
+  );
+}
+
+const SHOW_WAIT: Record<ShowConfig['target'], number> = { dispositivo: 1200, browser: 180, desktop: 600 };
+
 export function PhaseInspector({ cfg, settings, issues, onChange, onDelete }: { cfg: PhaseConfig; settings: WorkflowSettings; issues: ValidationIssue[]; onChange: (c: PhaseConfig) => void; onDelete: () => void }) {
   const { t } = useI18n();
   const set = <K extends keyof PhaseConfig>(k: K, v: PhaseConfig[K]) => onChange({ ...cfg, [k]: v });
@@ -151,7 +278,9 @@ export function PhaseInspector({ cfg, settings, issues, onChange, onDelete }: { 
       </div>
       <Issues issues={issues} />
 
-      {server && (
+      {server && cfg.show && <ShowSection cfg={cfg} settings={settings} onChange={onChange} />}
+
+      {server && !cfg.show && (
         <Section title={t('inspector.server.title')}>
           <Field label={t('inspector.server.readyCheck')}>
             <div className="ready-picker" role="radiogroup" aria-label={t('inspector.server.readyCheck')}>
@@ -275,7 +404,7 @@ export function WorkflowSettingsForm({ wf, groups = [], onChange, onShowRules }:
         <Field label={t('settings.project.dir')}><input value={s.projectDir} onChange={(e) => set('projectDir', e.target.value)} placeholder={t('settings.project.dirPlaceholder')} /></Field>
         <FolderStatus path={s.projectDir} />
         <Field label={t('settings.project.goal')} hint={t('settings.project.goalHint')}>
-          <textarea rows={5} value={s.goal} onChange={(e) => set('goal', e.target.value)} />
+          <textarea id="wf-goal" rows={5} value={s.goal} onChange={(e) => set('goal', e.target.value)} />
         </Field>
         <Field label={t('settings.project.description')}><textarea rows={2} value={wf.description} onChange={(e) => onChange({ ...wf, description: e.target.value })} /></Field>
         <Field label={t('manage.group')} hint={t('manage.groupHint')}>

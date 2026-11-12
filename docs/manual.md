@@ -58,7 +58,8 @@ then restart with `npm start`. The check only reads the published version number
 ![Editor](img/02-editor.png)
 
 - **Add** phases from the palette on the left: drag them onto the diagram, or click. If a phase is selected, the new one is connected right after it. **Arrange** lays the diagram out top to bottom.
-- **Connect** two phases by dragging from the bottom handle of one to the top handle of the other; select a connection or a phase and press **Delete** to remove it.
+- **Connect** two phases by dragging from the bottom handle of one to the top handle of the other. To **move** a connection drag one of its ends onto another phase (dropped on empty space it is deleted). To **delete** it right-click it and choose *Delete connection*, or select it and press **Delete** (this also works for a phase).
+- The workflow **goal** stays visible at the top of the diagram: click to read it in full, **Edit** to change it. You can shrink it to a button; during a run it starts shrunk, so it does not cover the phases.
 - **Configure** the selected phase in the right panel:
   - *Instructions*: what it must do, ideally naming the files to look at.
   - *Model*: Haiku ($) for simple tasks (tests, checks), Sonnet ($$) as the balanced choice, Opus ($$$) for the hardest tasks.
@@ -127,20 +128,38 @@ Regia is not tied to a technology: agents work with the project's own tools (npm
 | **The program stays open** | Desktop app (`dotnet run`, `npm run electron`, `python app.py`): the window stays open until you approve |
 | **The command succeeds** | Build, install on a device (`gradlew installDebug`), iOS app in the simulator (`xcodebuild` + `xcrun simctl`), local deploy to IIS (`msdeploy`, PowerShell script) |
 
-In the palette, among the **ready to use** phases, you'll find **Web preview**, **Site on IIS**, **Desktop app**, **iOS app (simulator)** and **Mobile app** already set up: just adjust command and address.
+In the palette, among the **ready to use** phases, you'll find **Show on phone**, **Open in browser** and **Launch desktop app**: they ask for nothing, Regia detects the project by itself (see below). For a special case, start from a **Run app** phase and pick command and criterion yourself.
 
 The approval request shows the link (if any), the status, the last output lines and the Stop / Restart buttons. The app is closed when the run ends; after a correction requested in an approval it is restarted, so you check the updated version.
 
 For Node projects (with a `package.json`) Regia does more: it picks the required Node version (`.nvmrc`, `engines`), installs dependencies if missing and, if the right version is not installed, offers to install it.
+
+### Showing the result: phone, browser, desktop
+
+Three ready-made phases let you see the result at a precise point of the workflow, usually after implementation and review and before an **Approval**: you try it and decide. There is nothing to configure. When the phase starts, Regia detects the project in the workflow folder (or one of its direct subfolders), builds the right command and waits until it is ready.
+
+| Ready-made phase | What it does | Detected projects |
+|---|---|---|
+| **Show on phone** | Builds the app (APK or iOS), installs it on the connected phone and opens it | Flutter, React Native, Expo, Capacitor, Android with Gradle (Kotlin Multiplatform included) |
+| **Open in browser** | Starts the site and opens the page in the browser as soon as it responds; the site stays up until the run ends | Node with a `dev` or `start` script (Vite, Next.js, Angular, Astro, Nuxt, SvelteKit…), ASP.NET Core, Blazor, Flutter web, Django, Laravel, Rails, static pages with `index.html` |
+| **Launch desktop app** | Builds and launches the app; the window stays open until you approve | Electron, Tauri, .NET (WPF, Windows Forms, WinUI, Avalonia, MAUI), Flutter desktop, Compose Desktop |
+
+The phase panel shows right away what was detected (project, device, command) and, if something is missing, what to do. All choices are optional:
+
+- **Phone**: Regia finds Android phones connected over USB (through the Android SDK's `adb`) and, on a Mac, iPhones; it prefers a real phone to an emulator. You can pick a specific device, the platform and the build. The default build is the one that works on its own on the phone: release for Flutter, React Native and Expo (no Metro needed), debug for Capacitor and Android with Gradle. If the phone is not connected or has not authorized the computer, the phase stops and tells you what to do; then **Retry**.
+- **Browser**: pick the browser (Chrome, Edge, Firefox, Safari or the default one) and, if needed, the address to open, for example an inner page. If the project has frontend and backend in separate folders (e.g. `fe` and `be`), Regia opens the frontend and starts the backend along with it, stopping it with the phase; you can turn this off. For a site already running, for example on **IIS**, choose **A site already running** and enter the address: Regia checks it and opens it without starting anything.
+- **Desktop**: nothing to choose.
+
+Under **More options** you can set a subfolder, change the maximum wait or switch to a **custom command**, starting from the detected one.
 
 ### iOS apps on a Mac
 
 On a Mac with **Xcode** (and its command line tools: `xcode-select --install`) Regia also orchestrates iOS apps: Regia is installed and started just as on Windows.
 
 - **Agents**: they build and run tests with `xcodebuild` through Bash; enable Bash in the phases that need it. Builds are slow: raise the maximum turns of those phases.
-- **Ready-made iOS app (simulator) phase**: builds for the simulator, boots it, installs and opens the app, with the "The command succeeds" criterion (waits up to 15 minutes). Before using it, adjust three values in the command: the **scheme** (`-scheme App`), the **app name** (`App.app`) and the **bundle id** (`com.example.App`); change the simulator too if needed (`iPhone 16`, list them with `xcrun simctl list devices`). For a CocoaPods workspace add `-workspace AppName.xcworkspace`.
-- **Other frameworks**: Flutter → `flutter run -d "iPhone 16"` with expected text `Flutter run key commands`; React Native → `npx react-native run-ios` with "The command succeeds"; Expo → `npx expo run:ios` with expected text `Logs for your project`.
-- **After the phase** add an **Approval**: check the app in the simulator and decide.
+- **Show on phone** also works with a connected iPhone and with a simulator already booted, for Flutter, React Native, Expo and Capacitor.
+- **Native Xcode project**: use a **Run app** phase with the "The command succeeds" criterion, for example `xcodebuild -scheme App -destination 'platform=iOS Simulator,name=iPhone 16' -derivedDataPath build build && xcrun simctl install booted build/Build/Products/Debug-iphonesimulator/App.app && xcrun simctl launch booted com.example.App` (adjust scheme, app name and bundle id).
+- **After the phase** add an **Approval**: check the app and decide.
 - **Physical device, TestFlight, App Store**: you need an Apple Developer account, certificates and profiles already set up on the Mac; Regia and the agents use the existing ones and don't create them. The first time, macOS may ask for permissions for Xcode or the simulator: accept them by hand.
 
 ---

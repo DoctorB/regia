@@ -447,6 +447,46 @@
         "progetto": "project",
         "personale": "personal"
       }
+    },
+    "show": {
+      "title": {
+        "dispositivo": "Show on phone",
+        "browser": "Open in browser",
+        "desktop": "Launch desktop app"
+      },
+      "refresh": "Detect again",
+      "project": "Project",
+      "device": "Device",
+      "command": "Command",
+      "address": "Address",
+      "emulator": "emulator",
+      "deviceChoice": "Which device",
+      "autoDevice": "Automatic: the first connected, preferring a phone",
+      "auto": "Automatic",
+      "notConnected": "not connected",
+      "platform": "Platform",
+      "buildLabel": "Build",
+      "build": {
+        "debug": "debug",
+        "release": "release"
+      },
+      "what": "What to open",
+      "whatProject": "The project, started by Regia",
+      "whatExisting": "A site already running (e.g. IIS)",
+      "addressHint": "Empty: the address printed by the development server.",
+      "browser": "Browser",
+      "browserDefault": "System default",
+      "more": "More options",
+      "custom": "Use a custom command",
+      "hint": {
+        "dispositivo": "When the phase starts, Regia detects the project (Flutter, React Native, Expo, Capacitor, Android with Gradle) and the connected phone, then builds, installs and opens the app. The choices above are optional.",
+        "browser": "When the phase starts, Regia detects the web project (Vite, Next.js, Angular, Astro, ASP.NET Core, Django, Laravel, static page…), starts it and opens the page in the browser as soon as it responds. The site stays up until the run ends.",
+        "desktop": "When the phase starts, Regia detects the app (Electron, Tauri, WPF, Windows Forms, WinUI, Avalonia, MAUI, Flutter, Compose Desktop) and launches it. The window stays open until you approve."
+      },
+      "backend": "Backend",
+      "backendOff": "not started",
+      "startBackend": "Also start the backend ({project}, {dir})",
+      "startBackendHint": "The site uses its APIs: Regia starts the backend along with it and stops it with the phase."
     }
   },
   "settings": {
@@ -476,7 +516,7 @@
       "projectSettings": "Load the project's CLAUDE.md",
       "projectSettingsHint": "And the .claude/settings.json file, if present."
     },
-    "edgesHint": "Link phases by dragging from the bottom handle of one to the top handle of the next. Select a link and press Delete to remove it.",
+    "edgesHint": "Connect phases by dragging from the bottom dot of one to the top dot of the next. To move a connection drag one of its ends onto another phase (dropped on empty space it is deleted). To delete it right-click it, or select it and press Delete.",
     "skills": {
       "title": "Skills",
       "found": {

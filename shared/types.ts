@@ -39,6 +39,72 @@ export interface PhaseConfig {
   readyTimeoutSec?: number;
   /** Solo fase "server": versione di Node da usare (es. 24, 22.23); vuoto = automatica da .nvmrc / engines. */
   nodeVersion?: string;
+  /**
+   * Solo fase "server": mostra il risultato senza configurazione. Se presente, Regia riconosce il progetto
+   * (e il dispositivo o il browser) e compone da sé comando e criterio di pronto: command e readyCheck non servono.
+   */
+  show?: ShowConfig;
+}
+
+/** Dove mostrare il risultato: sul telefono (APK o build iOS), nel browser, come app desktop. */
+export type ShowTarget = 'dispositivo' | 'browser' | 'desktop';
+export const SHOW_TARGETS: readonly ShowTarget[] = ['dispositivo', 'browser', 'desktop'];
+
+export type MobilePlatform = 'android' | 'ios';
+export type MobileBuild = 'debug' | 'release';
+export type BrowserChoice = 'chrome' | 'edge' | 'firefox' | 'safari';
+
+/** Scelte facoltative della fase "mostra": ciò che manca è deciso automaticamente. */
+export interface ShowConfig {
+  target: ShowTarget;
+  /** Dispositivo: piattaforma da usare quando il progetto ne ha più di una. */
+  platform?: MobilePlatform;
+  /** Dispositivo: id (seriale adb, UDID, id di flutter devices); vuoto = il primo collegato, preferendo uno fisico. */
+  device?: string;
+  /** Dispositivo: tipo di build; vuoto = quella che funziona da sola sul telefono. */
+  build?: MobileBuild;
+  /** Browser in cui aprire la pagina; vuoto = quello predefinito del sistema. */
+  browser?: BrowserChoice;
+  /** Browser: non avviare niente, aprire soltanto l'indirizzo (url) di un sito già attivo, ad esempio su IIS. */
+  existing?: boolean;
+  /** Browser: non avviare il backend trovato accanto al frontend (es. be/ con fe/). */
+  noCompanion?: boolean;
+}
+
+export interface MobileDevice {
+  id: string;
+  name: string;
+  platform: MobilePlatform;
+  emulator: boolean;
+}
+
+/** Esito del rilevamento: progetto, comando che verrà eseguito (o il motivo per cui manca) e come capire che è pronto. */
+export interface LaunchPlan {
+  target: ShowTarget;
+  /** Cartella del progetto, relativa alla cartella della fase ('' = la stessa). */
+  dir: string;
+  /** Tecnologia riconosciuta, come nome da mostrare (es. "Flutter", "Vite", "ASP.NET Core"). */
+  project?: string;
+  command?: string;
+  check: ReadyCheck;
+  /** Con check 'output': testo (o /espressione/) che indica che l'app è pronta. */
+  readyPattern?: string;
+  /** Indirizzo noto in anticipo (sito già attivo, file statico, porta predefinita); altrimenti letto dall'output. */
+  url?: string;
+  /** Variabili d'ambiente aggiunte al comando (es. ANDROID_SERIAL). */
+  env?: Record<string, string>;
+  /** Perché non è possibile procedere: progetto non riconosciuto, nessun dispositivo… */
+  problem?: Msg;
+  /** Avvisi che non bloccano. */
+  notes: Msg[];
+  /** Solo browser: il backend trovato accanto al frontend, avviato insieme se enabled. */
+  companion?: { dir: string; project: string; command: string; enabled: boolean };
+  /** Solo dispositivo. */
+  platforms?: MobilePlatform[];
+  devices?: MobileDevice[];
+  device?: MobileDevice;
+  platform?: MobilePlatform;
+  build?: MobileBuild;
 }
 
 export type ServiceStatus = 'avvio' | 'attivo' | 'fermato' | 'terminato' | 'errore' | 'simulato' | 'completato';

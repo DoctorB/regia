@@ -178,7 +178,22 @@
       "one": "{count} skill",
       "other": "{count} skill"
     },
-    "skillsAll": "tutte le skill"
+    "skillsAll": "tutte le skill",
+    "show": {
+      "dispositivo": "Sul telefono collegato",
+      "browser": "Nel browser",
+      "desktop": "Come app desktop"
+    },
+    "edgeDelete": "Elimina collegamento",
+    "goal": "Obiettivo",
+    "goalEmpty": "Nessun obiettivo: è incluso nelle istruzioni di ogni fase.",
+    "goalEdit": "Modifica",
+    "goalAdd": "Aggiungi",
+    "goalExpand": "Mostra tutto",
+    "goalCollapse": "Riduci",
+    "deleteKey": "Canc",
+    "goalHide": "Riduci a pulsante",
+    "goalShow": "Mostra l'obiettivo"
   },
   "welcome": {
     "title": "Benvenuto in Regia",
