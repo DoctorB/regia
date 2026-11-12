@@ -59,7 +59,7 @@ test('ciclo rilevato dalla validazione', () => {
 });
 
 test('regole generali fotografate e aggiunte al prompt; disattivabili', () => {
-  const eng = startRun(bugWf(), 'prova', 5);
+  const eng = startRun(bugWf(), 'prova');
   const r = eng.run.rules!;
   assert.equal(r.applied, true);
   assert.equal(r.globalPath, path.resolve(globalRules));
@@ -69,7 +69,7 @@ test('regole generali fotografate e aggiunte al prompt; disattivabili', () => {
   eng.cancel();
   const off = bugWf();
   off.settings.applyGeneralRules = false;
-  const eng2 = startRun(off, 'prova', 5);
+  const eng2 = startRun(off, 'prova');
   assert.equal(eng2.run.rules!.applied, false);
   assert.equal(rulesPrompt(eng2.run.rules), '');
   eng2.cancel();
@@ -88,7 +88,7 @@ test('principi di progettazione: indicazioni per tipo di fase, checklist nelle a
 
   const wf = bugWf();
   wf.settings.principles = ['kiss', 'dry'];
-  const eng = startRun(wf, 'prova', 5);
+  const eng = startRun(wf, 'prova');
   const run = eng.run;
   assert.ok(run.events.some((e) => e.text === 'Principi di progettazione applicati alle fasi: KISS, DRY.'));
   await waitFor(() => run.nodes.approvazione.status === 'attesa_intervento');
@@ -97,7 +97,7 @@ test('principi di progettazione: indicazioni per tipo di fase, checklist nelle a
 });
 
 test('esecuzione di prova completa con approvazione e ripresa con feedback', async () => {
-  const eng = startRun(bugWf(), 'prova', 5);
+  const eng = startRun(bugWf(), 'prova');
   const run = eng.run;
   await waitFor(() => run.nodes.approvazione.status === 'attesa_intervento');
   assert.equal(run.status, 'attesa_intervento');
@@ -154,10 +154,10 @@ const phase = (p: Partial<PhaseConfig> & Pick<PhaseConfig, 'label' | 'kind' | 'i
   role: 'Sviluppatore.', model: 'sonnet', allowedTools: ['Read', 'Edit', 'Bash'], maxTurns: 10, contextMode: 'sintesi', reuseResult: false, ...p,
 });
 
-test('errore, blocco, parallelo, subagenti, riuso e limite di spesa', async () => {
+test('errore, blocco, parallelo, subagenti e riuso', async () => {
   const wf: Workflow = {
     id: 'wf_interventi', name: 'Interventi', description: '', updatedAt: '',
-    settings: { projectDir, goal: 'Prova', maxParallel: 2, loadProjectSettings: false, applyGeneralRules: true, runBudgetUsd: 5 },
+    settings: { projectDir, goal: 'Prova', maxParallel: 2, loadProjectSettings: false, applyGeneralRules: true },
     nodes: [
       { id: 'analisi', position: { x: 0, y: 0 }, data: phase({ label: 'Analisi', kind: 'analisi', instructions: '[simula-errore] Analizza.', model: 'opus', allowedTools: ['Read', 'Glob', 'Grep', 'Agent'], reuseResult: true }) },
       { id: 'impl_a', position: { x: 1, y: 0 }, data: phase({ label: 'A', kind: 'implementazione', instructions: '[simula-blocco] Parte A.' }) },
@@ -170,7 +170,7 @@ test('errore, blocco, parallelo, subagenti, riuso e limite di spesa', async () =
       { id: 'e3', source: 'impl_a', target: 'test' }, { id: 'e4', source: 'impl_b', target: 'test' }, { id: 'e5', source: 'test', target: 'ok' },
     ],
   };
-  const eng = startRun(wf, 'prova', 5);
+  const eng = startRun(wf, 'prova');
   const run = eng.run;
   await waitFor(() => run.nodes.analisi.status === 'fallita' && Boolean(run.nodes.analisi.pendingActions));
   assert.equal(run.nodes.analisi.attempts[0].usageSource, 'parziale');
@@ -186,17 +186,11 @@ test('errore, blocco, parallelo, subagenti, riuso e limite di spesa', async () =
   assert.ok(run.nodes.analisi.attempts[1].usage.byModel['sim-haiku'].outputTokens > 0);
 
   // Seconda esecuzione: l'analisi (riuso attivo) viene riusata.
-  const eng2 = startRun(wf, 'prova', 5);
+  const eng2 = startRun(wf, 'prova');
   await waitFor(() => eng2.run.nodes.analisi.status !== 'in_attesa' && eng2.run.nodes.analisi.status !== 'attiva');
   assert.equal(eng2.run.nodes.analisi.status, 'riusata');
   assert.equal(eng2.run.nodes.analisi.attempts[0].usage.costUsd, 0);
   eng2.cancel();
-
-  // Limite di spesa minimo: la prima fase si ferma per budget.
-  const eng3 = startRun(bugWf(), 'prova', 0.0001);
-  await waitFor(() => Boolean(eng3.run.nodes.analisi.pendingActions));
-  assert.match(eng3.run.nodes.analisi.attempts[0].error ?? '', /limite di spesa/);
-  eng3.cancel();
 });
 
 test('continua da un\'esecuzione completata: solo le fasi nuove, correzione sulla sessione originale', async () => {
@@ -204,7 +198,7 @@ test('continua da un\'esecuzione completata: solo le fasi nuove, correzione sull
   const { serverT } = await import('../i18n.ts');
   const { planContinuation } = await import('../engine.ts');
   const wf = fromTemplate(templates.find((t) => t.id === 'nuova-funzionalita')!);
-  const eng1 = startRun(wf, 'prova', 10);
+  const eng1 = startRun(wf, 'prova');
   const r1 = eng1.run;
   await waitFor(() => r1.nodes.ok_piano.status === 'attesa_intervento');
   await eng1.human('ok_piano', 'approva');
@@ -227,7 +221,7 @@ test('continua da un\'esecuzione completata: solo le fasi nuove, correzione sull
   assert.deepEqual(plan.toRun.map((x) => x.nodeId), ['anteprima', 'ok_risultato', 'pubblica']);
   assert.equal(plan.reused.length, 6);
 
-  const eng2 = startRun(wf2, 'prova', 10, r1);
+  const eng2 = startRun(wf2, 'prova', r1);
   const r2 = eng2.run;
   assert.equal(r2.continuedFrom, r1.id);
   await waitFor(() => r2.nodes.ok_risultato.status === 'attesa_intervento');
@@ -376,13 +370,13 @@ test('workflow in inglese: eventi, protocollo e testi simulati nella lingua del 
     nodes: [{ id: 'analysis', position: { x: 0, y: 0 }, data: phase({ label: 'Analysis', kind: 'analisi', instructions: 'Analyse.', allowedTools: ['Read'] }) }],
     edges: [],
   };
-  const eng = startRun(wf, 'prova', 5);
+  const eng = startRun(wf, 'prova');
   const run = eng.run;
   await waitFor(() => run.status === 'completata');
   assert.equal(run.events[0].text, 'Run started in dry-run mode (no paid calls).');
   assert.deepEqual(run.events[0].msg, { key: 'events.runStarted.test', params: undefined });
   assert.ok(run.events.some((e) => e.text.startsWith('General rules applied to every phase')));
-  assert.ok(run.events.some((e) => e.msg?.key === 'events.phaseStarted.initialLimit' && e.text.startsWith('Analysis: started. Model: sonnet')));
+  assert.ok(run.events.some((e) => e.msg?.key === 'events.phaseStarted.initial' && e.text.startsWith('Analysis: started. Model: sonnet')));
   assert.ok(run.events.some((e) => e.text === 'Run completed.'));
   // Il testo simulato dell'agente segue la lingua: "DECISION:" riconosciuto e tolto dal testo della decisione.
   const declared = run.events.filter((e) => e.kind === 'decisione' && e.source === 'dichiarata').map((e) => e.text);
@@ -396,7 +390,7 @@ test('workflow in inglese: eventi, protocollo e testi simulati nella lingua del 
 test('motivi della continuazione e risposte di errore localizzabili', async () => {
   const { planContinuation, RegiaError } = await import('../engine.ts');
   const wf = bugWf();
-  const eng = startRun(wf, 'prova', 5);
+  const eng = startRun(wf, 'prova');
   await assert.rejects(eng.human('analisi', 'approva'), (e: unknown) => e instanceof RegiaError && e.msg.key === 'api.actionUnavailable' && /non disponibile/.test(e.message));
   eng.cancel();
   const wf2 = structuredClone(wf);
@@ -416,7 +410,7 @@ test('sospendi e riprendi: stessa sessione con la cache valida, riassunto con la
   process.env.REGIA_MOCK_SPEED = '60';
   try {
     // 1. Sospensione durante l'analisi, ripresa entro la durata della cache: stessa sessione.
-    const eng = startRun(bugWf(), 'prova', 5);
+    const eng = startRun(bugWf(), 'prova');
     const id = eng.run.id;
     const analisi = () => eng.run.nodes.analisi;
     await waitFor(() => Boolean(analisi().attempts[0]?.sessionId) && eng.run.events.some((e) => e.kind === 'strumento' && e.nodeId === 'analisi'));
@@ -459,7 +453,7 @@ test('sospendi e riprendi: stessa sessione con la cache valida, riassunto con la
 
     // 3. Cache scaduta: sessione nuova con il riassunto del lavoro interrotto.
     process.env.REGIA_CACHE_TTL_SEC = '0';
-    const eng4 = startRun(bugWf(), 'prova', 5);
+    const eng4 = startRun(bugWf(), 'prova');
     await waitFor(() => Boolean(eng4.run.nodes.analisi.attempts[0]?.sessionId));
     await eng4.suspend();
     const eng5 = resumeRun(eng4.run.id);
@@ -482,7 +476,7 @@ test('Regia chiuso durante un\'esecuzione: all\'avvio diventa interrotta e si ri
   const speed = process.env.REGIA_MOCK_SPEED;
   process.env.REGIA_MOCK_SPEED = '60';
   try {
-    const eng = startRun(bugWf(), 'prova', 5);
+    const eng = startRun(bugWf(), 'prova');
     await waitFor(() => Boolean(eng.run.nodes.analisi.attempts[0]?.sessionId));
     // Stato salvato al momento della chiusura improvvisa: fase attiva, tentativo attivo.
     const crashed = structuredClone(eng.run);
@@ -511,7 +505,7 @@ test('Regia chiuso durante un\'esecuzione: all\'avvio diventa interrotta e si ri
 
 test('allineamento e verifica: esecuzione di riferimento passata alle fasi, correzione dal test funzionale', async () => {
   // Esecuzione della funzionalità da allineare.
-  const feat = startRun(bugWf(), 'prova', 5);
+  const feat = startRun(bugWf(), 'prova');
   await waitFor(() => feat.run.nodes.approvazione.status === 'attesa_intervento');
   await feat.human('approvazione', 'approva');
   await waitFor(() => feat.run.status === 'completata');
@@ -521,7 +515,7 @@ test('allineamento e verifica: esecuzione di riferimento passata alle fasi, corr
   assert.ok(store.listTemplates('en').some((t) => t.id === 'allineamento-verifica' && t.name === 'Sync and verify'));
   const wf = fromTemplate(tpl);
   assert.deepEqual(validateWorkflow(wf, 'prova'), [], 'il preset non ha errori né avvisi');
-  const eng = startRun(wf, 'prova', 5, undefined, feat.run);
+  const eng = startRun(wf, 'prova', undefined, feat.run);
   const r = eng.run;
   const ref = r.reference!;
   assert.equal(ref.runId, feat.run.id);
@@ -546,10 +540,10 @@ test('allineamento e verifica: esecuzione di riferimento passata alle fasi, corr
   assert.ok(report.includes(`| Esecuzione di riferimento | ${feat.run.workflowName} · \`${feat.run.id}\` |`));
 
   // Una continuazione mantiene il riferimento; senza l'impostazione nel workflow il riferimento è ignorato.
-  const cont = startRun(wf, 'prova', 5, r);
+  const cont = startRun(wf, 'prova', r);
   assert.equal(cont.run.reference?.runId, feat.run.id);
   cont.cancel();
-  const off = startRun({ ...wf, settings: { ...wf.settings, referenceRun: false } }, 'prova', 5, undefined, feat.run);
+  const off = startRun({ ...wf, settings: { ...wf.settings, referenceRun: false } }, 'prova', undefined, feat.run);
   assert.equal(off.run.reference, undefined);
   off.cancel();
 });

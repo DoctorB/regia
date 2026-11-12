@@ -132,8 +132,6 @@
     "sdkExecutable": "eseguibile del SDK",
     "whatHappens": "Cosa succederà",
     "agentPhases": "Fasi con agenti",
-    "maxSpend": "Spesa massima",
-    "noLimit": "nessun limite",
     "generalRules": "Regole generali",
     "rulesOff": "non applicate",
     "rulesOn": "applicate a ogni fase",
@@ -157,7 +155,6 @@
       "other": "{count} turni"
     },
     "freeTurns": "turni liberi",
-    "maxBudget": "max ${amount}",
     "reuse": "riuso",
     "noCommand": "nessun comando",
     "waitsForYou": "Si ferma finché non decidi",

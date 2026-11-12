@@ -50,14 +50,12 @@ function configDiff(a: Run, b: Run): string[] {
     if (c.allowedTools.join() !== d.allowedTools.join()) out.push(t('compare.diff.tools', { label: l, from: c.allowedTools.join(', ') || '—', to: d.allowedTools.join(', ') || '—' }));
     if (c.contextMode !== d.contextMode) out.push(t('compare.diff.context', { label: l, from: c.contextMode, to: d.contextMode }));
     if (c.maxTurns !== d.maxTurns) out.push(t('compare.diff.maxTurns', { label: l, from: c.maxTurns ?? '∞', to: d.maxTurns ?? '∞' }));
-    if (c.maxBudgetUsd !== d.maxBudgetUsd) out.push(t('compare.diff.phaseBudget', { label: l, from: c.maxBudgetUsd ?? '—', to: d.maxBudgetUsd ?? '—' }));
     if (c.reuseResult !== d.reuseResult) out.push(t('compare.diff.reuse', { label: l, from: yesNo(c.reuseResult), to: yesNo(d.reuseResult) }));
   }
   for (const na of A.nodes) if (!B.nodes.some((n) => n.id === na.id)) out.push(t('compare.diff.phaseRemoved', { label: na.data.label }));
   if (JSON.stringify(A.edges.map((e) => `${e.source}>${e.target}`).sort()) !== JSON.stringify(B.edges.map((e) => `${e.source}>${e.target}`).sort())) out.push(t('compare.diff.edges'));
   if (A.settings.goal !== B.settings.goal) out.push(t('compare.diff.goal'));
   if (A.settings.loadProjectSettings !== B.settings.loadProjectSettings) out.push(t('compare.diff.projectSettings'));
-  if (A.settings.runBudgetUsd !== B.settings.runBudgetUsd) out.push(t('compare.diff.runBudget', { from: A.settings.runBudgetUsd ?? '—', to: B.settings.runBudgetUsd ?? '—' }));
   return out;
 }
 

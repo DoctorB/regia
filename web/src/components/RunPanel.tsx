@@ -62,8 +62,6 @@ export function RunPanel({ run, runs, selectedNode, onSelectNode, onOpenRun, onC
   const doneCount = ordered.filter((n) => ['completata', 'riusata', 'saltata'].includes(run.nodes[n.id]?.status)).length;
   const decisions = run.events.filter((e) => e.kind === 'decisione').length;
   const rs = RUN_STATUS_META[run.status];
-  const cost = run.totals.costUsd ?? 0;
-  const budgetPct = run.budgetUsd ? Math.min(100, (cost / run.budgetUsd) * 100) : 0;
   const totalTok = run.totals.inputTokens + run.totals.outputTokens + run.totals.cacheCreationInputTokens + run.totals.cacheReadInputTokens;
 
   const resumable = RESUMABLE.includes(run.status);
@@ -132,10 +130,6 @@ export function RunPanel({ run, runs, selectedNode, onSelectNode, onOpenRun, onC
           <div className="metric">
             <span className="metric-label">{run.mode === 'prova' ? t('run.metrics.costSimulated') : t('run.metrics.costEstimated')}</span>
             <span className="metric-value num">{fmtUsd(run.totals.costUsd, 3)}</span>
-            {run.budgetUsd
-              ? <span className="meter" title={t('run.metrics.budgetPct', { pct: Math.round(budgetPct), budget: fmtUsd(run.budgetUsd, 2) })}><span style={{ width: `${budgetPct}%` }} className={budgetPct > 85 ? 'hot' : ''} /></span>
-              : <span className="metric-sub">{t('run.metrics.noLimit')}</span>}
-            {run.budgetUsd ? <span className="metric-sub">{t('run.metrics.limit', { budget: fmtUsd(run.budgetUsd, 2) })}</span> : null}
           </div>
           <div className="metric">
             <span className="metric-label">{t('run.metrics.phasesDone')}</span>

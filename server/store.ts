@@ -42,22 +42,34 @@ export function listTemplates(lang = 'it'): WorkflowTemplate[] {
   return [...byFile.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([, t]) => { const { _file, ...rest } = t as WorkflowTemplate & { _file: string }; void _file; return rest as WorkflowTemplate; });
 }
 
+/** Toglie i limiti di spesa salvati dalle versioni precedenti: non sono più usati. */
+function dropLegacy(wf: Workflow): Workflow {
+  delete (wf.settings as { runBudgetUsd?: number }).runBudgetUsd;
+  for (const n of wf.nodes ?? []) delete (n.data as { maxBudgetUsd?: number }).maxBudgetUsd;
+  return wf;
+}
+
+function readWorkflow(file: string): Workflow {
+  return dropLegacy(JSON.parse(fs.readFileSync(file, 'utf8')) as Workflow);
+}
+
 export function listWorkflows(): Workflow[] {
   return fs
     .readdirSync(WF_DIR)
     .filter((f) => f.endsWith('.json'))
-    .map((f) => JSON.parse(fs.readFileSync(path.join(WF_DIR, f), 'utf8')) as Workflow)
+    .map((f) => readWorkflow(path.join(WF_DIR, f)))
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
 }
 
 export function getWorkflow(id: string): Workflow | null {
   assertId(id);
   const f = path.join(WF_DIR, `${id}.json`);
-  return fs.existsSync(f) ? (JSON.parse(fs.readFileSync(f, 'utf8')) as Workflow) : null;
+  return fs.existsSync(f) ? readWorkflow(f) : null;
 }
 
 export function saveWorkflow(wf: Workflow) {
   assertId(wf.id);
+  dropLegacy(wf);
   wf.updatedAt = new Date().toISOString();
   writeJsonAtomic(path.join(WF_DIR, `${wf.id}.json`), wf);
   return wf;

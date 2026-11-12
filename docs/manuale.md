@@ -65,8 +65,8 @@ poi riavvia con `npm start`. Il controllo legge solo il numero di versione pubbl
   - *Istruzioni*: cosa deve fare, idealmente con i file da guardare.
   - *Modello*: Haiku ($) per compiti semplici (test, controlli), Sonnet ($$) come scelta equilibrata, Opus ($$$) per i compiti più difficili.
   - *Strumenti*: attiva solo quelli necessari. Quelli con la matita modificano file o eseguono comandi.
-  - *Turni massimi* e *Spesa massima*: tetti di sicurezza.
-- Senza fasi selezionate il pannello mostra le **impostazioni del workflow**: cartella, obiettivo, limite di spesa per esecuzione, fasi in parallelo, regole.
+  - *Turni massimi*: tetto di sicurezza.
+- Senza fasi selezionate il pannello mostra le **impostazioni del workflow**: cartella, obiettivo, fasi in parallelo, regole.
 - L'indicatore in alto dice se il workflow è **Valido**: cliccalo per vedere errori e avvisi e andare alla fase interessata. Gli errori bloccano l'avvio. **Salva** compare quando ci sono modifiche (anche `Ctrl+S`).
 
 ### Tipi di fase
@@ -83,11 +83,11 @@ poi riavvia con `npm start`. Il controllo legge solo il numero di versione pubbl
 ## 4. Prova, poi esegui
 
 - **Prova**: esegue tutto con agenti simulati. Serve a controllare il percorso e le interazioni, gratis.
-- **Esegui**: esecuzione reale. Mostra un riepilogo (autenticazione, modelli, fasi che possono modificare file, comandi locali, limite di spesa) e parte solo dopo la tua conferma.
+- **Esegui**: esecuzione reale. Mostra un riepilogo (autenticazione, modelli, fasi che possono modificare file, comandi locali) e parte solo dopo la tua conferma.
 
 ![Esecuzione](img/03-esecuzione.png)
 
-Sul diagramma ogni fase mostra lo stato (in attesa, attiva, completata, fallita, bloccata, in attesa di te), cosa sta facendo e l'ultima decisione dichiarata; **Segui fase attiva** tiene inquadrata la fase in corso. In alto nel pannello trovi costo e limite di spesa, fasi completate e una barra di avanzamento (clicca un segmento per selezionare la fase). **Annulla** ferma tutto.
+Sul diagramma ogni fase mostra lo stato (in attesa, attiva, completata, fallita, bloccata, in attesa di te), cosa sta facendo e l'ultima decisione dichiarata; **Segui fase attiva** tiene inquadrata la fase in corso. In alto nel pannello trovi il costo, le fasi completate e una barra di avanzamento (clicca un segmento per selezionare la fase). **Annulla** ferma tutto.
 
 ---
 
@@ -139,7 +139,7 @@ Per i progetti Node (con `package.json`) Regia fa anche di più: sceglie da sola
 
 Su un Mac con **Xcode** (e i suoi strumenti da riga di comando: `xcode-select --install`) Regia orchestra anche le app iOS: Regia si installa e si avvia come su Windows.
 
-- **Agenti**: compilano e lanciano i test con `xcodebuild` tramite Bash; abilita Bash nelle fasi che devono farlo. Le compilazioni sono lente: alza il numero massimo di turni e il limite di spesa delle fasi interessate.
+- **Agenti**: compilano e lanciano i test con `xcodebuild` tramite Bash; abilita Bash nelle fasi che devono farlo. Le compilazioni sono lente: alza il numero massimo di turni delle fasi interessate.
 - **Fase pronta App iOS (simulatore)**: compila per il simulatore, lo avvia, installa e apre l'app, con criterio "Il comando termina con successo" (attesa fino a 15 minuti). Prima di usarla adatta tre valori nel comando: lo **schema** (`-scheme App`), il **nome dell'app** (`App.app`) e il **bundle id** (`com.example.App`); se serve cambia anche il simulatore (`iPhone 16`, l'elenco è in `xcrun simctl list devices`). Per un workspace CocoaPods aggiungi `-workspace NomeApp.xcworkspace`.
 - **Altri framework**: Flutter → `flutter run -d "iPhone 16"` con testo atteso `Flutter run key commands`; React Native → `npx react-native run-ios` con "Il comando termina con successo"; Expo → `npx expo run:ios` con testo atteso `Logs for your project`.
 - **Dopo la fase** metti un'**Approvazione**: guardi l'app nel simulatore e decidi.

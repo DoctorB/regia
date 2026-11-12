@@ -19,7 +19,6 @@ export interface PhaseConfig {
   model: string;
   allowedTools: string[];
   maxTurns?: number;
-  maxBudgetUsd?: number;
   /** Quanto dei risultati delle fasi precedenti passare come contesto. */
   contextMode: ContextMode;
   /** Riusa il risultato di un'esecuzione precedente se configurazione, input e file del progetto non sono cambiati. */
@@ -88,8 +87,6 @@ export interface WorkflowSettings {
   projectDir: string;
   /** Obiettivo generale, incluso nel prompt di ogni fase. */
   goal: string;
-  /** Limite di spesa stimata per esecuzione, in USD. */
-  runBudgetUsd?: number;
   maxParallel: number;
   /** Carica CLAUDE.md e .claude/settings.json del progetto. */
   loadProjectSettings: boolean;
@@ -352,7 +349,6 @@ export interface Run {
   status: RunStatus;
   startedAt: string;
   endedAt?: string;
-  budgetUsd?: number;
   nodes: Record<string, NodeRunState>;
   events: RunEvent[];
   totals: UsageTotals;

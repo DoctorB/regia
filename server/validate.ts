@@ -58,8 +58,6 @@ export function validateWorkflow(wf: Workflow, mode: 'prova' | 'reale' = 'prova'
   else if (!path.isAbsolute(dir)) err(msg('validate.projectDirNotAbsolute'));
   else if (!fs.existsSync(dir) || !fs.statSync(dir).isDirectory()) err(msg('validate.projectDirMissing', { dir }));
 
-  if (wf.settings.runBudgetUsd !== undefined && !(wf.settings.runBudgetUsd > 0)) err(msg('validate.runBudgetInvalid'));
-  if (mode === 'reale' && wf.settings.runBudgetUsd === undefined) warn(msg('validate.noRunBudget'));
   if (!(wf.settings.maxParallel >= 1 && wf.settings.maxParallel <= 8)) err(msg('validate.maxParallelRange'));
 
   const hasIn = new Set(wf.edges.map((e) => e.target));
@@ -99,7 +97,6 @@ export function validateWorkflow(wf: Workflow, mode: 'prova' | 'reale' = 'prova'
     }
     if (d.maxTurns !== undefined && !(Number.isInteger(d.maxTurns) && d.maxTurns > 0)) err(msg('validate.invalidMaxTurns', { name }), n.id);
     if (d.maxTurns === undefined) warn(msg('validate.noMaxTurns', { name }), n.id);
-    if (d.maxBudgetUsd !== undefined && !(d.maxBudgetUsd > 0)) err(msg('validate.invalidBudget', { name }), n.id);
     if (d.model && !/^[a-zA-Z0-9.\-_[\]:]+$/.test(d.model)) err(msg('validate.invalidModel', { name }), n.id);
     if (d.skills && d.skills.length) {
       skills ??= discoverSkills(dir, skillSources(wf.settings));

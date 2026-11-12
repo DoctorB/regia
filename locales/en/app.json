@@ -132,8 +132,6 @@
     "sdkExecutable": "SDK executable",
     "whatHappens": "What will happen",
     "agentPhases": "Agent phases",
-    "maxSpend": "Maximum spend",
-    "noLimit": "no limit",
     "generalRules": "General rules",
     "rulesOff": "not applied",
     "rulesOn": "applied to every phase",
@@ -157,7 +155,6 @@
       "other": "{count} turns"
     },
     "freeTurns": "unlimited turns",
-    "maxBudget": "max ${amount}",
     "reuse": "reuse",
     "noCommand": "no command",
     "waitsForYou": "Stops until you decide",

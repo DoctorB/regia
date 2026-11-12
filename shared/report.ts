@@ -44,7 +44,7 @@ export function runReport(run: Run, t: Translate, locale: string, opts: { compac
     [t('report.fields.duration'), fmtDuration(end - Date.parse(run.startedAt))],
     [t('report.fields.project'), settings.projectDir ? `\`${settings.projectDir}\`` : '—'],
     [run.mode === 'prova' ? t('run.metrics.costSimulated') : t('run.metrics.costEstimated'),
-      run.budgetUsd ? `${fmtUsd(run.totals.costUsd)} (${t('run.metrics.limit', { budget: `$${run.budgetUsd.toFixed(2)}` })})` : fmtUsd(run.totals.costUsd)],
+      fmtUsd(run.totals.costUsd)],
     [t('run.metrics.tokens'), num(tokens)],
   ];
   if (run.continuedFrom) rows.push([t('report.fields.continuedFrom'), `\`${run.continuedFrom}\``]);

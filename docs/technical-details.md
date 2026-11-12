@@ -89,9 +89,7 @@ Source: the `result` message of each `query()` call.
 
 **Estimates, not billing.** `total_cost_usd` and `costUSD` are computed locally by the SDK from the price table bundled with its version. With an API key, the actual cost is in the Console. With a claude.ai login, usage counts against the plan limits (or extra credits, if enabled) and the dollar figure is a list-price equivalent. In trial mode the rates are fictitious.
 
-**Spending limit**: the per-run limit applies to the estimate. Before each phase, the remaining amount is split among the active phases and passed as `maxBudgetUsd`, together with the phase's own limit if set. If the limit is exceeded, the phase ends with `error_max_budget_usd` and the run pauses.
-
-**Optimizations**: rules applied to measured data: dominant phase, expensive model on simple tasks, much more context than other phases, repeated identical calls, close to the turn limit, retries after errors, correction rounds, reuse candidates, consecutive read-only phases, cache written more than read, and no spending limit. Each suggestion states the quality trade-off. No "savings" are estimated: the effect is checked with Compare.
+**Optimizations**: rules applied to measured data: dominant phase, expensive model on simple tasks, much more context than other phases, repeated identical calls, close to the turn limit, retries after errors, correction rounds, reuse candidates, consecutive read-only phases and cache written more than read. Each suggestion states the quality trade-off. No "savings" are estimated: the effect is checked with Compare.
 
 ## Authentication and cost of real runs
 
@@ -102,7 +100,7 @@ The SDK uses the Claude Code executable and its credentials, in this order:
 
 The SDK documentation states that third-party products must not offer claude.ai login and must use API keys. For personal, local use the login works, but check your organization's policies.
 
-The "Esecuzione reale" (real run) dialog shows the authentication method, models, phases that can edit files or run commands, local commands and spending limit, and asks for explicit confirmation. With `REGIA_DISABLE_REAL=1` real runs are disabled.
+The "Esecuzione reale" (real run) dialog shows the authentication method, models, phases that can edit files or run commands and local commands, and asks for explicit confirmation. With `REGIA_DISABLE_REAL=1` real runs are disabled.
 
 ### Agent permissions
 
@@ -120,7 +118,7 @@ Hooks, plugins and personal settings from `~/.claude` are not loaded; personal r
 
 ## Trial mode
 
-"Prova" (trial run) runs the workflow with simulated agents: no network calls and no cost, fictitious rates. Simulated messages have the same shape as the SDK's (duplicate IDs for parallel tool calls, subagents, resumed sessions with restored totals, crashes with zeroed values), so usage accounting follows the same code path as real runs. In a phase's instructions you can write `[simula-errore]`, `[simula-blocco]` or `[simula-budget]` to try the interventions (error, block, budget). The Run app phase is simulated and no command runs.
+"Prova" (trial run) runs the workflow with simulated agents: no network calls and no cost, fictitious rates. Simulated messages have the same shape as the SDK's (duplicate IDs for parallel tool calls, subagents, resumed sessions with restored totals, crashes with zeroed values), so usage accounting follows the same code path as real runs. In a phase's instructions you can write `[simula-errore]` or `[simula-blocco]` to try the interventions (error, block). The Run app phase is simulated and no command runs.
 
 ## Languages
 
@@ -153,7 +151,7 @@ The interface, Regia's messages and the instructions sent to agents are translat
 
 ```
 server/            Express API + SSE, execution engine, usage accounting, simulator, suggestions
-  engine.ts        phase graph, parallelism, budget, interventions, resumes, reuse
+  engine.ts        phase graph, parallelism, interventions, resumes, reuse
   usage.ts         counting rules (dedup, subagents, resumes, crashes)
   mockQuery.ts     trial mode
   insights.ts      optimization suggestions
@@ -176,7 +174,6 @@ templates/         starting presets (JSON)
 
 - Result quality is judged only through observable signals: declared outcomes, approvals, attempts and final state. Regia does not assess the content.
 - Declared decisions depend on the agent following the response protocol. If the outcome block is missing, the phase uses the final text and reports it.
-- With several phases in parallel, the per-run spending limit is split up front, so the total may slightly exceed it if one phase uses less than its share and another more.
 - After a rejection, only the phases between the corrected one and the approval run again (including intermediate approvals, which are requested again). Other downstream phases already completed do not run again.
 - "Continue" carries over a phase only if it is identical and completed; a skipped or failed phase runs again. Resuming the original session requires Claude Code to still have the saved session (`~/.claude/projects`).
 - Reuse compares configuration, inputs and a fingerprint of the project files (path, size, modification time). It does not detect changes outside the folder.

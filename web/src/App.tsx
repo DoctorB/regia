@@ -536,7 +536,6 @@ function RealRunDialog({ env, wf, busy, onCancel, onConfirm }: { env: EnvInfo | 
           <div className="summary-head"><WorkflowIcon />{t('realRun.whatHappens')}</div>
           <dl className="kv">
             <dt>{t('realRun.agentPhases')}</dt><dd>{agents.length} · {models.join(', ')}</dd>
-            <dt>{t('realRun.maxSpend')}</dt><dd>{wf.settings.runBudgetUsd ? fmtUsd(wf.settings.runBudgetUsd, 2) : <span className="tone-warn">{t('realRun.noLimit')}</span>}</dd>
             <dt>{t('realRun.skills')}</dt><dd>{withSkills.length ? withSkills.join('; ') : t('realRun.noSkills')}</dd>
             <dt>{t('realRun.generalRules')}</dt><dd>{wf.settings.applyGeneralRules === false ? t('realRun.rulesOff') : t('realRun.rulesOn')}</dd>
           </dl>

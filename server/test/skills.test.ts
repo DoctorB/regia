@@ -100,7 +100,7 @@ test('esecuzione di prova: skill annunciate, usate e registrate come decisione; 
     ],
     edges: [{ id: 'e', source: 'pub', target: 'test' }],
   };
-  const eng = startRun(wf, 'prova', 5);
+  const eng = startRun(wf, 'prova');
   const run = eng.run;
   await waitFor(() => run.status === 'completata');
   const pub = run.events.filter((e) => e.nodeId === 'pub');

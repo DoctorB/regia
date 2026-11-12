@@ -24,9 +24,6 @@
     "metrics": {
       "costSimulated": "Costo simulato",
       "costEstimated": "Costo stimato",
-      "budgetPct": "{pct}% del limite di {budget}",
-      "noLimit": "nessun limite",
-      "limit": "limite {budget}",
       "phasesDone": "Fasi completate",
       "tokens": "Token"
     },
@@ -189,8 +186,6 @@
     "tiles": {
       "costSimulated": "Costo simulato",
       "costEstimated": "Costo stimato (SDK)",
-      "limit": "limite {budget}",
-      "noLimit": "nessun limite",
       "input": "Token di input",
       "output": "Token di output"
     },
@@ -274,12 +269,10 @@
       "tools": "{label}: strumenti {from} → {to}",
       "context": "{label}: contesto {from} → {to}",
       "maxTurns": "{label}: max turni {from} → {to}",
-      "phaseBudget": "{label}: limite fase {from} → {to}",
       "reuse": "{label}: riuso {from} → {to}",
       "edges": "Collegamenti tra le fasi modificati",
       "goal": "Obiettivo modificato",
       "projectSettings": "Caricamento CLAUDE.md del progetto modificato",
-      "runBudget": "Limite per esecuzione {from} → {to}",
       "skills": "{label}: skill {from} → {to}",
       "skillsAll": "tutte"
     },
@@ -420,9 +413,7 @@
     "limits": {
       "title": "Limiti",
       "maxTurns": "Turni massimi",
-      "maxBudget": "Spesa massima ($)",
-      "none": "nessuno",
-      "noneF": "nessuna"
+      "none": "nessuno"
     },
     "context": {
       "title": "Contesto e riuso",
@@ -471,8 +462,6 @@
     },
     "run": {
       "title": "Esecuzione",
-      "maxBudget": "Spesa massima ($)",
-      "maxBudgetHint": "Stima del SDK, per esecuzione.",
       "parallel": "Fasi in parallelo",
       "agentLanguage": "Lingua degli agenti",
       "agentLanguageHint": "Lingua del protocollo di risposta e delle regole inviate agli agenti.",

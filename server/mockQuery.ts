@@ -34,7 +34,6 @@ export interface MockOptions {
   phase: PhaseConfig;
   attemptIndex: number;
   resume?: string;
-  maxBudgetUsd?: number;
   signal: AbortSignal;
   stepMs?: number;
   /** Lingua del workflow: i testi simulati dell'agente la seguono. */
@@ -121,7 +120,6 @@ export async function* mockQuery(o: MockOptions): AsyncGenerator<Record<string, 
   const resumed = Boolean(o.resume);
   const failFirst = p.instructions.includes('[simula-errore]') && o.attemptIndex === 0;
   const blockFirst = p.instructions.includes('[simula-blocco]') && o.attemptIndex === 0;
-  const budgetHit = p.instructions.includes('[simula-budget]') && o.attemptIndex === 0;
   // Le fasi di implementazione hanno un contesto più ampio, così da produrre dati interessanti.
   const ctxBase = p.kind === 'implementazione' ? 26000 : p.kind === 'analisi' ? 14000 : 9000;
   let mainOutput = 0;
@@ -135,7 +133,6 @@ export async function* mockQuery(o: MockOptions): AsyncGenerator<Record<string, 
     u.inputTokens += inp; u.outputTokens += out; u.cacheCreationInputTokens += cc; u.cacheReadInputTokens += cr;
     u.costUSD += (inp * r[0] + out * r[1] + cc * r[2] + cr * r[3]) / 1e6;
   };
-  const spent = () => Object.values(mu).reduce((s, u) => s + u.costUSD, 0);
   const cumulative = () => {
     const out: Record<string, MU> = {};
     for (const src of [prev ?? {}, mu]) for (const [k, v] of Object.entries(src)) {
@@ -208,11 +205,6 @@ export async function* mockQuery(o: MockOptions): AsyncGenerator<Record<string, 
       // Crash simulato: il result di errore arriva con i valori azzerati, come documentato.
       const r = result('error_during_execution', t('mock.crash'), true);
       yield { ...r, total_cost_usd: 0, modelUsage: {}, usage: { input_tokens: 0, output_tokens: 0, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 } };
-      return;
-    }
-    const limit = budgetHit ? spent() * 0.5 : o.maxBudgetUsd;
-    if (limit !== undefined && spent() > limit) {
-      yield result('error_max_budget_usd', t('mock.budgetReached', { limit: limit.toFixed(4) }), true);
       return;
     }
   }

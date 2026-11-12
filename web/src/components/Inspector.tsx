@@ -233,7 +233,6 @@ export function PhaseInspector({ cfg, settings, issues, onChange, onDelete }: { 
           <Section title={t('inspector.limits.title')}>
             <div className="grid2">
               <Field label={t('inspector.limits.maxTurns')}><Num value={cfg.maxTurns} onChange={(v) => set('maxTurns', v)} min={1} placeholder={t('inspector.limits.none')} /></Field>
-              <Field label={t('inspector.limits.maxBudget')}><Num value={cfg.maxBudgetUsd} onChange={(v) => set('maxBudgetUsd', v)} step={0.05} placeholder={t('inspector.limits.noneF')} /></Field>
             </div>
           </Section>
 
@@ -287,7 +286,6 @@ export function WorkflowSettingsForm({ wf, groups = [], onChange, onShowRules }:
 
       <Section title={t('settings.run.title')}>
         <div className="grid2">
-          <Field label={t('settings.run.maxBudget')} hint={t('settings.run.maxBudgetHint')}><Num value={s.runBudgetUsd} onChange={(v) => set('runBudgetUsd', v)} step={0.1} placeholder={t('inspector.limits.noneF')} /></Field>
           <Field label={t('settings.run.parallel')}><Num value={s.maxParallel} onChange={(v) => set('maxParallel', v ?? 1)} min={1} /></Field>
         </div>
         <Switch checked={Boolean(s.referenceRun)} onChange={(v) => set('referenceRun', v || undefined)} label={t('settings.run.reference')} hint={t('settings.run.referenceHint')} />

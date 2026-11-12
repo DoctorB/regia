@@ -63,8 +63,8 @@ then restart with `npm start`. The check only reads the published version number
   - *Instructions*: what it must do, ideally naming the files to look at.
   - *Model*: Haiku ($) for simple tasks (tests, checks), Sonnet ($$) as the balanced choice, Opus ($$$) for the hardest tasks.
   - *Tools*: turn on only those needed. Tools with a pencil icon edit files or run commands.
-  - *Max turns* and *Max spend*: safety caps.
-- With no phase selected, the panel shows the **workflow settings**: folder, goal, spending limit per run, phases in parallel, rules.
+  - *Max turns*: safety cap.
+- With no phase selected, the panel shows the **workflow settings**: folder, goal, phases in parallel, rules.
 - The indicator at the top tells you whether the workflow is **Valid**: click it to see errors and warnings and jump to the phase concerned. Errors block the start. **Save** appears when there are changes (also `Ctrl+S`).
 
 ### Phase types
@@ -81,11 +81,11 @@ then restart with `npm start`. The check only reads the published version number
 ## 4. Try first, then run for real
 
 - **Dry run**: runs everything with simulated agents. Use it to check the flow and the interactions, for free.
-- **Run**: a real run. It shows a summary (authentication, models, phases that can edit files, local commands, spending limit) and starts only after you confirm.
+- **Run**: a real run. It shows a summary (authentication, models, phases that can edit files, local commands) and starts only after you confirm.
 
 ![Run](img/03-esecuzione.png)
 
-On the diagram each phase shows its state (waiting, active, completed, failed, blocked, waiting for you), what it is doing and the last declared decision; **Follow active phase** keeps the running phase in view. At the top of the panel you find cost and spending limit, completed phases and a progress bar (click a segment to select that phase). **Cancel** stops everything.
+On the diagram each phase shows its state (waiting, active, completed, failed, blocked, waiting for you), what it is doing and the last declared decision; **Follow active phase** keeps the running phase in view. At the top of the panel you find the cost, completed phases and a progress bar (click a segment to select that phase). **Cancel** stops everything.
 
 ---
 
@@ -137,7 +137,7 @@ For Node projects (with a `package.json`) Regia does more: it picks the required
 
 On a Mac with **Xcode** (and its command line tools: `xcode-select --install`) Regia also orchestrates iOS apps: Regia is installed and started just as on Windows.
 
-- **Agents**: they build and run tests with `xcodebuild` through Bash; enable Bash in the phases that need it. Builds are slow: raise the maximum turns and the spending limit of those phases.
+- **Agents**: they build and run tests with `xcodebuild` through Bash; enable Bash in the phases that need it. Builds are slow: raise the maximum turns of those phases.
 - **Ready-made iOS app (simulator) phase**: builds for the simulator, boots it, installs and opens the app, with the "The command succeeds" criterion (waits up to 15 minutes). Before using it, adjust three values in the command: the **scheme** (`-scheme App`), the **app name** (`App.app`) and the **bundle id** (`com.example.App`); change the simulator too if needed (`iPhone 16`, list them with `xcrun simctl list devices`). For a CocoaPods workspace add `-workspace AppName.xcworkspace`.
 - **Other frameworks**: Flutter → `flutter run -d "iPhone 16"` with expected text `Flutter run key commands`; React Native → `npx react-native run-ios` with "The command succeeds"; Expo → `npx expo run:ios` with expected text `Logs for your project`.
 - **After the phase** add an **Approval**: check the app in the simulator and decide.

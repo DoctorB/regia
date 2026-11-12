@@ -9,7 +9,6 @@
       "other": "Continua dall'esecuzione {from}: {count} fasi riprese senza chiamate ({phases})."
     },
     "continuedNone": "Continua dall'esecuzione {from}: 0 fasi riprese senza chiamate (nessuna).",
-    "budget": "Limite di spesa stimata per l'esecuzione: {amount} USD.",
     "rules": {
       "both": "Regole generali applicate a ogni fase: regole personali ({path}) e regole di Regia.",
       "global": "Regole generali applicate a ogni fase: regole personali ({path}).",
@@ -22,19 +21,13 @@
     "runCompleted": "Esecuzione completata.",
     "runPaused": "L'esecuzione è in pausa: serve un tuo intervento.",
     "runCancelled": "Esecuzione annullata.",
-    "notStartedBudget": "{label}: non avviata, limite di spesa dell'esecuzione raggiunto.",
     "reused": "{label}: risultato riusato dall'esecuzione {run} (configurazione, input e file del progetto invariati). Nessuna chiamata effettuata.",
     "phaseStarted": {
       "initial": "{label}: avviata. Modello: {model}; strumenti: {tools}.",
-      "initialLimit": "{label}: avviata. Modello: {model}; strumenti: {tools}; limite {limit} USD.",
       "resumed": "{label}: avviata (ripresa della sessione con feedback). Modello: {model}; strumenti: {tools}.",
-      "resumedLimit": "{label}: avviata (ripresa della sessione con feedback). Modello: {model}; strumenti: {tools}; limite {limit} USD.",
       "retry": "{label}: avviata (nuovo tentativo). Modello: {model}; strumenti: {tools}.",
-      "retryLimit": "{label}: avviata (nuovo tentativo). Modello: {model}; strumenti: {tools}; limite {limit} USD.",
       "interruptedSession": "{label}: avviata (ripresa della sessione interrotta). Modello: {model}; strumenti: {tools}.",
-      "interruptedSessionLimit": "{label}: avviata (ripresa della sessione interrotta). Modello: {model}; strumenti: {tools}; limite {limit} USD.",
-      "interruptedSummary": "{label}: avviata (sessione nuova con il riassunto del lavoro interrotto). Modello: {model}; strumenti: {tools}.",
-      "interruptedSummaryLimit": "{label}: avviata (sessione nuova con il riassunto del lavoro interrotto). Modello: {model}; strumenti: {tools}; limite {limit} USD."
+      "interruptedSummary": "{label}: avviata (sessione nuova con il riassunto del lavoro interrotto). Modello: {model}; strumenti: {tools}."
     },
     "defaultModel": "predefinito",
     "noTools": "nessuno",
@@ -141,13 +134,11 @@
     "reference": "Esecuzione di riferimento: {name} ({id}). Il suo resoconto viene passato a ogni fase."
   },
   "interventions": {
-    "budgetReached": "Limite di spesa dell'esecuzione raggiunto prima di avviare la fase.",
     "declaredKo": "Esito negativo dichiarato: {summary}",
     "maxFeedbackRounds": "Raggiunto il numero massimo di {count} cicli di correzione.",
     "serviceFailedLog": "{reason}\n\nUltime righe:\n{log}",
     "repairFailed": "\"{command}\" non è riuscito (codice {code}).\n\nUltime righe:\n{log}",
     "error": {
-      "phaseBudget": "limite di spesa della fase raggiunto",
       "maxTurns": "numero massimo di turni raggiunto",
       "cancelled": "Annullata"
     },
@@ -213,7 +204,6 @@
     "subagentSummary": "I test esistenti coprono i casi principali del modulo.",
     "thinking": "(ragionamento interno: non mostrato)",
     "crash": "Errore simulato: processo terminato inaspettatamente.",
-    "budgetReached": "Limite di spesa raggiunto ({limit} USD, simulato).",
     "summary": {
       "blocked": "Simulazione di blocco: serve una conferma umana prima di procedere.",
       "resumed": "Feedback applicato con una modifica mirata.",

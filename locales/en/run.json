@@ -24,9 +24,6 @@
     "metrics": {
       "costSimulated": "Simulated cost",
       "costEstimated": "Estimated cost",
-      "budgetPct": "{pct}% of the {budget} limit",
-      "noLimit": "no limit",
-      "limit": "limit {budget}",
       "phasesDone": "Phases completed",
       "tokens": "Tokens"
     },
@@ -189,8 +186,6 @@
     "tiles": {
       "costSimulated": "Simulated cost",
       "costEstimated": "Estimated cost (SDK)",
-      "limit": "limit {budget}",
-      "noLimit": "no limit",
       "input": "Input tokens",
       "output": "Output tokens"
     },
@@ -274,12 +269,10 @@
       "tools": "{label}: tools {from} → {to}",
       "context": "{label}: context {from} → {to}",
       "maxTurns": "{label}: max turns {from} → {to}",
-      "phaseBudget": "{label}: phase limit {from} → {to}",
       "reuse": "{label}: reuse {from} → {to}",
       "edges": "Links between phases changed",
       "goal": "Goal changed",
       "projectSettings": "Loading of the project's CLAUDE.md changed",
-      "runBudget": "Per-run limit {from} → {to}",
       "skills": "{label}: skills {from} → {to}",
       "skillsAll": "all"
     },
@@ -420,9 +413,7 @@
     "limits": {
       "title": "Limits",
       "maxTurns": "Max turns",
-      "maxBudget": "Max spend ($)",
-      "none": "none",
-      "noneF": "none"
+      "none": "none"
     },
     "context": {
       "title": "Context and reuse",
@@ -471,8 +462,6 @@
     },
     "run": {
       "title": "Run",
-      "maxBudget": "Max spend ($)",
-      "maxBudgetHint": "SDK estimate, per run.",
       "parallel": "Parallel phases",
       "agentLanguage": "Agent language",
       "agentLanguageHint": "Language of the response protocol and of the rules sent to the agents.",

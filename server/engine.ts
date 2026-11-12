@@ -83,7 +83,7 @@ export function makeReference(ref: Run, lang: string): RunReference {
  * reference: esecuzione di riferimento scelta all'avvio (solo per i workflow con referenceRun);
  * in una continuazione senza nuova scelta resta quella dell'esecuzione di partenza.
  */
-export function startRun(wf: Workflow, mode: RunMode, budgetUsd?: number, from?: Run, reference?: Run): RunEngine {
+export function startRun(wf: Workflow, mode: RunMode, from?: Run, reference?: Run): RunEngine {
   const plan = from ? planContinuation(wf, from) : undefined;
   const run: Run = {
     id: `run_${new Date().toISOString().replace(/[-:T.Z]/g, '').slice(0, 14)}_${randomUUID().slice(0, 6)}`,
@@ -93,7 +93,6 @@ export function startRun(wf: Workflow, mode: RunMode, budgetUsd?: number, from?:
     mode,
     status: 'in_corso',
     startedAt: new Date().toISOString(),
-    budgetUsd,
     nodes: Object.fromEntries(wf.nodes.map((n) => [n.id, { nodeId: n.id, status: 'in_attesa', attempts: [], feedbackRounds: 0 } satisfies NodeRunState])),
     events: [],
     totals: emptyTotals(),
@@ -261,7 +260,6 @@ export class RunEngine {
     }
     const ref = this.run.reference;
     if (ref) this.say('run', msg('events.reference', { name: ref.workflowName, id: ref.runId }));
-    if (this.run.budgetUsd) this.say('limite', msg('events.budget', { amount: this.run.budgetUsd.toFixed(2) }));
     const r = this.run.rules;
     if (r?.applied) {
       if (r.global && r.regia) this.say('run', msg('events.rules.both', { path: r.globalPath }));
@@ -342,10 +340,6 @@ export class RunEngine {
     }
     this.say('fase', msg(intr.sessionId ? 'events.interrupted.summary' : 'events.interrupted.noSession', p), { nodeId: n.id });
     return this.runAgent(n, 'ripresa_dopo_interruzione', undefined, { extra: interruptedSummary(this.run, n.id, intr, this.t, this.lang), feedback: intr.feedback });
-  }
-
-  private spent() {
-    return this.run.totals.costUsd ?? 0;
   }
 
   private schedule() {
@@ -462,23 +456,6 @@ export class RunEngine {
     if (this.run.status === 'sospesa') return;
     const st = this.run.nodes[n.id];
     const d = n.data;
-    // Limite di spesa dell'esecuzione: la parte rimanente è divisa tra le fasi attive.
-    let nodeBudget = d.maxBudgetUsd;
-    if (this.run.budgetUsd !== undefined) {
-      const remaining = this.run.budgetUsd - this.spent();
-      if (remaining <= 0) {
-        st.status = 'fallita';
-        this.setPending(st, msg('interventions.budgetReached'));
-        st.pendingActions = ['salta', 'annulla'];
-        this.say('limite', msg('events.notStartedBudget', { label: d.label }), { nodeId: n.id });
-        this.nodeChanged(n.id);
-        this.updateRunStatus();
-        return;
-      }
-      const share = remaining / (this.running.size + 1);
-      nodeBudget = nodeBudget === undefined ? share : Math.min(nodeBudget, share);
-    }
-
     const prompt = resume
       ? resume.prompt ?? this.t('agent.feedback', { feedback: resume.feedback, label: d.label, protocol: agentProtocol(this.lang) })
       : this.buildPrompt(n, opts.extra);
@@ -521,11 +498,10 @@ export class RunEngine {
     const acc = new AttemptAccounting(a, baseline, this.run.mode === 'prova' ? 'simulato' : undefined);
     const startParams = {
       label: d.label, model: d.model || this.t('events.defaultModel'), tools: d.allowedTools.join(', ') || this.t('events.noTools'),
-      limit: nodeBudget !== undefined ? nodeBudget.toFixed(3) : undefined,
     };
     const how = reason === 'ripresa_dopo_interruzione' ? (resume ? 'interruptedSession' : 'interruptedSummary')
       : resume ? 'resumed' : reason === 'riprova' ? 'retry' : 'initial';
-    this.say('fase', msg(`events.phaseStarted.${how}${nodeBudget !== undefined ? 'Limit' : ''}`, startParams), { nodeId: n.id, attemptId: a.id });
+    this.say('fase', msg(`events.phaseStarted.${how}`, startParams), { nodeId: n.id, attemptId: a.id });
     this.nodeChanged(n.id);
     this.updateRunStatus();
 
@@ -551,7 +527,7 @@ export class RunEngine {
     let errorMsg: Msg | undefined;
     try {
       const stream = this.run.mode === 'prova'
-        ? mockQuery({ phase: d, attemptIndex: a.index, resume: resume?.sessionId, maxBudgetUsd: nodeBudget, signal: ctrl.signal, lang: this.lang, skills: bundle ? Object.values(bundle.byId) : [] })
+        ? mockQuery({ phase: d, attemptIndex: a.index, resume: resume?.sessionId, signal: ctrl.signal, lang: this.lang, skills: bundle ? Object.values(bundle.byId) : [] })
         : query({
           prompt,
           options: {
@@ -563,7 +539,6 @@ export class RunEngine {
             permissionMode: 'dontAsk',
             systemPrompt: { type: 'preset', preset: 'claude_code', append: this.systemAppend(d) || undefined },
             maxTurns: d.maxTurns,
-            maxBudgetUsd: nodeBudget,
             abortController: ctrl,
             resume: resume?.sessionId,
             settingSources: this.wf.settings.loadProjectSettings ? ['project'] : [],
@@ -647,9 +622,7 @@ export class RunEngine {
             this.decision(n.id, a.id, msg('events.decisions.denied', { tool: den.tool_name }), 'osservata', false);
           }
           if (sm.subtype !== 'success' || sm.is_error) {
-            errorMsg = sm.subtype === 'error_max_budget_usd' ? msg('interventions.error.phaseBudget')
-              : sm.subtype === 'error_max_turns' ? msg('interventions.error.maxTurns')
-              : undefined;
+            errorMsg = sm.subtype === 'error_max_turns' ? msg('interventions.error.maxTurns') : undefined;
             const why = errorMsg ? this.tx(errorMsg) : (sm.errors?.join('; ') || sm.result || sm.subtype);
             a.error = redact(String(why));
           }

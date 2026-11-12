@@ -40,7 +40,7 @@ const SNIPPETS: { id: string; base: Base }[] = [
   { id: 'app-mobile', base: { ...APP, command: 'flutter run', url: '', readyCheck: 'output', readyPattern: 'Flutter run key commands', readyTimeoutSec: 600 } },
   {
     id: 'pubblicazione',
-    base: { kind: 'personalizzata', model: 'sonnet', allowedTools: ['Read', 'Glob', 'Grep', 'Bash'], maxTurns: 15, maxBudgetUsd: 0.4, contextMode: 'sintesi', reuseResult: false },
+    base: { kind: 'personalizzata', model: 'sonnet', allowedTools: ['Read', 'Glob', 'Grep', 'Bash'], maxTurns: 15, contextMode: 'sintesi', reuseResult: false },
   },
 ];
 

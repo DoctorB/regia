@@ -89,9 +89,7 @@ Fonte: messaggio `result` di ogni chiamata `query()`.
 
 **Stime, non fatturazione.** `total_cost_usd` e `costUSD` sono calcolati localmente dal SDK con il listino incluso nella sua versione. Con una chiave API il costo effettivo si legge nella Console. Con il login claude.ai il consumo rientra nei limiti del piano (o nei crediti extra, se attivi) e i dollari sono un equivalente a prezzi di listino. In modalità di prova le tariffe sono fittizie.
 
-**Limite di spesa**: il limite per esecuzione è applicato sulla stima. Prima di ogni fase la parte rimanente viene divisa tra le fasi attive e passata come `maxBudgetUsd`, insieme all'eventuale limite della fase. Se il limite viene superato, la fase termina con `error_max_budget_usd` e l'esecuzione si mette in pausa.
-
-**Ottimizzazioni**: regole applicate ai dati misurati, cioè fase dominante, modello costoso su compiti semplici, contesto molto superiore alle altre fasi, chiamate identiche ripetute, vicinanza al limite di turni, tentativi dopo errori, cicli di correzione, candidati al riuso, fasi in sola lettura consecutive, cache scritta più che letta e assenza di limite di spesa. Ogni suggerimento indica il compromesso sulla qualità. Nessun "risparmio" viene stimato: l'effetto si verifica con Confronta.
+**Ottimizzazioni**: regole applicate ai dati misurati, cioè fase dominante, modello costoso su compiti semplici, contesto molto superiore alle altre fasi, chiamate identiche ripetute, vicinanza al limite di turni, tentativi dopo errori, cicli di correzione, candidati al riuso, fasi in sola lettura consecutive, cache scritta più che letta. Ogni suggerimento indica il compromesso sulla qualità. Nessun "risparmio" viene stimato: l'effetto si verifica con Confronta.
 
 ## Autenticazione e costi delle esecuzioni reali
 
@@ -102,7 +100,7 @@ Il SDK usa l'eseguibile Claude Code e le sue credenziali, in quest'ordine:
 
 La documentazione del SDK precisa che i prodotti di terze parti non devono offrire il login claude.ai e devono usare chiavi API. Per uso personale e locale il login funziona, ma verifica le regole della tua organizzazione.
 
-Il dialogo "Esecuzione reale" mostra metodo di autenticazione, modelli, fasi che possono modificare file o eseguire comandi e limite di spesa, e chiede una conferma esplicita. Con `REGIA_DISABLE_REAL=1` le esecuzioni reali sono disattivate.
+Il dialogo "Esecuzione reale" mostra metodo di autenticazione, modelli, fasi che possono modificare file o eseguire comandi, e chiede una conferma esplicita. Con `REGIA_DISABLE_REAL=1` le esecuzioni reali sono disattivate.
 
 ### Permessi degli agenti
 
@@ -120,7 +118,7 @@ Hook, plugin e impostazioni personali di `~/.claude` non vengono caricati; le re
 
 ## Modalità di prova
 
-"Prova" esegue il workflow con agenti simulati: nessuna chiamata di rete e nessun costo, tariffe fittizie. I messaggi simulati hanno la stessa forma di quelli del SDK (ID duplicati per strumenti in parallelo, subagenti, sessioni riprese con totali ripristinati, crash con valori azzerati), quindi la contabilità segue lo stesso percorso del codice reale. Nelle istruzioni di una fase si può scrivere `[simula-errore]`, `[simula-blocco]` o `[simula-budget]` per provare gli interventi. La fase Avvio app è simulata e nessun comando viene eseguito.
+"Prova" esegue il workflow con agenti simulati: nessuna chiamata di rete e nessun costo, tariffe fittizie. I messaggi simulati hanno la stessa forma di quelli del SDK (ID duplicati per strumenti in parallelo, subagenti, sessioni riprese con totali ripristinati, crash con valori azzerati), quindi la contabilità segue lo stesso percorso del codice reale. Nelle istruzioni di una fase si può scrivere `[simula-errore]` o `[simula-blocco]` per provare gli interventi. La fase Avvio app è simulata e nessun comando viene eseguito.
 
 ## Lingue
 
@@ -153,7 +151,7 @@ Interfaccia, messaggi di Regia e istruzioni inviate agli agenti sono tradotti tr
 
 ```
 server/            API Express + SSE, motore di esecuzione, contabilità, simulatore, suggerimenti
-  engine.ts        grafo delle fasi, parallelismo, budget, interventi, riprese, riuso
+  engine.ts        grafo delle fasi, parallelismo, interventi, riprese, riuso
   usage.ts         regole di conteggio (dedup, subagenti, riprese, crash)
   mockQuery.ts     modalità di prova
   insights.ts      suggerimenti di ottimizzazione
@@ -176,7 +174,6 @@ templates/         preset di partenza (JSON)
 
 - La qualità del risultato è valutata solo con segnali osservabili: esiti dichiarati, approvazioni, tentativi e stato finale. Regia non valuta il contenuto.
 - Le decisioni dichiarate dipendono dal rispetto del protocollo di risposta da parte dell'agente. Se manca il blocco di esito, la fase usa il testo finale e lo segnala.
-- Con più fasi in parallelo il limite di spesa per esecuzione è ripartito in anticipo, quindi la somma può superarlo di poco se una fase usa meno della sua quota e un'altra di più.
 - Dopo un rifiuto vengono rieseguite solo le fasi tra quella corretta e l'approvazione (comprese eventuali approvazioni intermedie, che vengono richieste di nuovo). Le altre fasi a valle già completate non vengono rieseguite.
 - "Continua" riprende una fase solo se identica e completata; una fase saltata o fallita viene eseguita. La ripresa della sessione originale richiede che Claude Code abbia ancora la sessione salvata (`~/.claude/projects`).
 - Il riuso confronta configurazione, input e un'impronta dei file del progetto (percorso, dimensione, data di modifica). Non rileva cambiamenti esterni alla cartella.

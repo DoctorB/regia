@@ -9,7 +9,6 @@
       "other": "Continuing from run {from}: {count} phases reused without calls ({phases})."
     },
     "continuedNone": "Continuing from run {from}: 0 phases reused without calls (none).",
-    "budget": "Estimated spending limit for the run: {amount} USD.",
     "rules": {
       "both": "General rules applied to every phase: personal rules ({path}) and Regia rules.",
       "global": "General rules applied to every phase: personal rules ({path}).",
@@ -22,19 +21,13 @@
     "runCompleted": "Run completed.",
     "runPaused": "The run is paused: your input is needed.",
     "runCancelled": "Run cancelled.",
-    "notStartedBudget": "{label}: not started, the run's spending limit has been reached.",
     "reused": "{label}: result reused from run {run} (configuration, input and project files unchanged). No calls made.",
     "phaseStarted": {
       "initial": "{label}: started. Model: {model}; tools: {tools}.",
-      "initialLimit": "{label}: started. Model: {model}; tools: {tools}; limit {limit} USD.",
       "resumed": "{label}: started (session resumed with feedback). Model: {model}; tools: {tools}.",
-      "resumedLimit": "{label}: started (session resumed with feedback). Model: {model}; tools: {tools}; limit {limit} USD.",
       "retry": "{label}: started (new attempt). Model: {model}; tools: {tools}.",
-      "retryLimit": "{label}: started (new attempt). Model: {model}; tools: {tools}; limit {limit} USD.",
       "interruptedSession": "{label}: started (resuming the interrupted session). Model: {model}; tools: {tools}.",
-      "interruptedSessionLimit": "{label}: started (resuming the interrupted session). Model: {model}; tools: {tools}; limit {limit} USD.",
-      "interruptedSummary": "{label}: started (new session with a summary of the interrupted work). Model: {model}; tools: {tools}.",
-      "interruptedSummaryLimit": "{label}: started (new session with a summary of the interrupted work). Model: {model}; tools: {tools}; limit {limit} USD."
+      "interruptedSummary": "{label}: started (new session with a summary of the interrupted work). Model: {model}; tools: {tools}."
     },
     "defaultModel": "default",
     "noTools": "none",
@@ -141,13 +134,11 @@
     "reference": "Reference run: {name} ({id}). Its report is passed to every phase."
   },
   "interventions": {
-    "budgetReached": "The run's spending limit was reached before starting the phase.",
     "declaredKo": "Negative outcome declared: {summary}",
     "maxFeedbackRounds": "Reached the maximum of {count} correction rounds.",
     "serviceFailedLog": "{reason}\n\nLast lines:\n{log}",
     "repairFailed": "\"{command}\" failed (code {code}).\n\nLast lines:\n{log}",
     "error": {
-      "phaseBudget": "phase spending limit reached",
       "maxTurns": "maximum number of turns reached",
       "cancelled": "Cancelled"
     },
@@ -213,7 +204,6 @@
     "subagentSummary": "The existing tests cover the module's main cases.",
     "thinking": "(internal reasoning: not shown)",
     "crash": "Simulated error: process terminated unexpectedly.",
-    "budgetReached": "Spending limit reached ({limit} USD, simulated).",
     "summary": {
       "blocked": "Simulated block: human confirmation is needed before proceeding.",
       "resumed": "Feedback applied with a targeted change.",

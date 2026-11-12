@@ -62,7 +62,7 @@ export function UsageView({ run }: { run: Run }) {
     <div className="usage">
       <div className="note">{billingNote(run, t)}</div>
       <div className="tiles">
-        <Tile label={run.mode === 'prova' ? t('usage.tiles.costSimulated') : t('usage.tiles.costEstimated')} value={fmtUsd(tot.costUsd)} sub={run.budgetUsd ? t('usage.tiles.limit', { budget: fmtUsd(run.budgetUsd, 2) }) : t('usage.tiles.noLimit')} />
+        <Tile label={run.mode === 'prova' ? t('usage.tiles.costSimulated') : t('usage.tiles.costEstimated')} value={fmtUsd(tot.costUsd)} />
         <Tile label={t('usage.tiles.input')} value={fmtTok(tot.inputTokens)} />
         <Tile label={t('usage.tiles.output')} value={fmtTok(tot.outputTokens)} />
         <Tile label={t('usage.series.cacheCreationInputTokens')} value={fmtTok(tot.cacheCreationInputTokens)} />

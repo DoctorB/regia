@@ -221,15 +221,6 @@ export function computeInsights(run: Run): Insight[] {
     });
   }
 
-  if (run.budgetUsd === undefined && run.mode === 'reale' && total > 0) {
-    out.push({
-      id: 'budget', severity: 'media',
-      title: I('budget.title'),
-      evidence: I('budget.evidence', { cost: usd(total) }),
-      suggestion: I('budget.suggestion', { suggested: usd(Math.max(0.05, total * 1.5)) }),
-      tradeoff: I('budget.tradeoff'),
-    });
-  }
 
   const order = { alta: 0, media: 1, info: 2 };
   return out.sort((a, b) => order[a.severity] - order[b.severity]);

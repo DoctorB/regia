@@ -91,7 +91,7 @@ app.post('/api/workflows', (req, res) => {
     description: tpl?.description ?? '',
     group: cleanGroup(body.group),
     settings: {
-      maxParallel: 1, loadProjectSettings: true, applyGeneralRules: true, runBudgetUsd: 2, language,
+      maxParallel: 1, loadProjectSettings: true, applyGeneralRules: true, language,
       ...tpl?.settings,
       projectDir: body.projectDir?.trim() ?? '',
       goal: body.goal?.trim() ?? '',
@@ -209,7 +209,7 @@ app.post('/api/runs', h(async (req, res) => {
     reference = getRun(referenceRunId) ?? undefined;
     if (!reference) return void sendError(res, 400, msg('api.referenceNotFound'));
   }
-  const eng = startRun(wf, mode, wf.settings.runBudgetUsd, from, reference);
+  const eng = startRun(wf, mode, from, reference);
   res.json({ id: eng.run.id });
 }));
 

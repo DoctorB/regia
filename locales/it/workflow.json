@@ -11,8 +11,6 @@
     "noProjectDir": "Cartella del progetto non impostata (Impostazioni workflow).",
     "projectDirNotAbsolute": "La cartella del progetto deve essere un percorso assoluto.",
     "projectDirMissing": "La cartella del progetto non esiste: {dir}",
-    "runBudgetInvalid": "Il limite di spesa per esecuzione deve essere maggiore di zero.",
-    "noRunBudget": "Nessun limite di spesa per esecuzione: consigliato impostarlo prima di un'esecuzione reale.",
     "maxParallelRange": "Le fasi in parallelo devono essere tra 1 e 8.",
     "phaseNoName": "Fase senza nome.",
     "notConnected": "La fase \"{name}\" non è collegata a nessun'altra.",
@@ -32,7 +30,6 @@
     },
     "invalidMaxTurns": "Numero massimo di turni non valido in \"{name}\".",
     "noMaxTurns": "La fase \"{name}\" non ha un limite di turni.",
-    "invalidBudget": "Limite di spesa non valido in \"{name}\".",
     "invalidModel": "Nome modello non valido in \"{name}\".",
     "skillsMissing": "{name}: alcune skill scelte non sono più disponibili ({skills}); la fase proseguirà senza.",
     "skillsNone": "{name}: nessuna skill trovata nelle fonti attive del workflow.",
@@ -125,7 +122,7 @@
       "evidenceSim": "Costo stimato dei tentativi aggiuntivi: {cost} (dati simulati).",
       "evidenceCauses": "Costo stimato dei tentativi aggiuntivi: {cost}. Cause: {causes}.",
       "evidenceCausesSim": "Costo stimato dei tentativi aggiuntivi: {cost} (dati simulati). Cause: {causes}.",
-      "suggestion": "Se la causa è ricorrente (limite di turni o di spesa, strumento mancante, informazione assente), correggi la configurazione invece di ritentare; \"Riprendi la sessione\" riusa il contesto già costruito invece di ricominciare.",
+      "suggestion": "Se la causa è ricorrente (limite di turni, strumento mancante, informazione assente), correggi la configurazione invece di ritentare; \"Riprendi la sessione\" riusa il contesto già costruito invece di ricominciare.",
       "tradeoff": "Riprendere una sessione porta con sé anche eventuali errori di impostazione dell'agente; ripartire da capo costa di più ma è più pulito."
     },
     "reuse": {
@@ -147,12 +144,6 @@
       "evidenceSim": "Cache scritta {written} token, letta {read} token (dati simulati). La scrittura in cache costa più dell'input normale.",
       "suggestion": "Succede con molte fasi brevi, ognuna con un contesto nuovo. Meno fasi più corpose, o fasi che condividono lo stesso modello e lo stesso prompt di sistema, riutilizzano meglio la cache.",
       "tradeoff": "Accorpare le fasi riduce la granularità di controllo e la possibilità di usare modelli diversi per compiti diversi."
-    },
-    "budget": {
-      "title": "Nessun limite di spesa per esecuzione",
-      "evidence": "Questa esecuzione è costata circa {cost} (stima del SDK).",
-      "suggestion": "Imposta un limite nelle impostazioni del workflow, ad esempio {suggested} (1,5× il valore osservato), e limiti per fase sulle fasi più costose.",
-      "tradeoff": "Un limite troppo basso interrompe una fase a metà: il lavoro parziale resta nei file ma va completato con un nuovo tentativo."
     }
   }
 }
