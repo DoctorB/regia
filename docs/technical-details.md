@@ -36,6 +36,8 @@ Phase of type `collaudo`, in two steps within the same phase:
 - **App log** (Android only, real runs): Regia clears the buffer (`logcat -c`), follows `logcat -v threadtime *:W` and keeps the lines of the app's processes (PIDs refreshed every 3 seconds with `pidof`), plus crashes (`FATAL EXCEPTION` with `Process: <app>`) and ANRs (`ANR in <app>`). Each distinct crash or ANR raises an event right away and, at the end of the test, is added to the points. Without a detected applicationId it keeps all device errors.
 - **Outcome**: the protocol asks for anomalies in the `punti` key (at most 25, by severity) and the scenarios that cannot be automated in `manuali`. Anomalies do not fail the phase: they reach the approval like the review's points. `ko` only if testing is impossible.
 - **applicationId**: from the app module's Gradle file (with the chosen flavor's `applicationIdSuffix`), from `android/app/build.gradle(.kts)` for Flutter, React Native and Capacitor, from `app.json` for Expo.
+- **Live screen**: with a real Android device and the option on (`show.noMirror` absent) Regia copies `scrcpy-server` to the phone (version pinned in `scrcpy.ts`, SHA-256 verified; from Regia's copy or downloaded from GitHub into `data/tools/`), opens `adb forward tcp:0 localabstract:scrcpy_<id>` and starts it with `app_process`, view only, no audio, raw H.264 stream (`raw_stream=true`, `max_size=1280`, `max_fps=30`, a keyframe every 2 seconds). `GET /api/runs/<id>/mirror/<phase>` forwards the stream to the pages: a page joining midway immediately gets SPS, PPS and the frames since the last keyframe. The page decodes it with WebCodecs (`VideoDecoder`, codec from the SPS, reconfigured when it changes, e.g. when rotating the phone) and reconnects by itself. At the end of the test, also when cancelled or suspended, Regia closes the socket, the process and the forward. Typical bandwidth: about 40 KB/s.
+- **Separate window** (optional, `show.mirrorWindow`): `scrcpy -s <serial> --no-control --no-audio --window-title 'Regia · <phase>' --max-size 1600` with `ADB` pointing to the SDK's adb, closed at the end of the test. Lookup: Regia's copy (`data/tools/scrcpy-win64-v<version>/`), PATH, Homebrew folders on macOS. Installation only on request (`POST /api/tools/scrcpy/install`): on Windows x64 the official zip, verified with its SHA-256 and extracted with Windows' `tar.exe`; on macOS `brew install scrcpy`; elsewhere instructions.
 - **Limits**: Android only; iOS and desktop apps are not supported yet. Reading the screen depends on the app's accessibility (with custom-drawn views the agent relies on screenshots).
 
 ## Interventions
@@ -179,6 +181,8 @@ server/            Express API + SSE, execution engine, usage accounting, simula
   launch.ts        "show" phases (phone, browser, desktop): project detection, command, opening the browser
   mobile.ts        phone: mobile project, connected devices, build and install command (Gradle with `.\gradlew.bat` on Windows and product flavor variant)
   uat.ts           acceptance test: app log from logcat, crashes and ANRs
+  scrcpy.ts        separate window in the acceptance test: lookup, verified install, scrcpy launch
+  mirror.ts        live screen in the page: scrcpy server on the phone, H.264 stream forwarded to the pages
   nodeenv.ts       Node version required by the project, installations, error diagnosis
   skills.ts        skill discovery and temporary per-phase plugin
   version.ts       version in use and check of the one published on GitHub

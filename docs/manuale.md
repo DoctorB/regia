@@ -178,6 +178,8 @@ In **Altre opzioni** puoi indicare una sottocartella, cambiare l'attesa massima 
 
 Le anomalie arrivano all'approvazione successiva come **Punti segnalati**, come quelli della revisione: spunti quelle da correggere e respingi, la fase che ha scritto il codice corregge e il collaudo si ripete, build compresa. Nella scheda **Stato** la card del collaudo mostra dispositivo, anomalie, riepilogo del log (con il file completo) e le miniature degli screenshot di ogni giro.
 
+**Schermo del telefono dal vivo**: mentre l'agente lavora, nella scheda **Stato** la card del collaudo mostra lo schermo del telefono in diretta, in sola visione; un clic lo ingrandisce (Esc per tornare). Serve solo `adb`: Regia copia sul telefono il piccolo server di [scrcpy](https://github.com/Genymobile/scrcpy) (versione fissata, verificata con il suo checksum) e mostra il video nella pagina; serve un browser recente (Chrome, Edge, Firefox). Se preferisci una finestra a parte, ad esempio su un secondo monitor, attiva **Anche in una finestra separata (scrcpy)**: se scrcpy manca, nella fase trovi **Installa scrcpy** (su Windows Regia scarica la versione ufficiale da GitHub, ne verifica il checksum e la tiene nella sua cartella dati, senza permessi di amministratore; su macOS usa Homebrew; su Linux va installato dal gestore di pacchetti). Lo schermo dal vivo si disattiva con **Mostra lo schermo durante il collaudo**.
+
 L'agente non modifica il codice e non fa azioni irreversibili (acquisti, invii reali, cancellazione di dati). Se servono credenziali di prova, scrivile nelle istruzioni della fase; per ora il collaudo automatico è per Android.
 
 ### App iOS su Mac

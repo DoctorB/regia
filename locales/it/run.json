@@ -106,7 +106,16 @@
       "anomalies": {
         "one": "1 anomalia",
         "other": "{count} anomalie"
-      }
+      },
+      "liveTitle": "Schermo del telefono",
+      "live": {
+        "connecting": "collegamento…",
+        "live": "dal vivo",
+        "unsupported": "il browser non decodifica il video (WebCodecs): usa Chrome, Edge o Firefox recenti",
+        "error": "non raggiungibile, nuovo tentativo…"
+      },
+      "enlarge": "Ingrandisci",
+      "shrink": "Riduci (Esc)"
     }
   },
   "actions": {
@@ -574,7 +583,23 @@
       "backend": "Backend",
       "backendOff": "non avviato",
       "startBackend": "Avvia anche il backend ({project}, {dir})",
-      "startBackendHint": "Il sito usa le sue API: Regia avvia il backend insieme e lo ferma con la fase."
+      "startBackendHint": "Il sito usa le sue API: Regia avvia il backend insieme e lo ferma con la fase.",
+      "mirror": {
+        "label": "Mostra lo schermo durante il collaudo",
+        "hint": "Durante il collaudo lo schermo del telefono si vede dal vivo nella card del collaudo, in sola visione. Serve solo adb.",
+        "checking": "Controllo di scrcpy…",
+        "found": "scrcpy è installato.",
+        "foundRegia": "scrcpy {version} installato da Regia.",
+        "missing": {
+          "download": "scrcpy non è installato. Regia può scaricare la versione ufficiale {version} da GitHub (verificata, senza permessi di amministratore) nella sua cartella dati.",
+          "brew": "scrcpy non è installato. Regia può installarlo con Homebrew (brew install scrcpy).",
+          "manual": "scrcpy non è installato: installalo dal gestore di pacchetti del sistema (vedi github.com/Genymobile/scrcpy). Il collaudo funziona anche senza."
+        },
+        "install": "Installa scrcpy",
+        "installing": "Installazione…",
+        "window": "Anche in una finestra separata (scrcpy)",
+        "windowHint": "Utile su un secondo monitor. Richiede scrcpy, che Regia può installare."
+      }
     }
   },
   "settings": {

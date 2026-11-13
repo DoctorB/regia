@@ -36,6 +36,8 @@ Fase di tipo `collaudo`, in due passi nella stessa fase:
 - **Log dell'app** (solo Android, esecuzioni reali): Regia pulisce il buffer (`logcat -c`), segue `logcat -v threadtime *:W` e tiene le righe dei processi dell'app (PID aggiornati ogni 3 secondi con `pidof`), più crash (`FATAL EXCEPTION` con `Process: <app>`) e ANR (`ANR in <app>`). Ogni crash o ANR distinto genera subito un evento e, a fine collaudo, si aggiunge ai punti. Senza applicationId rilevato tiene tutti gli errori del dispositivo.
 - **Esito**: il protocollo chiede le anomalie nella chiave `punti` (al massimo 25, per gravità) e gli scenari non automatizzabili in `manuali`. Le anomalie non fanno fallire la fase: arrivano all'approvazione come i punti della revisione. `ko` solo se non si riesce a collaudare.
 - **applicationId**: dal Gradle del modulo app (con `applicationIdSuffix` del flavor scelto), da `android/app/build.gradle(.kts)` per Flutter, React Native e Capacitor, da `app.json` per Expo.
+- **Schermo dal vivo**: con un dispositivo Android vero e l'opzione attiva (`show.noMirror` assente) Regia copia sul telefono `scrcpy-server` (versione fissata in `scrcpy.ts`, SHA-256 verificato; dalla copia di Regia o scaricato da GitHub in `data/tools/`), apre `adb forward tcp:0 localabstract:scrcpy_<id>` e lo avvia con `app_process` in sola visione, senza audio, flusso H.264 grezzo (`raw_stream=true`, `max_size=1280`, `max_fps=30`, un fotogramma chiave ogni 2 secondi). `GET /api/runs/<id>/mirror/<fase>` inoltra il flusso alle pagine: chi si collega a metà riceve subito SPS, PPS e i fotogrammi dall'ultimo fotogramma chiave. La pagina lo decodifica con WebCodecs (`VideoDecoder`, codec dall'SPS, riconfigurato quando cambia, ad esempio ruotando il telefono) e si ricollega da sola. A fine collaudo, anche annullato o sospeso, Regia chiude il socket, il processo e il forward. Banda tipica: circa 40 KB/s.
+- **Finestra separata** (facoltativa, `show.mirrorWindow`): `scrcpy -s <seriale> --no-control --no-audio --window-title 'Regia · <fase>' --max-size 1600` con `ADB` puntato all'adb dell'SDK, chiusa a fine collaudo. Ricerca: copia di Regia (`data/tools/scrcpy-win64-v<versione>/`), PATH, cartelle di Homebrew su macOS. Installazione solo su richiesta (`POST /api/tools/scrcpy/install`): su Windows x64 lo zip ufficiale, verificato con il suo SHA-256 ed estratto con il `tar.exe` di Windows; su macOS `brew install scrcpy`; altrove indicazioni.
 - **Limiti**: solo Android; iOS e app desktop non sono ancora supportati. La lettura dello schermo dipende dall'accessibilità dell'app (con viste disegnate a mano l'agente si affida agli screenshot).
 
 ## Interventi
@@ -179,6 +181,8 @@ server/            API Express + SSE, motore di esecuzione, contabilità, simula
   launch.ts        fasi "mostra" (telefono, browser, desktop): riconoscimento del progetto, comando, apertura del browser
   mobile.ts        telefono: progetto mobile, dispositivi collegati, comando di build e installazione (Gradle con `.\gradlew.bat` su Windows e variante dei product flavor)
   uat.ts           collaudo: log dell'app da logcat, crash e ANR
+  scrcpy.ts        finestra separata del collaudo: ricerca, installazione verificata, avvio di scrcpy
+  mirror.ts        schermo dal vivo nella pagina: server di scrcpy sul telefono, flusso H.264 inoltrato alle pagine
   nodeenv.ts       versione di Node richiesta dal progetto, installazioni, diagnosi degli errori
   skills.ts        ricerca delle skill e plugin temporaneo per fase
   version.ts       versione in uso e controllo di quella pubblicata su GitHub

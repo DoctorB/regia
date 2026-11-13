@@ -106,7 +106,16 @@
       "anomalies": {
         "one": "1 anomaly",
         "other": "{count} anomalies"
-      }
+      },
+      "liveTitle": "Phone screen",
+      "live": {
+        "connecting": "connecting…",
+        "live": "live",
+        "unsupported": "the browser cannot decode the video (WebCodecs): use a recent Chrome, Edge or Firefox",
+        "error": "not reachable, retrying…"
+      },
+      "enlarge": "Enlarge",
+      "shrink": "Shrink (Esc)"
     }
   },
   "actions": {
@@ -574,7 +583,23 @@
       "backend": "Backend",
       "backendOff": "not started",
       "startBackend": "Also start the backend ({project}, {dir})",
-      "startBackendHint": "The site uses its APIs: Regia starts the backend along with it and stops it with the phase."
+      "startBackendHint": "The site uses its APIs: Regia starts the backend along with it and stops it with the phase.",
+      "mirror": {
+        "label": "Show the screen during the test",
+        "hint": "During the test the phone screen is shown live in the test card, view only. Only adb is needed.",
+        "checking": "Checking scrcpy…",
+        "found": "scrcpy is installed.",
+        "foundRegia": "scrcpy {version} installed by Regia.",
+        "missing": {
+          "download": "scrcpy is not installed. Regia can download the official version {version} from GitHub (verified, no administrator rights) into its data folder.",
+          "brew": "scrcpy is not installed. Regia can install it with Homebrew (brew install scrcpy).",
+          "manual": "scrcpy is not installed: install it from your system's package manager (see github.com/Genymobile/scrcpy). The test works without it too."
+        },
+        "install": "Install scrcpy",
+        "installing": "Installing…",
+        "window": "Also in a separate window (scrcpy)",
+        "windowHint": "Handy on a second monitor. Requires scrcpy, which Regia can install."
+      }
     }
   },
   "settings": {

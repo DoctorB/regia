@@ -16,6 +16,8 @@ import { compareGit, recoverInterruptedRuns } from './resume.ts';
 import { withLayout } from '../shared/layout.ts';
 import { killAllServices } from './service.ts';
 import { languages, mergedDict, serverT, systemLanguage } from './i18n.ts';
+import { installScrcpy, scrcpyStatus } from './scrcpy.ts';
+import { redact } from './redact.ts';
 import { ensureRegiaRules, getRules, saveRegiaRules } from './rules.ts';
 import {
   DATA_DIR, ROOT, deleteRunsOf, deleteWorkflow, getRun, getWorkflow, initStore, listRuns, listTemplates, listWorkflows, saveRun, saveWorkflow,
@@ -186,6 +188,26 @@ function cleanGroup(g: unknown): string | undefined {
 app.post('/api/validate', (req, res) => res.json(validateWorkflow(req.body.workflow as Workflow, req.body.mode)));
 
 app.get('/api/runs', (req, res) => res.json(listRuns(req.query.workflowId as string | undefined)));
+// Schermo del telefono dal vivo durante un collaudo: flusso H.264 grezzo, decodificato dalla pagina con WebCodecs.
+app.get('/api/runs/:id/mirror/:nodeId', (req, res) => {
+  const m = getEngine(req.params.id)?.mirror(req.params.nodeId);
+  if (!m) return void res.status(404).end();
+  res.writeHead(200, { 'Content-Type': 'application/octet-stream', 'Cache-Control': 'no-cache, no-store', 'X-Content-Type-Options': 'nosniff' });
+  const off = m.attach((chunk) => { if (chunk.length) res.write(chunk); else res.end(); });
+  req.on('close', off);
+});
+
+// scrcpy per la finestra separata del collaudo: stato e installazione su richiesta.
+app.get('/api/tools/scrcpy', (_req, res) => res.json(scrcpyStatus()));
+app.post('/api/tools/scrcpy/install', h(async (_req, res) => {
+  try {
+    res.json(await installScrcpy());
+  } catch (e) {
+    const m = (e as Error).message;
+    sendError(res, 400, m === 'manual' ? msg('api.scrcpyManual') : msg('api.scrcpyInstallFailed', { error: redact(m) }));
+  }
+}));
+
 // Prove del collaudo (screenshot e log dell'app), salvate da Regia in data/uat/<esecuzione>/<fase>/<giro>/.
 app.get('/api/runs/:id/uat/:nodeId/:round/:file', (req, res) => {
   const { id, nodeId, round, file } = req.params;

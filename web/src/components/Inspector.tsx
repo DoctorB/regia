@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { AppWindow, CircleCheck, FolderPlus, Globe, TextSearch, FileCode2, Info, Lock, PencilLine, RefreshCw, RotateCcw, ScrollText, Sparkles, Terminal, Trash2, TriangleAlert, CircleAlert, X } from 'lucide-react';
-import { KNOWN_TOOLS, READY_CHECKS, WRITE_TOOLS, type LaunchPlan, type PhaseConfig, type ShowConfig, type PhaseKind, type SkillInfo, type ValidationIssue, type Workflow, type WorkflowSettings } from '../../../shared/types.ts';
+import { AppWindow, CircleCheck, Download, FolderPlus, Loader2, Globe, TextSearch, FileCode2, Info, Lock, PencilLine, RefreshCw, RotateCcw, ScrollText, Sparkles, Terminal, Trash2, TriangleAlert, CircleAlert, X } from 'lucide-react';
+import { KNOWN_TOOLS, READY_CHECKS, WRITE_TOOLS, type LaunchPlan, type PhaseConfig, type ShowConfig, type PhaseKind, type ScrcpyStatus, type SkillInfo, type ValidationIssue, type Workflow, type WorkflowSettings } from '../../../shared/types.ts';
 import { isCustomTools, PERMISSION_LEVELS, permissionLevel, toolsForLevel } from '../../../shared/permissions.ts';
 import { phasePreset } from '../../../shared/presets.ts';
 import { useI18n } from '../i18n.tsx';
@@ -139,6 +139,40 @@ function Issues({ issues }: { issues: ValidationIssue[] }) {
 }
 
 /** Fase "mostra" (telefono, browser, desktop): cosa Regia ha rilevato e solo scelte facoltative. */
+/** Mirror dello schermo nel collaudo: attivo di serie; se scrcpy manca, Regia lo installa con un clic (Windows, macOS con Homebrew). */
+function MirrorRow({ on, onToggle, window: win, onWindow }: { on: boolean; onToggle: (v: boolean) => void; window: boolean; onWindow: (v: boolean) => void }) {
+  const { t } = useI18n();
+  const [st, setSt] = useState<ScrcpyStatus | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+  useEffect(() => { if (win) api.scrcpy().then(setSt).catch(() => setSt(null)); }, [win]);
+  const install = async () => {
+    setBusy(true);
+    setErr('');
+    try { setSt(await api.installScrcpy()); } catch (e) { setErr((e as Error).message); } finally { setBusy(false); }
+  };
+  return (
+    <div className="mirror-row">
+      <Switch checked={on} onChange={onToggle} label={t('inspector.show.mirror.label')} hint={t('inspector.show.mirror.hint')} />
+      {on && <Switch checked={win} onChange={onWindow} label={t('inspector.show.mirror.window')} hint={t('inspector.show.mirror.windowHint')} />}
+      {on && win && !st && <div className="folder-status muted"><Loader2 className="spin" />{t('inspector.show.mirror.checking')}</div>}
+      {on && win && st?.installed && (
+        <div className="folder-status"><div className="tone-good"><CircleCheck />{st.source === 'regia' ? t('inspector.show.mirror.foundRegia', { version: st.version ?? '' }) : t('inspector.show.mirror.found')}</div></div>
+      )}
+      {on && win && st && !st.installed && (
+        <div className="callout tone-info mirror-missing">
+          <Info />
+          <span>{t(`inspector.show.mirror.missing.${st.install ?? 'manual'}`, { version: st.version ?? '' })}</span>
+          {st.install !== 'manual' && (
+            <button className="btn sm" disabled={busy} onClick={() => void install()}>{busy ? <Loader2 className="spin" /> : <Download />}{t(busy ? 'inspector.show.mirror.installing' : 'inspector.show.mirror.install')}</button>
+          )}
+        </div>
+      )}
+      {err && <div className="callout tone-warn"><TriangleAlert /><span>{err}</span></div>}
+    </div>
+  );
+}
+
 /** uat: nel collaudo il rilevamento è lo stesso, ma non si può trasformare in una fase Avvio app. */
 function ShowSection({ cfg, settings, onChange, uat = false }: { cfg: PhaseConfig; settings: WorkflowSettings; onChange: (c: PhaseConfig) => void; uat?: boolean }) {
   const { t, tm } = useI18n();
@@ -220,6 +254,7 @@ function ShowSection({ cfg, settings, onChange, uat = false }: { cfg: PhaseConfi
               </select>
             </Field>
           </div>
+          {uat && <MirrorRow on={!s.noMirror} onToggle={(v) => setS({ noMirror: !v || undefined })} window={Boolean(s.mirrorWindow)} onWindow={(v) => setS({ mirrorWindow: v || undefined })} />}
         </>
       )}
 

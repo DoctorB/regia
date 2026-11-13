@@ -19,6 +19,8 @@ import { grantLevel, lacksLevel, type PermissionLevel } from '../shared/permissi
 import { DATA_DIR, getRun, getWorkflow, readReuseCache, saveRun, saveWorkflow, writeReuseEntry } from './store.ts';
 import { adbPath } from './mobile.ts';
 import { watchAppLog, type AppLogWatcher } from './uat.ts';
+import { scrcpyStatus, startMirror, type MirrorHandle } from './scrcpy.ts';
+import { startMirrorStream, type MirrorStream } from './mirror.ts';
 import { gitState } from './folder.ts';
 import { cacheTtlMs, interruptedSummary, interruptNodes, isInterruptedNote } from './resume.ts';
 import { AttemptAccounting, sumTotals, type SessionSnapshot } from './usage.ts';
@@ -163,6 +165,8 @@ export class RunEngine {
   /** Per le fasi server: versione di Node dedotta da un errore, installazione proponibile, tentativo automatico già fatto. */
   private serviceFixes = new Map<string, { range?: string; install?: InstallPlan; autoRetried?: boolean }>();
   private sessions = new Map<string, SessionSnapshot>();
+  /** Schermi dei telefoni trasmessi dal vivo durante i collaudi, per fase. */
+  private mirrors = new Map<string, MirrorStream>();
   private running = new Set<string>();
   /** Approvazioni le cui fasi precedenti stanno applicando un feedback. */
   private reworking = new Set<string>();
@@ -186,6 +190,11 @@ export class RunEngine {
       if (q.sessionId && q.attempt.sessionCumulative) this.sessions.set(q.sessionId, q.attempt.sessionCumulative);
       if (q.status === 'in_corso') { q.status = 'errore'; q.error = this.t('agent.questionInterrupted'); q.attempt.status = 'interrotta'; }
     }
+  }
+
+  /** Schermo dal vivo del collaudo in corso nella fase, se c'è. */
+  mirror(nodeId: string): MirrorStream | undefined {
+    return this.mirrors.get(nodeId);
   }
 
   subscribe(fn: Broadcast) {
@@ -472,7 +481,7 @@ export class RunEngine {
    * una sessione nuova; opts.feedback: correzione in corso da ricordare se la fase viene interrotta;
    * opts.fallback: se la sessione non si può riprendere, la fase riparte con il riassunto.
    */
-  private async runAgent(n: WorkflowNode, reason: Attempt['reason'], resume?: { sessionId: string; feedback: string; prompt?: string }, opts: { extra?: string; feedback?: string; fallback?: InterruptedWork; uat?: { dir: string; watcher?: AppLogWatcher } } = {}) {
+  private async runAgent(n: WorkflowNode, reason: Attempt['reason'], resume?: { sessionId: string; feedback: string; prompt?: string }, opts: { extra?: string; feedback?: string; fallback?: InterruptedWork; uat?: { dir: string; watcher?: AppLogWatcher; mirror?: MirrorHandle; live?: MirrorStream } } = {}) {
     if (this.run.status === 'sospesa') return;
     const st = this.run.nodes[n.id];
     const d = n.data;
@@ -669,7 +678,13 @@ export class RunEngine {
       this.running.delete(n.id);
       this.controllers.delete(n.id);
       if (bundle) removeSkillBundles(`${this.run.id}_${a.id}`);
-      if (opts.uat) this.closeUat(st, a, opts.uat.dir, opts.uat.watcher);
+      if (opts.uat) {
+        opts.uat.mirror?.stop();
+        opts.uat.live?.stop();
+        this.mirrors.delete(n.id);
+        if (st.uat) st.uat.live = false;
+        this.closeUat(st, a, opts.uat.dir, opts.uat.watcher);
+      }
     }
 
     a.endedAt = new Date().toISOString();
@@ -791,6 +806,37 @@ export class RunEngine {
       });
       this.say('fase', msg(appId ? 'events.uat.logStarted' : 'events.uat.logStartedAll', { label: n.data.label, app: appId ?? '' }), where);
     }
+    // Schermo del telefono dal vivo nella pagina (server di scrcpy sul telefono, video H.264), e a richiesta anche
+    // nella finestra di scrcpy. Sola visione; tutto si chiude con il collaudo.
+    let live: MirrorStream | undefined;
+    let mirror: MirrorHandle | undefined;
+    if (this.run.mode === 'reale' && device && plan?.platform === 'android' && !n.data.show?.noMirror) {
+      try {
+        live = await startMirrorStream(adbPath(), device.id, (reason) => {
+          this.mirrors.delete(n.id);
+          if (st.uat) st.uat.live = false;
+          this.say('fase', msg('events.uat.mirrorEnded', { label: n.data.label, reason: clip(redact(reason), 200) }), where);
+          this.nodeChanged(n.id);
+        });
+        this.mirrors.set(n.id, live);
+        st.uat.live = true;
+        this.say('fase', msg('events.uat.mirrorLive', { label: n.data.label }), where);
+        this.nodeChanged(n.id);
+      } catch (e) {
+        this.say('errore', msg('events.uat.mirrorFailed', { label: n.data.label, error: clip(redact((e as Error).message), 300) }), where);
+      }
+    }
+    if (this.run.mode === 'reale' && device && plan?.platform === 'android' && !n.data.show?.noMirror && n.data.show?.mirrorWindow) {
+      const sc = scrcpyStatus();
+      if (sc.installed && sc.path) {
+        mirror = startMirror(sc.path, device.id, `Regia · ${n.data.label}`, adbPath(), (code, output) => {
+          if (code) this.say('errore', msg('events.uat.mirrorFailed', { label: n.data.label, error: clip(redact(output.trim()), 300) || String(code) }), where);
+        });
+        this.say('fase', msg('events.uat.mirrorStarted', { label: n.data.label }), where);
+      } else {
+        this.say('fase', msg('events.uat.mirrorMissing', { label: n.data.label }), where);
+      }
+    }
     const extra = this.t('agent.uat.context', {
       device: device ? `${device.name} (${device.id})` : this.t('agent.uat.noDevice'),
       serial: device?.id ?? '',
@@ -800,7 +846,7 @@ export class RunEngine {
       log: watcher ? slash(logFile) : this.t('agent.uat.noLog'),
       windows: process.platform === 'win32' ? this.t('agent.uat.windows') : '',
     });
-    await this.runAgent(n, reason, undefined, { extra, uat: { dir, watcher } });
+    await this.runAgent(n, reason, undefined, { extra, uat: { dir, watcher, mirror, live } });
   }
 
   /** Fine del giro di collaudo: chiude il log, raccoglie gli screenshot e aggiunge crash e ANR alle anomalie. */

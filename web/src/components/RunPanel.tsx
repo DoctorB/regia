@@ -12,6 +12,7 @@ import { api, fmtDur, fmtTime, fmtTok, fmtUsd, runDuration } from '../api.ts';
 import { useI18n } from '../i18n.tsx';
 import { EmptyState, KindTile, Modal, RUN_STATUS_META, STATUS_META, StatusPill, runStatusLabel, serviceLabel, statusLabel, toast } from '../ui.tsx';
 import { AppliedRulesView } from './Setup.tsx';
+import { LivePhone } from './LivePhone.tsx';
 import { UsageView } from './UsageView.tsx';
 
 // Etichette e aiuti in locales/<lingua>/run.json (actions.<azione>.label e .help).
@@ -410,6 +411,7 @@ function UatEvidence({ run, nodeId, findings = false }: { run: Run; nodeId: stri
   const src = (f: string) => `/api/runs/${run.id}/uat/${nodeId}/${u.round}/${encodeURIComponent(f)}`;
   return (
     <div className="uat">
+      {u.live && <LivePhone url={`/api/runs/${run.id}/mirror/${nodeId}`} />}
       {(u.device || u.appId) && <p className="muted small">{[u.device, u.appId].filter(Boolean).join(' · ')}</p>}
       {declared?.punti?.length ? <div><strong className="small">{t('run.uat.anomalies', { count: declared.punti.length })}</strong><ul className="uat-list">{declared.punti.map((p, i) => <li key={i}>{p}</li>)}</ul></div> : null}
       {declared?.manuali?.length ? <div><strong className="small">{t('run.uat.manual')}</strong><ul className="uat-list">{declared.manuali.map((p, i) => <li key={i}>{p}</li>)}</ul></div> : null}

@@ -70,6 +70,10 @@ export interface ShowConfig {
   existing?: boolean;
   /** Browser: non avviare il backend trovato accanto al frontend (es. be/ con fe/). */
   noCompanion?: boolean;
+  /** Solo collaudo: niente schermo del telefono dal vivo. */
+  noMirror?: boolean;
+  /** Solo collaudo: lo schermo anche in una finestra separata di scrcpy (se installato). */
+  mirrorWindow?: boolean;
 }
 
 export interface MobileDevice {
@@ -384,8 +388,21 @@ export interface UatState {
   device?: string;
   appId?: string;
   screenshots: string[];
+  /** Lo schermo del telefono è trasmesso dal vivo alla pagina (/api/runs/<id>/mirror/<fase>). */
+  live?: boolean;
   /** Log dell'app registrato da Regia durante il collaudo (solo Android). */
   log?: { lines: number; errors: number; crashes: string[] };
+}
+
+/** scrcpy per il mirror dello schermo: dove si trova o come installarlo. */
+export interface ScrcpyStatus {
+  installed: boolean;
+  path?: string;
+  /** regia: copia scaricata da Regia in data/tools; path: già installato nel sistema. */
+  source?: 'regia' | 'path';
+  version?: string;
+  /** Se manca: download dello zip ufficiale (Windows), Homebrew (macOS) o installazione a mano. */
+  install?: 'download' | 'brew' | 'manual';
 }
 
 export interface NodeRunState {

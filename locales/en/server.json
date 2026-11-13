@@ -167,7 +167,12 @@
       "installed": "{label}: app installed and opened, the acceptance test starts.",
       "logStarted": "{label}: Regia follows the log of the app {app} (warnings, errors, crashes and ANRs).",
       "logStartedAll": "{label}: Regia follows the device errors (the app's applicationId was not detected).",
-      "crash": "{label}: app crash or freeze in the log — {what}"
+      "crash": "{label}: app crash or freeze in the log — {what}",
+      "mirrorStarted": "{label}: phone screen also open in a window (scrcpy, view only).",
+      "mirrorMissing": "{label}: the separate window is not available, scrcpy is not installed. Install it from the phase, in the editor.",
+      "mirrorFailed": "{label}: live screen not available — {error}",
+      "mirrorLive": "{label}: live phone screen in the Status tab, in the test card.",
+      "mirrorEnded": "{label}: screen stream interrupted ({reason})."
     }
   },
   "interventions": {
@@ -331,7 +336,9 @@
     "questionUnavailable": "Questions can be asked only while the approval is waiting.",
     "questionEmpty": "Write the question.",
     "questionBusy": "Wait for the answer to the previous question.",
-    "questionTarget": "This phase cannot receive questions: it must be an agent phase already completed in this run."
+    "questionTarget": "This phase cannot receive questions: it must be an agent phase already completed in this run.",
+    "scrcpyManual": "On this system scrcpy must be installed by hand: see https://github.com/Genymobile/scrcpy.",
+    "scrcpyInstallFailed": "scrcpy installation failed: {error}"
   },
   "nodeenv": {
     "source": {

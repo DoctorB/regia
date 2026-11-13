@@ -176,6 +176,8 @@ Under **More options** you can set a subfolder, change the maximum wait or switc
 
 The anomalies reach the next approval as **Points reported**, like the review's: tick the ones to fix and reject, the phase that wrote the code fixes them and the test runs again, build included. In the **Status** tab the test card shows device, anomalies, log summary (with the full file) and thumbnails of the screenshots of each round.
 
+**Live phone screen**: while the agent works, in the **Status** tab the test card shows the phone screen live, view only; a click enlarges it (Esc to go back). Only `adb` is needed: Regia copies the small [scrcpy](https://github.com/Genymobile/scrcpy) server to the phone (pinned version, verified with its checksum) and shows the video in the page; a recent browser is required (Chrome, Edge, Firefox). If you prefer a separate window, for example on a second monitor, turn on **Also in a separate window (scrcpy)**: if scrcpy is missing, the phase offers **Install scrcpy** (on Windows Regia downloads the official version from GitHub, verifies its checksum and keeps it in its data folder, with no administrator rights; on macOS it uses Homebrew; on Linux install it from the package manager). The live screen is turned off with **Show the screen during the test**.
+
 The agent does not change the code and performs no irreversible actions (purchases, real sends, deleting data). If test credentials are needed, write them in the phase instructions; for now the automated test is for Android.
 
 ### iOS apps on a Mac

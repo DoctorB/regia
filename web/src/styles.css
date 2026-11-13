@@ -775,3 +775,19 @@ input[type="checkbox"] { width: 16px; height: 16px; min-height: 0; accent-color:
 .uat-shots a:hover img { border-color: var(--accent); }
 .uat-card { padding: 14px; display: flex; flex-direction: column; gap: 8px; }
 .uat-list { margin: 4px 0 0; padding-left: 18px; font-size: 13px; display: flex; flex-direction: column; gap: 4px; }
+.mirror-row { display: flex; flex-direction: column; gap: 6px; }
+.mirror-missing { align-items: center; flex-wrap: wrap; }
+.mirror-missing > span { flex: 1; min-width: 180px; }
+
+/* Schermo del telefono dal vivo nel collaudo */
+.phone-live { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
+.phone-live-head { display: flex; align-items: center; gap: 7px; width: 100%; font-size: 13px; }
+.phone-live-head > svg { width: 15px; height: 15px; color: var(--k-collaudo); }
+.phone-live-head .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text-3, #999); }
+.phone-live-head .dot.on { background: var(--good, #13a37a); box-shadow: 0 0 0 3px color-mix(in srgb, var(--good, #13a37a) 25%, transparent); }
+.phone-live canvas { max-height: 460px; max-width: 100%; border-radius: 14px; border: 3px solid #111; background: #000; cursor: zoom-in; box-shadow: var(--shadow-sm); }
+.phone-live canvas.hidden { display: none; }
+.phone-live.big { position: fixed; inset: 0; z-index: 1000; background: rgba(10, 12, 16, .88); padding: 20px; align-items: center; cursor: zoom-out; }
+.phone-live.big .phone-live-head { color: #fff; max-width: 900px; }
+.phone-live.big .phone-live-head .muted { color: #cfd3da; }
+.phone-live.big canvas { max-height: calc(100vh - 80px); cursor: zoom-out; }

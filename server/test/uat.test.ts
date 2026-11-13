@@ -14,6 +14,7 @@ process.env.REGIA_MOCK_SPEED = '2';
 const store = await import('../store.ts');
 const { startRun, agentProtocol, parseDeclared } = await import('../engine.ts');
 const { AppLogParser } = await import('../uat.ts');
+const { scrcpyStatus } = await import('../scrcpy.ts');
 store.initStore();
 
 const waitFor = async (cond: () => boolean, ms = 8000) => {
@@ -48,6 +49,19 @@ test('log dell\'app: righe dei suoi processi, crash e ANR riconosciuti una volta
   assert.ok(!kept.some((l) => l.includes('non è dell')));
   assert.ok(!kept.some((l) => l.includes('com.other')));
   assert.equal(p.errors, 5);
+});
+
+test('scrcpy: senza copia di Regia né PATH risulta da installare, con il metodo adatto al sistema', () => {
+  const keep = process.env.PATH;
+  process.env.PATH = '';
+  try {
+    const st = scrcpyStatus();
+    assert.equal(st.installed, false);
+    assert.ok(['download', 'brew', 'manual'].includes(st.install!));
+    if (process.platform === 'win32' && process.arch === 'x64') assert.equal(st.install, 'download');
+  } finally {
+    process.env.PATH = keep;
+  }
 });
 
 test('protocollo del collaudo: anomalie come punti e scenari da provare a mano', () => {
@@ -87,6 +101,8 @@ test('collaudo in prova: build e installazione, poi l\'agente; le anomalie arriv
   assert.equal(st.service, undefined);
   assert.equal(st.uat?.round, 1);
   assert.equal(st.uat?.appId, 'it.example.app');
+  // In prova niente telefono vero: né log né finestra del mirror.
+  assert.ok(!run.events.some((e) => e.msg?.key.startsWith('events.uat.mirror') || e.msg?.key.startsWith('events.uat.log')));
   // Anomalie come punti nell'approvazione; gli scenari manuali restano nell'esito della fase.
   const pts = run.nodes.ok.reviewPoints!;
   assert.equal(pts[0].nodeId, 'uat');
@@ -99,4 +115,24 @@ test('collaudo in prova: build e installazione, poi l\'agente; le anomalie arriv
   assert.deepEqual(run.nodes.uat.attempts.map((a) => a.step ?? 'agente'), ['build', 'agente', 'build', 'agente']);
   assert.equal(run.nodes.ok.reviewPoints, undefined);
   eng.cancel();
+});
+
+test('flusso H.264: unità NAL anche spezzate tra più pacchetti, codec per WebCodecs dall\'SPS', async () => {
+  const { NalSplitter, nalType, avcCodec } = await import('../../shared/annexb.ts');
+  const got: Uint8Array[] = [];
+  const s = new NalSplitter((n) => got.push(n));
+  const sps = [0, 0, 0, 1, 0x67, 0x64, 0x00, 0x20, 0xac];
+  const pps = [0, 0, 0, 1, 0x68, 0xee, 0x3c];
+  const idr = [0, 0, 1, 0x65, 0x88, 0x84, 0x00, 0x33];
+  const p = [0, 0, 0, 1, 0x41, 0x9a];
+  const all = new Uint8Array([...sps, ...pps, ...idr, ...p]);
+  // Pacchetti tagliati a metà dei codici di inizio.
+  s.push(all.slice(0, 6));
+  s.push(all.slice(6, 14));
+  s.push(all.slice(14));
+  s.push(new Uint8Array([0, 0, 0, 1, 0x41]));
+  assert.deepEqual(got.map(nalType), [7, 8, 5, 1]);
+  assert.deepEqual([...got[0]], sps);
+  assert.deepEqual([...got[2]], idr);
+  assert.equal(avcCodec(got[0]), 'avc1.640020');
 });

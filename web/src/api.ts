@@ -1,5 +1,5 @@
 import { currentLocaleTag, tm } from './i18n.tsx';
-import type { ApiErrorBody, ContinuationPlan, EnvInfo, FolderInfo, HumanAction, Insight, LaunchPlan, PointRef, ResumeCheck, ShowConfig,  RulesInfo, Run, RunMode, RunSummary, SkillInfo, ValidationIssue, VersionInfo, Workflow, WorkflowTemplate } from '../../shared/types.ts';
+import type { ApiErrorBody, ContinuationPlan, EnvInfo, FolderInfo, HumanAction, Insight, LaunchPlan, PointRef, ResumeCheck, ScrcpyStatus, ShowConfig, RulesInfo, Run, RunMode, RunSummary, SkillInfo, ValidationIssue, VersionInfo, Workflow, WorkflowTemplate } from '../../shared/types.ts';
 
 async function req<T>(method: string, url: string, body?: unknown): Promise<T> {
   const r = await fetch(url, { method, headers: body ? { 'Content-Type': 'application/json' } : undefined, body: body ? JSON.stringify(body) : undefined });
@@ -41,6 +41,8 @@ export const api = {
   insights: (id: string) => req<Insight[]>('GET', `/api/runs/${id}/insights`),
   startRun: (workflowId: string, mode: RunMode, confirmReal = false, continueFrom?: string, referenceRunId?: string) => req<{ id: string }>('POST', '/api/runs', { workflowId, mode, confirmReal, continueFrom, referenceRunId }),
   continuation: (runId: string, workflowId: string) => req<ContinuationPlan & { mode: RunMode }>('GET', `/api/runs/${runId}/continuation?workflowId=${workflowId}`),
+  scrcpy: () => req<ScrcpyStatus>('GET', '/api/tools/scrcpy'),
+  installScrcpy: () => req<ScrcpyStatus>('POST', '/api/tools/scrcpy/install'),
   ask: (runId: string, nodeId: string, targetId: string, question: string) => req<{ ok: boolean; id: string }>('POST', `/api/runs/${runId}/question`, { nodeId, targetId, question }),
   action: (runId: string, nodeId: string, action: HumanAction, feedback?: string, points?: PointRef[]) => req<{ ok: boolean }>('POST', `/api/runs/${runId}/action`, { nodeId, action, feedback, points }),
   serviceAction: (runId: string, nodeId: string, action: 'ferma' | 'riavvia') => req<{ ok: boolean }>('POST', `/api/runs/${runId}/service/${nodeId}`, { action }),

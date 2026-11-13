@@ -167,7 +167,12 @@
       "installed": "{label}: app installata e aperta, inizia il collaudo.",
       "logStarted": "{label}: Regia segue il log dell'app {app} (avvisi, errori, crash e ANR).",
       "logStartedAll": "{label}: Regia segue gli errori del dispositivo (applicationId dell'app non rilevato).",
-      "crash": "{label}: crash o blocco dell'app nel log — {what}"
+      "crash": "{label}: crash o blocco dell'app nel log — {what}",
+      "mirrorStarted": "{label}: schermo del telefono aperto anche in una finestra (scrcpy, sola visione).",
+      "mirrorMissing": "{label}: la finestra separata non è disponibile, scrcpy non è installato. Si installa dalla fase, nell'editor.",
+      "mirrorFailed": "{label}: schermo dal vivo non disponibile — {error}",
+      "mirrorLive": "{label}: schermo del telefono dal vivo nella scheda Stato, nella card del collaudo.",
+      "mirrorEnded": "{label}: trasmissione dello schermo interrotta ({reason})."
     }
   },
   "interventions": {
@@ -331,7 +336,9 @@
     "questionUnavailable": "Si possono fare domande solo mentre l'approvazione è in attesa.",
     "questionEmpty": "Scrivi la domanda.",
     "questionBusy": "Attendi la risposta alla domanda precedente.",
-    "questionTarget": "Questa fase non può ricevere domande: serve una fase con agente già completata in questa esecuzione."
+    "questionTarget": "Questa fase non può ricevere domande: serve una fase con agente già completata in questa esecuzione.",
+    "scrcpyManual": "Su questo sistema scrcpy va installato a mano: vedi https://github.com/Genymobile/scrcpy.",
+    "scrcpyInstallFailed": "Installazione di scrcpy non riuscita: {error}"
   },
   "nodeenv": {
     "source": {
