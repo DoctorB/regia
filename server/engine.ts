@@ -4,7 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { query } from '@anthropic-ai/claude-agent-sdk';
 import type {
-  Attempt, ContinuationPlan, LaunchPlan, PointRef, ReviewPoints, RunReference, ServiceState, DeclaredOutcome, EventKind, HumanAction, InterruptedWork, NodeRunState, ReadyCheck, Run, RunEvent, RunMode, ShowTarget, Workflow, WorkflowNode,
+  Attempt, ContinuationPlan, LaunchPlan, PointRef, ReviewPoints, RunReference, ServiceState, DeclaredOutcome, EventKind, HumanAction, InterruptedWork, NodeRunState, ReadyCheck, Run, RunEvent, RunMode, ShowTarget, Workflow, WorkflowNode, WorkflowSettings,
 } from '../shared/types.ts';
 import { emptyTotals, isAgentKind, RESUMABLE } from '../shared/types.ts';
 import { msg, type Msg, type Params, type Translate } from '../shared/i18n.ts';
@@ -268,6 +268,8 @@ export class RunEngine {
     }
     const ref = this.run.reference;
     if (ref) this.say('run', msg('events.reference', { name: ref.workflowName, id: ref.runId }));
+    const dirs = extraDirs(this.wf.settings);
+    if (dirs.length) this.say('run', msg('events.extraDirs', { dirs: dirs.join(', '), count: dirs.length }));
     const r = this.run.rules;
     if (r?.applied) {
       if (r.global && r.regia) this.say('run', msg('events.rules.both', { path: r.globalPath }));
@@ -429,13 +431,19 @@ export class RunEngine {
   /** Testo aggiunto al prompt di sistema della fase: ruolo, principi di progettazione e regole generali. */
   private systemAppend(d: WorkflowNode['data']): string {
     const principles = principlesText(this.wf.settings.principles, d.kind, this.t);
-    return `${d.role ? `\n${this.t('agent.role', { role: d.role })}` : ''}${principles ? `\n\n${principles}` : ''}${rulesPrompt(this.run.rules, this.lang)}`;
+    return `${d.role ? `\n${this.t('agent.role', { role: d.role })}` : ''}${principles ? `\n\n${principles}` : ''}${rulesPrompt(this.run.rules, this.lang)}${this.extraDirsPrompt()}`;
+  }
+
+  /** Cartelle aggiuntive del workflow: valgono anche senza regole generali, perché ampliano quelle consentite. */
+  private extraDirsPrompt(): string {
+    const dirs = extraDirs(this.wf.settings);
+    return dirs.length ? `\n\n${this.t('agent.extraDirs', { dirs: dirs.map((x) => `- ${x}`).join('\n') })}` : '';
   }
 
   private reuseKey(n: WorkflowNode, prompt: string) {
     const d = n.data;
     const h = createHash('sha256');
-    h.update(JSON.stringify([this.run.mode, d.role, d.model, d.allowedTools, d.maxTurns, prompt, this.wf.settings.projectDir, this.wf.settings.loadProjectSettings, d.skills ?? null, this.wf.settings.skillSources ?? null]));
+    h.update(JSON.stringify([this.run.mode, d.role, d.model, d.allowedTools, d.maxTurns, prompt, this.wf.settings.projectDir, this.wf.settings.loadProjectSettings, d.skills ?? null, this.wf.settings.skillSources ?? null, extraDirs(this.wf.settings)]));
     // I principi cambiano il prompt di sistema: entrano nella chiave solo se attivi, così i risultati già in cache restano validi.
     const principles = activePrinciples(this.wf.settings.principles);
     if (principles.length) h.update(JSON.stringify(principles));
@@ -535,11 +543,13 @@ export class RunEngine {
     let errorMsg: Msg | undefined;
     try {
       const stream = this.run.mode === 'prova'
-        ? mockQuery({ phase: d, attemptIndex: a.index, resume: resume?.sessionId, signal: ctrl.signal, lang: this.lang, skills: bundle ? Object.values(bundle.byId) : [] })
+        ? mockQuery({ phase: d, attemptIndex: a.index, resume: resume?.sessionId, signal: ctrl.signal, lang: this.lang, skills: bundle ? Object.values(bundle.byId) : [], projectDir: this.wf.settings.projectDir, extraDirs: extraDirs(this.wf.settings) })
         : query({
           prompt,
           options: {
             cwd: this.wf.settings.projectDir,
+            // Senza richieste di permesso, Claude Code nega le scritture fuori dalle cartelle di lavoro: queste le ampliano.
+            ...(existingExtraDirs(this.wf.settings).length ? { additionalDirectories: existingExtraDirs(this.wf.settings) } : {}),
             model: d.model || undefined,
             tools,
             allowedTools: tools,
@@ -686,8 +696,11 @@ export class RunEngine {
       // Se l'agente si è fermato per un permesso che la fase davvero non ha, lo si concede con un clic.
       const ask = declared.permesso && lacksLevel(d.allowedTools, declared.permesso) ? declared.permesso : undefined;
       st.missingPermission = ask;
+      // Lo stesso per una cartella esterna, se non è già tra quelle consentite.
+      const askDir = declared.cartella && !this.dirAllowed(declared.cartella) ? path.resolve(declared.cartella) : undefined;
+      st.missingDir = askDir;
       const actions: HumanAction[] = ['riprendi', 'riprova', 'salta', 'annulla'];
-      st.pendingActions = ask ? ['consenti', ...actions] : actions;
+      st.pendingActions = [...(ask ? ['consenti' as const] : []), ...(askDir ? ['consenti_cartella' as const] : []), ...actions];
       if (declared.esito === 'bloccato') {
         st.status = 'bloccata';
         // La sintesi è testo dell'agente: nessun messaggio localizzabile.
@@ -699,6 +712,7 @@ export class RunEngine {
         this.say('errore', msg('events.agentKo', { label: d.label, summary: declared.sintesi }), where);
       }
       if (ask) this.say('intervento', msg(`events.permissionAsked.${ask}`, { label: d.label }), where);
+      if (askDir) this.say('intervento', msg('events.dirAsked', { label: d.label, path: askDir }), where);
     } else {
       st.status = 'completata';
       // I punti restano anche nel testo per le fasi successive (ad esempio un rapporto che unisce le revisioni).
@@ -1233,6 +1247,27 @@ export class RunEngine {
     this.runChanged();
   }
 
+  /** La cartella è già tra quelle in cui la fase può lavorare (progetto o cartelle aggiuntive)? */
+  private dirAllowed(dir: string) {
+    return [this.wf.settings.projectDir, ...extraDirs(this.wf.settings)].some((p) => p && isInsideDir(dir, p));
+  }
+
+  /** Aggiunge una cartella esterna al workflow dell'esecuzione e a quello salvato, come per i permessi. */
+  private grantDir(n: WorkflowNode, dir: string) {
+    const add = (s: WorkflowSettings) => { s.extraDirs = [...extraDirs(s).filter((x) => !isInsideDir(x, dir)), dir]; };
+    // La cartella chiesta può non esistere ancora (es. una cartella di output): si crea, così Claude Code la accetta.
+    try { fs.mkdirSync(dir, { recursive: true }); } catch { /* resta segnalata dalla validazione */ }
+    add(this.wf.settings);
+    this.say('intervento', msg('events.dirGranted', { label: n.data.label, path: dir }), { nodeId: n.id });
+    const saved = getWorkflow(this.run.workflowId);
+    if (saved) {
+      add(saved.settings);
+      saveWorkflow(saved);
+      this.say('intervento', msg('events.dirSaved', { path: dir }), { nodeId: n.id });
+    }
+    this.runChanged();
+  }
+
   async human(nodeId: string, action: HumanAction, feedback = '', points: PointRef[] = []) {
     const st = this.run.nodes[nodeId];
     const n = this.node(nodeId);
@@ -1250,16 +1285,26 @@ export class RunEngine {
     st.pendingActions = undefined;
     this.setPending(st, undefined);
     const granted = st.missingPermission;
+    const grantedDir = st.missingDir;
     st.missingPermission = undefined;
+    st.missingDir = undefined;
 
-    if (action === 'consenti') {
-      if (!granted) throw this.fail(msg('api.actionUnavailable', { action }));
-      this.grantPermission(n, granted);
-      // Stessa sessione, ora con gli strumenti nuovi: l'agente riparte da dove si era fermato.
+    if (action === 'consenti' || action === 'consenti_cartella') {
+      let note: string;
+      if (action === 'consenti') {
+        if (!granted) throw this.fail(msg('api.actionUnavailable', { action }));
+        this.grantPermission(n, granted);
+        note = this.t(`agent.permissionGranted.${granted}`);
+      } else {
+        if (!grantedDir) throw this.fail(msg('api.actionUnavailable', { action }));
+        this.grantDir(n, grantedDir);
+        note = this.t('agent.dirGranted', { path: grantedDir });
+      }
+      // Stessa sessione, ora con il nuovo permesso: l'agente riparte da dove si era fermato.
       const sess = [...st.attempts].reverse().find((x) => x.sessionId)?.sessionId;
       st.status = 'in_attesa';
       this.nodeChanged(nodeId);
-      if (sess) void this.runAgent(n, 'ripresa_con_feedback', { sessionId: sess, feedback: this.t(`agent.permissionGranted.${granted}`) });
+      if (sess) void this.runAgent(n, 'ripresa_con_feedback', { sessionId: sess, feedback: note });
       else void this.startNode(n, 'riprova');
       return;
     }
@@ -1375,6 +1420,26 @@ export function parseDecisionLine(line: string): string | null {
   return text ? text : null;
 }
 
+/** Cartelle aggiuntive valide del workflow: percorsi assoluti, normalizzati, senza doppioni. */
+export function extraDirs(s: WorkflowSettings): string[] {
+  const out: string[] = [];
+  for (const d of s.extraDirs ?? []) {
+    const p = d.trim();
+    if (p && path.isAbsolute(p) && !out.some((x) => isInsideDir(p, x) && isInsideDir(x, p))) out.push(path.resolve(p));
+  }
+  return out;
+}
+
+/** Solo le cartelle aggiuntive che esistono: le altre restano segnalate dalla validazione. */
+export const existingExtraDirs = (s: WorkflowSettings) => extraDirs(s).filter((d) => { try { return fs.statSync(d).isDirectory(); } catch { return false; } });
+
+/** `dir` coincide con `parent` o sta al suo interno (su Windows senza distinguere maiuscole). */
+export function isInsideDir(dir: string, parent: string) {
+  const norm = (p: string) => (process.platform === 'win32' ? path.resolve(p).toLowerCase() : path.resolve(p));
+  const rel = path.relative(norm(parent), norm(dir));
+  return rel === '' || (!rel.startsWith('..') && !path.isAbsolute(rel));
+}
+
 export function parseDeclared(text: unknown): DeclaredOutcome | undefined {
   if (typeof text !== 'string') return undefined;
   const blocks = [...text.matchAll(/```regia\s*([\s\S]*?)```/g)];
@@ -1397,6 +1462,7 @@ export function parseDeclared(text: unknown): DeclaredOutcome | undefined {
       ...(puntiOmessi.length ? { puntiOmessi } : {}),
       // Il permesso conta solo se la fase si è fermata.
       ...(esito !== 'ok' && (j.permesso === 'modifica' || j.permesso === 'internet') ? { permesso: j.permesso as PermissionLevel } : {}),
+      ...(esito !== 'ok' && typeof j.cartella === 'string' && path.isAbsolute(j.cartella.trim()) ? { cartella: j.cartella.trim().slice(0, 500) } : {}),
     };
   } catch {
     return undefined;

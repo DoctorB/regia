@@ -391,6 +391,10 @@ input[type="checkbox"] { width: 16px; height: 16px; min-height: 0; accent-color:
 .tone-bad { color: var(--bad-ink); }
 .tone-warn { color: var(--warn-ink); }
 .folder-status .tone-warn { background: var(--warn-soft); padding: 6px 8px; border-radius: 6px; }
+.extra-dirs { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
+.extra-dir { display: flex; flex-direction: column; gap: 4px; width: 100%; }
+.extra-dir-row { display: flex; gap: 6px; align-items: center; }
+.extra-dir-row input { flex: 1; min-width: 0; }
 
 /* ---------- Esecuzione ---------- */
 .runpanel { display: flex; flex-direction: column; height: 100%; }

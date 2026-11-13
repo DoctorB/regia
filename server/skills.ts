@@ -1,6 +1,6 @@
 // Skill di Claude Code nei workflow.
-// - Ricerca: skill del progetto (<progetto>/.claude/skills/<nome>/SKILL.md) e personali (~/.claude/skills, anche in
-//   sottocartelle). Nome e descrizione dal frontmatter di SKILL.md.
+// - Ricerca: skill del progetto (<progetto>/.claude/skills/<nome>/SKILL.md e .agents/skills, usata anche da altri
+//   strumenti) e personali (~/.claude/skills, anche in sottocartelle). Nome e descrizione dal frontmatter di SKILL.md.
 // - Uso: per ogni fase Regia prepara un piccolo plugin locale con le sole skill scelte e lo passa al SDK (opzione
 //   `plugins`), insieme al filtro `skills` e allo strumento `Skill`. Così le skill personali sono disponibili senza
 //   caricare impostazioni, hook o plugin personali.
@@ -13,18 +13,41 @@ import { DATA_DIR } from './store.ts';
 export const PLUGIN_NAME = 'regia-skills';
 const BUNDLES = path.join(DATA_DIR, 'skill-bundles');
 const MAX_DEPTH = 4;
+/** Cartelle delle skill nel progetto: quella di Claude Code e quella condivisa da altri strumenti (Codex, Junie, Copilot…). */
+export const PROJECT_SKILL_DIRS = [['.claude', 'skills'], ['.agents', 'skills']] as const;
 
 export const personalSkillsDir = () => path.resolve(process.env.REGIA_SKILLS_DIR || path.join(os.homedir(), '.claude', 'skills'));
 
-/** Frontmatter YAML semplice (chiave: valore su una riga, valori tra virgolette facoltative). */
-function frontmatter(text: string): Record<string, string> {
+/**
+ * Frontmatter YAML semplice: `chiave: valore` (virgolette facoltative), anche su più righe con `|` / `>`
+ * oppure con righe di continuazione rientrate.
+ */
+export function frontmatter(text: string): Record<string, string> {
   const m = text.match(/^---\s*\r?\n([\s\S]*?)\r?\n---/);
   const out: Record<string, string> = {};
   if (!m) return out;
+  let key = '';
+  let block: '|' | '>' | '' = '';
+  let lines: string[] = [];
+  const flush = () => {
+    if (!key) return;
+    const v = block === '|' ? lines.join('\n') : lines.join(' ');
+    out[key] = v.trim().replace(/^["']|["']$/g, '');
+  };
   for (const line of m[1].split(/\r?\n/)) {
     const kv = line.match(/^([A-Za-z_][\w-]*):\s*(.*)$/);
-    if (kv) out[kv[1]] = kv[2].trim().replace(/^["']|["']$/g, '');
+    if (kv) {
+      flush();
+      key = kv[1];
+      const v = kv[2].trim();
+      const b = v.match(/^([|>])[+-]?$/);
+      block = b ? (b[1] as '|' | '>') : '';
+      lines = b ? [] : [v];
+    } else if (key && (/^\s/.test(line) || line === '')) {
+      lines.push(line.trim());
+    }
   }
+  flush();
   return out;
 }
 
@@ -47,7 +70,9 @@ function collect(root: string, source: SkillInfo['source'], depth = 0, acc: Skil
 /** Skill trovate nelle fonti indicate, ordinate per fonte e nome. */
 export function discoverSkills(projectDir: string | undefined, sources: { project?: boolean; personal?: boolean } = { project: true, personal: true }): SkillInfo[] {
   const out: SkillInfo[] = [];
-  if (sources.project !== false && projectDir && path.isAbsolute(projectDir)) collect(path.join(projectDir, '.claude', 'skills'), 'progetto', 0, out);
+  if (sources.project !== false && projectDir && path.isAbsolute(projectDir)) {
+    for (const d of PROJECT_SKILL_DIRS) collect(path.join(projectDir, ...d), 'progetto', 0, out);
+  }
   if (sources.personal) collect(personalSkillsDir(), 'personale', 0, out);
   const seen = new Set<string>();
   return out.filter((s) => (seen.has(s.id) ? false : (seen.add(s.id), true)))

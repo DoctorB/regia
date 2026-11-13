@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Activity, Bot, CircleAlert, CircleCheck, Clock, Coins, Copy, CornerDownRight, Download, ExternalLink, FileText, Flag, Gauge, Globe, Hand, Info, Lightbulb, ListTree,
+  Activity, Bot, CircleAlert, FolderPlus, CircleCheck, Clock, Coins, Copy, CornerDownRight, Download, ExternalLink, FileText, Flag, Gauge, Globe, Hand, Info, Lightbulb, ListTree,
   MessageSquareText, OctagonX, Pause, Play, Recycle, RotateCcw, ShieldCheck, SkipForward, Square, Terminal, TriangleAlert, Undo2, Workflow as WorkflowIcon, X,
   type LucideIcon,
 } from 'lucide-react';
@@ -25,6 +25,7 @@ const ACTION: Record<HumanAction, { icon: LucideIcon; cls?: string; help?: boole
   installa_node: { icon: Play, cls: 'primary', help: true },
   installa_dipendenze: { icon: Play, cls: 'primary', help: true },
   consenti: { icon: ShieldCheck, cls: 'primary', help: true },
+  consenti_cartella: { icon: FolderPlus, cls: 'primary', help: true },
 };
 
 // Etichette in locales/<lingua>/run.json (events.kind.<tipo>).
@@ -45,7 +46,7 @@ interface Props {
   onOpenRun: (id: string) => void;
   onContinue?: () => void;
   /** Permesso concesso a una fase dell'esecuzione: l'editor aggiorna il workflow aperto. */
-  onGranted?: (workflowId: string, nodeId: string, level: PermissionLevel) => void;
+  onGranted?: (workflowId: string, nodeId: string, grant: { level: PermissionLevel } | { dir: string }) => void;
 }
 
 export function RunPanel({ run, runs, selectedNode, onSelectNode, onOpenRun, onContinue, onGranted }: Props) {
@@ -230,6 +231,9 @@ function StatusTab({ run, ordered, label, selectedNode, onSelectNode, onGranted 
   );
 }
 
+/** Ultimi due segmenti di un percorso, per tenere corta l'etichetta del pulsante (il percorso intero è nel suggerimento). */
+const shortDir = (p: string) => { const parts = p.split(/[\\/]+/).filter(Boolean); return parts.length > 2 ? `…${p.includes('\\') ? '\\' : '/'}${parts.slice(-2).join(p.includes('\\') ? '\\' : '/')}` : p; };
+
 function InterventionCard({ run, nodeId, label, readOnly = false, onGranted }: { run: Run; nodeId: string; label: string; readOnly?: boolean; onGranted?: Props['onGranted'] }) {
   const { t, tm } = useI18n();
   const n = run.nodes[nodeId];
@@ -254,9 +258,11 @@ function InterventionCard({ run, nodeId, label, readOnly = false, onGranted }: {
       : undefined;
     setBusy(true);
     const asked = n.missingPermission;
+    const askedDir = n.missingDir;
     try {
       await api.action(run.id, nodeId, a, fb, refs); setFb(''); setChosen(new Set());
-      if (a === 'consenti' && asked) onGranted?.(run.workflowId, nodeId, asked);
+      if (a === 'consenti' && asked) onGranted?.(run.workflowId, nodeId, { level: asked });
+      if (a === 'consenti_cartella' && askedDir) onGranted?.(run.workflowId, nodeId, { dir: askedDir });
     } catch (e) { toast((e as Error).message, 'bad'); } finally { setBusy(false); }
   };
   const primary = n.pendingActions!.filter((a) => a !== 'annulla');
@@ -314,7 +320,7 @@ function InterventionCard({ run, nodeId, label, readOnly = false, onGranted }: {
         {primary.map((a) => {
           const m = ACTION[a];
           const Icon = m.icon;
-          return <button key={a} disabled={busy} className={`btn ${m.cls ?? 'ghost'}`} title={m.help ? t(`actions.${a}.help`) : undefined} onClick={() => act(a)}><Icon />{a === 'consenti' ? t(`actions.consenti.label.${n.missingPermission ?? 'modifica'}`) : t(`actions.${a}.label`)}</button>;
+          return <button key={a} disabled={busy} className={`btn ${m.cls ?? 'ghost'}`} title={a === 'consenti_cartella' ? `${n.missingDir}\n${t('actions.consenti_cartella.help')}` : m.help ? t(`actions.${a}.help`) : undefined} onClick={() => act(a)}><Icon />{a === 'consenti' ? t(`actions.consenti.label.${n.missingPermission ?? 'modifica'}`) : a === 'consenti_cartella' ? t('actions.consenti_cartella.label', { path: shortDir(n.missingDir ?? '') }) : t(`actions.${a}.label`)}</button>;
         })}
         <span className="grow" />
         {n.pendingActions!.includes('annulla') && <button className="btn ghost danger" disabled={busy} onClick={() => act('annulla')}><X />{t('actions.annulla.label')}</button>}

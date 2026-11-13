@@ -2,6 +2,7 @@
 // senza chiamate di rete né costi. Le tariffe usate qui sono FITTIZIE e servono solo a far funzionare
 // i grafici: non rappresentano prezzi reali.
 import { randomUUID } from 'node:crypto';
+import path from 'node:path';
 import type { Translate } from '../shared/i18n.ts';
 import type { PhaseConfig } from '../shared/types.ts';
 import { serverT } from './i18n.ts';
@@ -40,6 +41,9 @@ export interface MockOptions {
   lang?: string;
   /** Skill disponibili per la fase (nomi visti dall'agente): la prova ne simula l'uso della prima. */
   skills?: string[];
+  /** Cartella del progetto e cartelle aggiuntive: [simula-cartella] chiede una cartella accanto al progetto. */
+  projectDir?: string;
+  extraDirs?: string[];
 }
 
 type Step =
@@ -121,7 +125,10 @@ export async function* mockQuery(o: MockOptions): AsyncGenerator<Record<string, 
   const failFirst = p.instructions.includes('[simula-errore]') && o.attemptIndex === 0;
   // Senza il permesso di modificare, la fase si ferma e lo chiede (finché non le viene concesso).
   const needsEdit = p.instructions.includes('[simula-permesso]') && !p.allowedTools.includes('Edit');
-  const blockFirst = (p.instructions.includes('[simula-blocco]') && o.attemptIndex === 0) || needsEdit;
+  // Lo stesso per una cartella fuori dal progetto, finché non diventa una cartella aggiuntiva.
+  const outside = o.projectDir ? path.join(path.dirname(o.projectDir), 'condivisa') : '';
+  const needsDir = p.instructions.includes('[simula-cartella]') && Boolean(outside) && !(o.extraDirs ?? []).some((d) => path.resolve(d).toLowerCase() === outside.toLowerCase());
+  const blockFirst = (p.instructions.includes('[simula-blocco]') && o.attemptIndex === 0) || needsEdit || needsDir;
   // La prima revisione propone dei punti da correggere; quella rifatta dopo la correzione non ne trova.
   const withPoints = p.kind === 'revisione' && o.attemptIndex === 0 && !o.resume && !blockFirst;
   const manyPoints = p.instructions.includes('[simula-molti-punti]');
@@ -218,10 +225,11 @@ export async function* mockQuery(o: MockOptions): AsyncGenerator<Record<string, 
   turns++;
   const esito = blockFirst ? 'bloccato' : 'ok';
   const sintesi = needsEdit ? t('mock.summary.needsPermission')
+    : needsDir ? t('mock.summary.needsDir', { path: outside })
     : blockFirst ? t('mock.summary.blocked')
     : resumed ? t('mock.summary.resumed') : t('mock.summary.done', { label: p.label });
   const decisione = t('mock.finalDecision', { outcome: esito, label: p.label });
-  const finalText = `${t('mock.workDone')}\n\n\`\`\`regia\n${JSON.stringify({ esito, sintesi, decisioni: [decisione], ...(needsEdit ? { permesso: 'modifica' } : {}), ...(withPoints ? { punti: manyPoints
+  const finalText = `${t('mock.workDone')}\n\n\`\`\`regia\n${JSON.stringify({ esito, sintesi, decisioni: [decisione], ...(needsEdit ? { permesso: 'modifica' } : {}), ...(needsDir && !needsEdit ? { cartella: outside } : {}), ...(withPoints ? { punti: manyPoints
     ? Array.from({ length: 27 }, (_, i) => t('mock.points.numbered', { n: i + 1 }))
     : [t('mock.points.first'), t('mock.points.second')] } : {}) }, null, 1)}\n\`\`\``;
   const fid = `msg_sim_${randomUUID().slice(0, 12)}`;

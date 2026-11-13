@@ -374,7 +374,7 @@ test('punti della revisione: dichiarati a parte, scelti nell\'approvazione e inv
   assert.equal(groups.length, 1);
   assert.equal(groups[0].nodeId, 'revisione');
   assert.equal(groups[0].items.length, 2);
-  assert.match(run.nodes.revisione.output!, /Punti da correggere:\n- src\/modulo\.js/);
+  assert.match(run.nodes.revisione.output!, /Punti da correggere:\n- Gestire il caso di input vuoto/);
 
   // Senza punti né commento non si respinge; un indice inesistente viene ignorato.
   await assert.rejects(eng.human('approvazione', 'respingi', '', [{ nodeId: 'revisione', index: 9 }]));
@@ -383,8 +383,8 @@ test('punti della revisione: dichiarati a parte, scelti nell\'approvazione e inv
   await eng.human('approvazione', 'respingi', 'Aggiorna anche il README', [{ nodeId: 'revisione', index: 1 }]);
   await waitFor(() => run.nodes.approvazione.status === 'attesa_intervento');
   const fb = run.nodes.correzione.attempts[1].feedback!;
-  assert.match(fb, /Punti segnalati da "Revisione" da correggere:\n- test\/modulo\.test\.js/);
-  assert.doesNotMatch(fb, /src\/modulo\.js, totale/);
+  assert.match(fb, /Punti segnalati da "Revisione" da correggere:\n- Aggiungere un test/);
+  assert.doesNotMatch(fb, /input vuoto/);
   assert.match(fb, /Indicazioni aggiuntive:\nAggiorna anche il README/);
   // La revisione rifatta dopo la correzione non trova altro: la lista sparisce.
   assert.equal(run.nodes.revisione.attempts.length, 2);
@@ -484,6 +484,75 @@ test('fase ferma per un permesso mancante: si concede con un clic, anche nel wor
   assert.equal(eng2.run.nodes.crea.pendingActions?.includes('consenti'), false);
   await assert.rejects(eng2.human('crea', 'consenti'));
   eng2.cancel();
+});
+
+test('cartelle aggiuntive: nel prompt, controllate dalla validazione, concesse con un clic quando una fase si ferma', async () => {
+  const { extraDirs, isInsideDir, parseDeclared, agentProtocol } = await import('../engine.ts');
+  const shared = path.join(tmp, 'condivisa');
+  // Solo percorsi assoluti, senza doppioni; una sottocartella sta dentro la cartella che la contiene.
+  const base = { maxParallel: 1, loadProjectSettings: false, projectDir, goal: '' };
+  assert.deepEqual(extraDirs({ ...base, extraDirs: [` ${shared} `, 'relativa', '', shared] }), [shared]);
+  assert.ok(isInsideDir(path.join(shared, 'sotto'), shared));
+  assert.ok(isInsideDir(shared, shared));
+  assert.ok(!isInsideDir(projectDir, shared));
+  assert.ok(!isInsideDir(`${shared}-bis`, shared));
+  // L'agente indica la cartella solo se si ferma, con un percorso assoluto.
+  assert.equal(parseDeclared(`\`\`\`regia\n${JSON.stringify({ esito: 'bloccato', sintesi: 's', cartella: shared })}\n\`\`\``)?.cartella, shared);
+  assert.equal(parseDeclared('```regia\n{"esito":"bloccato","sintesi":"s","cartella":"relativa"}\n```')?.cartella, undefined);
+  assert.equal(parseDeclared(`\`\`\`regia\n${JSON.stringify({ esito: 'ok', sintesi: 's', cartella: shared })}\n\`\`\``)?.cartella, undefined);
+  assert.match(agentProtocol(), /"cartella"/);
+
+  // La regola predefinita sulle modifiche fuori dal progetto si aggiorna solo se è ancora quella originale.
+  const rulesFile = path.join(process.env.REGIA_DATA_DIR!, 'regole.md');
+  const keep = fs.readFileSync(rulesFile, 'utf8');
+  fs.writeFileSync(rulesFile, '- Prima.\r\n- Non modificare file fuori dalla cartella del progetto.\r\n');
+  ensureRegiaRules();
+  assert.equal(fs.readFileSync(rulesFile, 'utf8'), '- Prima.\r\n- Non modificare file fuori dalla cartella del progetto e dalle cartelle aggiuntive del workflow.\r\n');
+  fs.writeFileSync(rulesFile, '- Non modificare file fuori dalla cartella del progetto, mai.\n');
+  ensureRegiaRules();
+  assert.equal(fs.readFileSync(rulesFile, 'utf8'), '- Non modificare file fuori dalla cartella del progetto, mai.\n');
+  fs.writeFileSync(rulesFile, keep);
+
+  const missing = path.join(tmp, 'non-esiste');
+  const issues = validateWorkflow({
+    id: 'wf_v', name: 'V', description: '', updatedAt: '', nodes: [], edges: [],
+    settings: { ...base, extraDirs: ['relativa', missing] },
+  }, 'prova', 'it');
+  assert.ok(issues.some((i) => i.msg?.key === 'validate.extraDirNotAbsolute' && i.level === 'avviso'));
+  assert.ok(issues.some((i) => i.msg?.key === 'validate.extraDirMissing' && i.message.includes(missing)));
+
+  // La cartella non esiste ancora: concedendola, Regia la crea.
+  assert.ok(!fs.existsSync(shared));
+  const wf: Workflow = {
+    id: 'wf_cartella', name: 'Cartella', description: '', updatedAt: '',
+    settings: { ...base, applyGeneralRules: false, goal: 'Scrivi il file condiviso' },
+    nodes: [{ id: 'scrivi', position: { x: 0, y: 0 }, data: { label: 'Scrivi', kind: 'personalizzata', role: '', instructions: 'Scrivi fuori. [simula-cartella]', model: 'haiku', allowedTools: ['Read', 'Glob', 'Grep', 'Edit', 'Write', 'Bash'], maxTurns: 5, contextMode: 'sintesi', reuseResult: false } }],
+    edges: [],
+  };
+  store.saveWorkflow(structuredClone(wf));
+  const eng = startRun(wf, 'prova');
+  const run = eng.run;
+  await waitFor(() => run.nodes.scrivi.status === 'bloccata');
+  assert.equal(run.nodes.scrivi.missingDir, shared);
+  assert.deepEqual(run.nodes.scrivi.pendingActions, ['consenti_cartella', 'riprendi', 'riprova', 'salta', 'annulla']);
+  assert.ok(run.events.some((e) => e.text === `Scrivi: chiede di poter lavorare nella cartella ${shared}, fuori dal progetto.`));
+
+  await eng.human('scrivi', 'consenti_cartella');
+  await waitFor(() => run.status === 'completata');
+  const att = run.nodes.scrivi.attempts;
+  assert.equal(att.length, 2);
+  assert.equal(att[1].reason, 'ripresa_con_feedback');
+  assert.match(att[1].feedback!, /Ora puoi lavorare anche nella cartella/);
+  assert.deepEqual(run.snapshot.settings.extraDirs, [shared]);
+  assert.deepEqual(store.getWorkflow('wf_cartella')!.settings.extraDirs, [shared]);
+  assert.ok(fs.statSync(shared).isDirectory());
+  assert.equal(run.nodes.scrivi.missingDir, undefined);
+
+  // Con la cartella già consentita la fase non si ferma, e l'avvio la riporta negli eventi.
+  const eng2 = startRun(store.getWorkflow('wf_cartella')!, 'prova');
+  await waitFor(() => eng2.run.status === 'completata');
+  assert.ok(eng2.run.events.some((e) => e.text === `Cartelle aggiuntive consentite: ${shared}.`));
+  assert.equal(eng2.run.nodes.scrivi.attempts.length, 1);
 });
 
 test('workflow in inglese: eventi, protocollo e testi simulati nella lingua del workflow', async () => {

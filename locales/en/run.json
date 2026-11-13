@@ -120,6 +120,10 @@
         "internet": "Allow internet and resume"
       },
       "help": "The phase resumes the same session with the new permission. The saved workflow is updated, so next time it starts that way."
+    },
+    "consenti_cartella": {
+      "label": "Allow {path} and resume",
+      "help": "The phase resumes the same session and can also work in this folder. The folder is added to the additional folders of the saved workflow."
     }
   },
   "events": {
@@ -493,7 +497,7 @@
         "chosen": "Selected"
       },
       "loading": "Looking for skills…",
-      "empty": "No skills in the project (.claude/skills). You can enable personal skills in the workflow settings.",
+      "empty": "No skills in the project (.claude/skills or .agents/skills). You can enable personal skills in the workflow settings.",
       "emptyAll": "No skills found in the project or among your personal ones.",
       "noneHint": "The phase works without skills.",
       "allHint": "All skills from the active sources: {names}.",
@@ -554,7 +558,12 @@
       "dirPlaceholder": "C:\\path\\project",
       "goal": "Goal",
       "goalHint": "Included in every phase's instructions. Also state when the work is done.",
-      "description": "Description"
+      "description": "Description",
+      "extraDirs": "Additional folders",
+      "extraDirsHint": "Folders outside the project where phases can read and write, for example another repository or a shared output folder.",
+      "extraDirPlaceholder": "C:\\path\\other-folder",
+      "extraDirAdd": "Add folder",
+      "extraDirRemove": "Remove folder"
     },
     "run": {
       "title": "Run",
@@ -580,10 +589,10 @@
         "other": "{count} found"
       },
       "project": "Project skills",
-      "projectHint": "From .claude/skills in the project folder.",
+      "projectHint": "From .claude/skills and .agents/skills in the project folder.",
       "projectHintCount": {
-        "one": "{count} skill in .claude/skills.",
-        "other": "{count} skills in .claude/skills."
+        "one": "{count} skill in the project.",
+        "other": "{count} skills in the project."
       },
       "personal": "Personal skills",
       "personalHint": "From ~/.claude/skills. Off by default: they apply to all your projects.",

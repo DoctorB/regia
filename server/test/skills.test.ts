@@ -56,6 +56,20 @@ test('ricerca: progetto di serie, personali solo se attivate, anche in sottocart
   assert.deepEqual(skills.skillSources({ projectDir, goal: '', maxParallel: 1, loadProjectSettings: false }), { project: true, personal: false });
 });
 
+test('ricerca: anche .agents/skills del progetto, con descrizioni su più righe', () => {
+  const dir = path.join(tmp, 'progetto-agents');
+  writeSkill(path.join(dir, '.agents', 'skills', 'verifica'), '---\r\nname: verifica\r\ndescription: |\r\n  Controlla la modifica.\r\n  Poi riassume.\r\nuser-invocable: true\r\n---');
+  writeSkill(path.join(dir, '.agents', 'skills', 'piegata'), '---\nname: piegata\ndescription: >-\n  Una riga\n  sola.\n---');
+  writeSkill(path.join(dir, '.claude', 'skills', 'continua'), '---\nname: continua\ndescription: Prima parte\n  seconda parte\n---');
+  const found = skills.discoverSkills(dir, { project: true, personal: false });
+  assert.deepEqual(found.map((s) => [s.id, s.description]), [
+    ['progetto:continua', 'Prima parte seconda parte'],
+    ['progetto:piegata', 'Una riga sola.'],
+    ['progetto:verifica', 'Controlla la modifica.\nPoi riassume.'],
+  ]);
+  assert.equal(skills.frontmatter('---\nname: x\ndescription: |\n  a\n---')['user-invocable'], undefined);
+});
+
 test('plugin della fase: solo le skill scelte, copiate, nomi univoci; originali intatti', () => {
   const all = skills.discoverSkills(projectDir, { project: true, personal: true });
   const chosen = all.filter((s) => s.name !== 'senza-frontmatter');

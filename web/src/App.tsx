@@ -209,11 +209,10 @@ export function App() {
    * lo stesso cambio alla copia aperta e a quella di riferimento, così le altre modifiche non salvate restano
    * e un salvataggio successivo non toglie il permesso.
    */
-  const grantInEditor = useCallback((workflowId: string, nodeId: string, level: PermissionLevel) => {
-    const patch = (w: Workflow): Workflow => ({
-      ...w,
-      nodes: w.nodes.map((n) => (n.id === nodeId ? { ...n, data: { ...n.data, allowedTools: grantLevel(n.data.allowedTools, level) } } : n)),
-    });
+  const grantInEditor = useCallback((workflowId: string, nodeId: string, grant: { level: PermissionLevel } | { dir: string }) => {
+    const patch = (w: Workflow): Workflow => ('dir' in grant
+      ? { ...w, settings: { ...w.settings, extraDirs: [...(w.settings.extraDirs ?? []).filter((d) => d.trim().toLowerCase() !== grant.dir.toLowerCase()), grant.dir] } }
+      : { ...w, nodes: w.nodes.map((n) => (n.id === nodeId ? { ...n, data: { ...n.data, allowedTools: grantLevel(n.data.allowedTools, grant.level) } } : n)) });
     setWf((w) => (w && w.id === workflowId ? patch(w) : w));
     setSaved((s) => {
       if (!s) return s;

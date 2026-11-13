@@ -29,8 +29,20 @@ function readText(p: string): { exists: boolean; text: string } {
   }
 }
 
+/** Righe delle regole predefinite cambiate nel tempo: se il testo salvato le contiene ancora identiche, si aggiornano. */
+const RULE_UPDATES: [string, string][] = [
+  ['- Non modificare file fuori dalla cartella del progetto.\n', '- Non modificare file fuori dalla cartella del progetto e dalle cartelle aggiuntive del workflow.\n'],
+  ['- Do not modify files outside the project folder.\n', "- Do not modify files outside the project folder and the workflow's additional folders.\n"],
+];
+
 export function ensureRegiaRules() {
-  if (!fs.existsSync(REGIA_RULES_PATH)) fs.writeFileSync(REGIA_RULES_PATH, defaultRegiaRules());
+  if (!fs.existsSync(REGIA_RULES_PATH)) return fs.writeFileSync(REGIA_RULES_PATH, defaultRegiaRules());
+  const text = readText(REGIA_RULES_PATH).text;
+  const crlf = text.includes('\r\n');
+  let next = text.replace(/\r\n/g, '\n');
+  const before = next;
+  for (const [from, to] of RULE_UPDATES) next = next.replace(from, to);
+  if (next !== before) fs.writeFileSync(REGIA_RULES_PATH, crlf ? next.replace(/\n/g, '\r\n') : next);
 }
 
 export function projectClaudeMdPath(projectDir: string): string | undefined {

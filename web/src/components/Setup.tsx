@@ -9,7 +9,8 @@ import { Field, KindTile, Modal, runStatusLabel } from '../ui.tsx';
 import { PrinciplePicker } from './Principles.tsx';
 
 /** Stato di una cartella di progetto: esistenza, git, modifiche non salvate, CLAUDE.md. */
-export function FolderStatus({ path }: { path: string }) {
+/** Stato della cartella; `compact` mostra solo se esiste (per le cartelle aggiuntive non servono git né CLAUDE.md). */
+export function FolderStatus({ path, compact = false }: { path: string; compact?: boolean }) {
   const { t } = useI18n();
   const [info, setInfo] = useState<FolderInfo | null>(null);
   useEffect(() => {
@@ -22,6 +23,7 @@ export function FolderStatus({ path }: { path: string }) {
   if (!info) return <div className="folder-status muted"><Loader2 className="spin" />{t('folder.checking')}</div>;
   if (!info.exists) return <div className="folder-status tone-bad"><CircleAlert />{t('folder.notFound')}</div>;
   if (!info.isDirectory) return <div className="folder-status tone-bad"><CircleAlert />{t('folder.isFile')}</div>;
+  if (compact) return <div className="folder-status"><div className="tone-good"><CircleCheck />{t('folder.found')}</div></div>;
   const g = info.git;
   return (
     <div className="folder-status">

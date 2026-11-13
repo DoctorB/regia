@@ -35,7 +35,9 @@
     "skillsNone": "{name}: nessuna skill trovata nelle fonti attive del workflow.",
     "readyPatternMissing": "La fase \"{name}\" attende un testo nell'output: indica quale.",
     "externalNeedsUrl": "La fase \"{name}\" non avvia nulla: serve l'indirizzo da verificare, con il criterio \"Risponde un indirizzo\".",
-    "showNeedsUrl": "\"{name}\": indica l'indirizzo del sito già attivo."
+    "showNeedsUrl": "\"{name}\": indica l'indirizzo del sito già attivo.",
+    "extraDirNotAbsolute": "Cartella aggiuntiva \"{dir}\": serve un percorso assoluto, verrà ignorata.",
+    "extraDirMissing": "Cartella aggiuntiva \"{dir}\": non esiste."
   },
   "insights": {
     "corrections": {

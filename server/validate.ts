@@ -57,6 +57,12 @@ export function validateWorkflow(wf: Workflow, mode: 'prova' | 'reale' = 'prova'
   if (!dir) err(msg('validate.noProjectDir'));
   else if (!path.isAbsolute(dir)) err(msg('validate.projectDirNotAbsolute'));
   else if (!fs.existsSync(dir) || !fs.statSync(dir).isDirectory()) err(msg('validate.projectDirMissing', { dir }));
+  for (const x of wf.settings.extraDirs ?? []) {
+    const d = x.trim();
+    if (!d) continue;
+    if (!path.isAbsolute(d)) warn(msg('validate.extraDirNotAbsolute', { dir: d }));
+    else if (!fs.existsSync(d) || !fs.statSync(d).isDirectory()) warn(msg('validate.extraDirMissing', { dir: d }));
+  }
 
   if (!(wf.settings.maxParallel >= 1 && wf.settings.maxParallel <= 8)) err(msg('validate.maxParallelRange'));
 

@@ -120,6 +120,10 @@
         "internet": "Consenti internet e riprendi"
       },
       "help": "La fase riprende la stessa sessione con il nuovo permesso. Il workflow salvato viene aggiornato: la prossima volta parte già così."
+    },
+    "consenti_cartella": {
+      "label": "Consenti {path} e riprendi",
+      "help": "La fase riprende la stessa sessione e può lavorare anche in questa cartella. La cartella viene aggiunta alle cartelle aggiuntive del workflow salvato."
     }
   },
   "events": {
@@ -493,7 +497,7 @@
         "chosen": "Scelte"
       },
       "loading": "Ricerca delle skill…",
-      "empty": "Nessuna skill nel progetto (.claude/skills). Puoi attivare le skill personali nelle impostazioni del workflow.",
+      "empty": "Nessuna skill nel progetto (.claude/skills o .agents/skills). Puoi attivare le skill personali nelle impostazioni del workflow.",
       "emptyAll": "Nessuna skill trovata nel progetto né tra le personali.",
       "noneHint": "La fase lavora senza skill.",
       "allHint": "Tutte le skill delle fonti attive: {names}.",
@@ -554,7 +558,12 @@
       "dirPlaceholder": "C:\\percorso\\progetto",
       "goal": "Obiettivo",
       "goalHint": "Incluso nelle istruzioni di ogni fase. Scrivi anche quando il lavoro è finito.",
-      "description": "Descrizione"
+      "description": "Descrizione",
+      "extraDirs": "Cartelle aggiuntive",
+      "extraDirsHint": "Cartelle fuori dal progetto in cui le fasi possono leggere e scrivere, ad esempio un altro repository o una cartella di output condivisa.",
+      "extraDirPlaceholder": "C:\\percorso\\altra-cartella",
+      "extraDirAdd": "Aggiungi cartella",
+      "extraDirRemove": "Rimuovi cartella"
     },
     "run": {
       "title": "Esecuzione",
@@ -580,10 +589,10 @@
         "other": "{count} trovate"
       },
       "project": "Skill del progetto",
-      "projectHint": "Da .claude/skills nella cartella del progetto.",
+      "projectHint": "Da .claude/skills e .agents/skills nella cartella del progetto.",
       "projectHintCount": {
-        "one": "{count} skill in .claude/skills.",
-        "other": "{count} skill in .claude/skills."
+        "one": "{count} skill nel progetto.",
+        "other": "{count} skill nel progetto."
       },
       "personal": "Skill personali",
       "personalHint": "Da ~/.claude/skills. Disattivate di serie: valgono per tutti i tuoi progetti.",

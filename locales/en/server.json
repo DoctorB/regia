@@ -155,7 +155,11 @@
       "noSession": "{label}: resumed with a new session and a summary of the work already done (the previous session had not opened yet).",
       "sessionUnavailable": "{label}: the previous session cannot be resumed, the phase restarts with a summary of the work already done."
     },
-    "reference": "Reference run: {name} ({id}). Its report is passed to every phase."
+    "reference": "Reference run: {name} ({id}). Its report is passed to every phase.",
+    "extraDirs": "Additional folders allowed: {dirs}.",
+    "dirAsked": "{label}: asks to work in the folder {path}, outside the project.",
+    "dirGranted": "{label}: allowed to work in the folder {path}.",
+    "dirSaved": "Folder {path} added to the saved workflow: the next run can already use it."
   },
   "interventions": {
     "declaredKo": "Negative outcome declared: {summary}",
@@ -182,7 +186,7 @@
     }
   },
   "agent": {
-    "protocol": "# Response protocol\n- When you make a significant decision (what to read, what to change, how to verify), write a line that starts with \"DECISION:\" followed by a short explanation in a single sentence.\n- Work only inside the project folder and only with the tools available to you.\n- ALWAYS end your response with this block, as valid JSON (keep the keys and the outcome values exactly as shown):\n```regia\n{\"esito\": \"ok\" | \"ko\" | \"bloccato\", \"sintesi\": \"result in 1-3 sentences, useful to the next phase\", \"decisioni\": [\"main decision and reason\", \"...\"]}\n```\n\"esito\" is the outcome, \"sintesi\" the summary, \"decisioni\" the list of decisions. Use \"ko\" if the task did not succeed (e.g. failing tests), \"bloccato\" if you cannot proceed without human intervention (explain what is needed in \"sintesi\").\nIf you stop because you lack the tools to do it, add \"permesso\" (permission) to the block: \"modifica\" if you need to edit files or run commands, \"internet\" if you need to use the web: the person supervising can grant it with one click.",
+    "protocol": "# Response protocol\n- When you make a significant decision (what to read, what to change, how to verify), write a line that starts with \"DECISION:\" followed by a short explanation in a single sentence.\n- Work only inside the project folder (and the additional folders, if listed) and only with the tools available to you.\n- ALWAYS end your response with this block, as valid JSON (keep the keys and the outcome values exactly as shown):\n```regia\n{\"esito\": \"ok\" | \"ko\" | \"bloccato\", \"sintesi\": \"result in 1-3 sentences, useful to the next phase\", \"decisioni\": [\"main decision and reason\", \"...\"]}\n```\n\"esito\" is the outcome, \"sintesi\" the summary, \"decisioni\" the list of decisions. Use \"ko\" if the task did not succeed (e.g. failing tests), \"bloccato\" if you cannot proceed without human intervention (explain what is needed in \"sintesi\").\nIf you stop because you lack the tools to do it, add \"permesso\" (permission) to the block: \"modifica\" if you need to edit files or run commands, \"internet\" if you need to use the web: the person supervising can grant it with one click.\nIf you stop because you need to read or write in a folder outside the allowed ones, add \"cartella\" (folder) to the block with the absolute path of the folder: this too can be granted with one click.",
     "protocolPoints": "- You are in a review phase: if you find concrete changes to make, add the \"punti\" key (the list of points) to the block, with the proposed corrections, one per item (file or function, problem and fix), ordered from most to least important, at most {max}: if you find more, merge similar ones. The person approving will choose which ones to apply. Finding points does not make the task unsuccessful: still use \"ok\". With nothing to report, leave the key out.",
     "goal": "# Workflow goal\n{goal}",
     "task": "# Your task: {label}\n{instructions}",
@@ -221,7 +225,9 @@
       "feedback": "The interrupted attempt was applying this correction, requested by the person supervising the workflow:\n{feedback}",
       "noSteps": "(no steps recorded)"
     },
-    "reference": "## Reference run\nThis work starts from the result of an earlier run, \"{name}\" of {date}. Use it to understand what that work was meant to do and which choices were made; what is actually in the project is given by the current state of the files.\n\n{report}"
+    "reference": "## Reference run\nThis work starts from the result of an earlier run, \"{name}\" of {date}. Use it to understand what that work was meant to do and which choices were made; what is actually in the project is given by the current state of the files.\n\n{report}",
+    "extraDirs": "Additional folders: besides the project folder you may read and modify files in these folders (this also applies to the general rules):\n{dirs}",
+    "dirGranted": "You may now also work in the folder {path}. Resume the task from where you stopped."
   },
   "mock": {
     "decisions": {
@@ -245,11 +251,12 @@
       "blocked": "Simulated block: human confirmation is needed before proceeding.",
       "resumed": "Feedback applied with a targeted change.",
       "done": "Phase \"{label}\" completed in simulation.",
-      "needsPermission": "I cannot create the requested file: this phase can only read, I need to be able to write and run commands."
+      "needsPermission": "I cannot create the requested file: this phase can only read, I need to be able to write and run commands.",
+      "needsDir": "I need to create a file in {path}, outside the project folder: I need permission to work there."
     },
     "points": {
-      "first": "src/modulo.js, totale(): no check for an empty cart, return 0 instead of NaN.",
-      "second": "test/modulo.test.js: add a test for discounts larger than the total.",
+      "first": "Handle empty input in the changed function, returning a neutral value instead of an error.",
+      "second": "Add a test covering the edge case just handled.",
       "numbered": "Simulated point number {n}."
     },
     "finalDecision": "Outcome {outcome} declared at the end of phase {label}.",
@@ -314,7 +321,7 @@
     }
   },
   "rules": {
-    "default": "- Do not run git commit, git push or other operations that publish changes, unless the phase instructions explicitly ask for it.\n- Do not modify files outside the project folder.\n- Do not read or report files containing credentials (.env, keys, tokens) unless it is essential to the task.\n",
+    "default": "- Do not run git commit, git push or other operations that publish changes, unless the phase instructions explicitly ask for it.\n- Do not modify files outside the project folder and the workflow's additional folders.\n- Do not read or report files containing credentials (.env, keys, tokens) unless it is essential to the task.\n",
     "prompt": {
       "header": "# General rules\nAlways follow these rules, in every file, comment, commit message and text you produce. They take precedence over the phase instructions in case of conflict.",
       "personal": "## User's personal rules ({path})",

@@ -155,7 +155,11 @@
       "noSession": "{label}: ripresa con una sessione nuova e il riassunto del lavoro già fatto (la sessione precedente non era ancora aperta).",
       "sessionUnavailable": "{label}: la sessione precedente non si può riprendere, la fase riparte con il riassunto del lavoro già fatto."
     },
-    "reference": "Esecuzione di riferimento: {name} ({id}). Il suo resoconto viene passato a ogni fase."
+    "reference": "Esecuzione di riferimento: {name} ({id}). Il suo resoconto viene passato a ogni fase.",
+    "extraDirs": "Cartelle aggiuntive consentite: {dirs}.",
+    "dirAsked": "{label}: chiede di poter lavorare nella cartella {path}, fuori dal progetto.",
+    "dirGranted": "{label}: concesso di lavorare nella cartella {path}.",
+    "dirSaved": "Cartella {path} aggiunta al workflow salvato: la prossima esecuzione potrà già usarla."
   },
   "interventions": {
     "declaredKo": "Esito negativo dichiarato: {summary}",
@@ -182,7 +186,7 @@
     }
   },
   "agent": {
-    "protocol": "# Protocollo di risposta\n- Quando prendi una decisione rilevante (cosa leggere, cosa modificare, come verificare), scrivi una riga che inizia con \"DECISIONE:\" seguita da una spiegazione breve, una sola frase.\n- Lavora solo nella cartella del progetto e solo con gli strumenti che hai a disposizione.\n- Termina SEMPRE la risposta con questo blocco, in JSON valido:\n```regia\n{\"esito\": \"ok\" | \"ko\" | \"bloccato\", \"sintesi\": \"risultato in 1-3 frasi, utile alla fase successiva\", \"decisioni\": [\"decisione principale e motivo\", \"...\"]}\n```\nUsa \"ko\" se il compito non è riuscito (es. test falliti), \"bloccato\" se non puoi procedere senza un intervento umano (spiega cosa serve nella sintesi).\nSe ti fermi perché non hai gli strumenti per farlo, aggiungi al blocco \"permesso\": \"modifica\" se ti serve modificare file o eseguire comandi, \"internet\" se ti serve consultare il web: chi supervisiona potrà concederlo con un clic.",
+    "protocol": "# Protocollo di risposta\n- Quando prendi una decisione rilevante (cosa leggere, cosa modificare, come verificare), scrivi una riga che inizia con \"DECISIONE:\" seguita da una spiegazione breve, una sola frase.\n- Lavora solo nella cartella del progetto (e nelle cartelle aggiuntive, se indicate) e solo con gli strumenti che hai a disposizione.\n- Termina SEMPRE la risposta con questo blocco, in JSON valido:\n```regia\n{\"esito\": \"ok\" | \"ko\" | \"bloccato\", \"sintesi\": \"risultato in 1-3 frasi, utile alla fase successiva\", \"decisioni\": [\"decisione principale e motivo\", \"...\"]}\n```\nUsa \"ko\" se il compito non è riuscito (es. test falliti), \"bloccato\" se non puoi procedere senza un intervento umano (spiega cosa serve nella sintesi).\nSe ti fermi perché non hai gli strumenti per farlo, aggiungi al blocco \"permesso\": \"modifica\" se ti serve modificare file o eseguire comandi, \"internet\" se ti serve consultare il web: chi supervisiona potrà concederlo con un clic.\nSe ti fermi perché devi leggere o scrivere in una cartella fuori da quelle consentite, aggiungi al blocco \"cartella\" con il percorso assoluto della cartella: anche questa si può concedere con un clic.",
     "protocolPoints": "- Sei in una fase di revisione: se trovi modifiche concrete da fare, aggiungi al blocco la chiave \"punti\" con l'elenco delle correzioni proposte, una per voce (file o funzione, problema e correzione), in ordine di importanza dalla più importante, al massimo {max}: se ne trovi di più, accorpa quelle simili. Chi approva sceglierà quali far applicare. Trovare dei punti non rende il compito non riuscito: usa comunque \"ok\". Senza punti da segnalare ometti la chiave.",
     "goal": "# Obiettivo del workflow\n{goal}",
     "task": "# Il tuo compito: {label}\n{instructions}",
@@ -221,7 +225,9 @@
       "feedback": "Il tentativo interrotto stava applicando questa correzione, richiesta dalla persona che supervisiona il workflow:\n{feedback}",
       "noSteps": "(nessun passo registrato)"
     },
-    "reference": "## Esecuzione di riferimento\nQuesto lavoro parte dal risultato di un'esecuzione precedente, \"{name}\" del {date}. Usala per capire cosa doveva fare quel lavoro e quali scelte sono state fatte; per sapere cosa c'è davvero nel progetto conta lo stato attuale dei file.\n\n{report}"
+    "reference": "## Esecuzione di riferimento\nQuesto lavoro parte dal risultato di un'esecuzione precedente, \"{name}\" del {date}. Usala per capire cosa doveva fare quel lavoro e quali scelte sono state fatte; per sapere cosa c'è davvero nel progetto conta lo stato attuale dei file.\n\n{report}",
+    "extraDirs": "Cartelle aggiuntive: oltre alla cartella del progetto puoi leggere e modificare file in queste cartelle (vale anche per le regole generali):\n{dirs}",
+    "dirGranted": "Ora puoi lavorare anche nella cartella {path}. Riprendi il compito dal punto in cui ti eri fermato."
   },
   "mock": {
     "decisions": {
@@ -245,11 +251,12 @@
       "blocked": "Simulazione di blocco: serve una conferma umana prima di procedere.",
       "resumed": "Feedback applicato con una modifica mirata.",
       "done": "Fase \"{label}\" completata in simulazione.",
-      "needsPermission": "Non posso creare il file richiesto: questa fase può solo leggere, mi serve poter scrivere ed eseguire comandi."
+      "needsPermission": "Non posso creare il file richiesto: questa fase può solo leggere, mi serve poter scrivere ed eseguire comandi.",
+      "needsDir": "Devo creare un file in {path}, fuori dalla cartella del progetto: mi serve il permesso di lavorare lì."
     },
     "points": {
-      "first": "src/modulo.js, totale(): manca il controllo sul carrello vuoto, restituire 0 invece di NaN.",
-      "second": "test/modulo.test.js: aggiungere un test per gli sconti superiori al totale.",
+      "first": "Gestire il caso di input vuoto nella funzione modificata, restituendo un valore neutro invece di un errore.",
+      "second": "Aggiungere un test che copra il caso limite appena gestito.",
       "numbered": "Punto simulato numero {n}."
     },
     "finalDecision": "Esito {outcome} dichiarato al termine della fase {label}.",
@@ -314,7 +321,7 @@
     }
   },
   "rules": {
-    "default": "- Non eseguire git commit, git push o altre operazioni che pubblicano modifiche, salvo che le istruzioni della fase lo chiedano esplicitamente.\n- Non modificare file fuori dalla cartella del progetto.\n- Non leggere né riportare file con credenziali (.env, chiavi, token) se non è indispensabile al compito.\n",
+    "default": "- Non eseguire git commit, git push o altre operazioni che pubblicano modifiche, salvo che le istruzioni della fase lo chiedano esplicitamente.\n- Non modificare file fuori dalla cartella del progetto e dalle cartelle aggiuntive del workflow.\n- Non leggere né riportare file con credenziali (.env, chiavi, token) se non è indispensabile al compito.\n",
     "prompt": {
       "header": "# Regole generali\nRispetta sempre queste regole, in ogni file, commento, messaggio di commit e testo che produci. Prevalgono sulle istruzioni della fase in caso di conflitto.",
       "personal": "## Regole personali dell'utente ({path})",

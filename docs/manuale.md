@@ -50,6 +50,8 @@ poi riavvia con `npm start`. Il controllo legge solo il numero di versione pubbl
 1. Al primo avvio compare la schermata di benvenuto; in seguito apri il menu con il nome del workflow in alto a sinistra → **Nuovo workflow…**. Scegli un preset: *Correggi un bug*, *Nuova funzionalità*, *Revisione del codice* (sola lettura), *Aggiungi test*, *Refactoring sicuro*, *Allineamento e verifica* o *Vuoto*.
 2. Indica la **cartella del progetto**. Regia controlla se è un repository git e se ci sono modifiche non salvate.
    > Prima di un'esecuzione reale fai **commit o stash** delle tue modifiche: così potrai rivedere il lavoro degli agenti con `git diff` e annullarlo con `git checkout .`.
+
+   Se le fasi devono leggere o scrivere anche fuori dal progetto (un altro repository, una cartella di output condivisa), aggiungile in **Cartelle aggiuntive**, nelle impostazioni del workflow. Le altre cartelle restano escluse.
 3. Scrivi l'**obiettivo**: cosa va fatto e quando è finito. Più è preciso, meno passaggi servono.
 4. Facoltativo: attiva uno o più **principi di progettazione** (KISS, YAGNI, DRY, SOLID). Vedi [Principi di progettazione](#principi-di-progettazione).
 
@@ -103,6 +105,7 @@ Quando il workflow si ferma, la scheda **Stato** mostra cosa serve:
   Se una revisione ha trovato qualcosa da sistemare, resta comunque verde: il suo compito era controllare. I punti che propone compaiono nell'approvazione come **Punti segnalati**, uno per casella. Spunta quelli da correggere, aggiungi se vuoi le tue indicazioni per le rifiniture che la revisione non può valutare, e respingi: punti scelti e commento arrivano insieme alla fase che ha scritto il codice. Se approvi con dei punti spuntati, Regia ti chiede conferma.
 - **Fase fallita o bloccata**: **Riprova da capo**, **Riprendi la sessione** (con un messaggio per l'agente), **Salta la fase** o **Annulla esecuzione**.
   Se la fase si è fermata perché non aveva il permesso di fare ciò che serviva (ad esempio eseguire uno script o creare un file in una fase che può solo leggere), compare anche **Consenti modifiche e riprendi**: la fase riparte dalla stessa sessione con il nuovo permesso, e il workflow salvato viene aggiornato, così la volta successiva parte già così.
+  Allo stesso modo, se la fase si è fermata perché doveva lavorare in una cartella fuori dal progetto, compare **Consenti <cartella> e riprendi**: la cartella viene aggiunta alle cartelle aggiuntive del workflow, anche in quello salvato, e la fase riprende dalla stessa sessione.
 
 Quando una fase comincia ad aspettarti, e quando l'esecuzione termina, Regia emette un breve suono, anche se stai guardando l'editor. Si attiva e disattiva con il pulsante a forma di campanella in alto a destra; la scelta viene ricordata.
 
@@ -243,7 +246,7 @@ L'esecuzione di riferimento si attiva per qualsiasi workflow nelle impostazioni 
 Il pulsante **Regole** mostra le regole aggiunte alle istruzioni di ogni agente:
 
 - le tue **regole personali** (`~/.claude/CLAUDE.md`), lette e mai modificate;
-- le **regole di Regia**, modificabili qui (di base: niente commit o push se la fase non lo chiede, niente modifiche fuori dal progetto, niente file con credenziali);
+- le **regole di Regia**, modificabili qui (di base: niente commit o push se la fase non lo chiede, niente modifiche fuori dal progetto e dalle cartelle aggiuntive, niente file con credenziali);
 - il **CLAUDE.md del progetto**, se attivi l'opzione nel workflow.
 
 Ogni esecuzione salva le regole che ha usato.
@@ -269,7 +272,7 @@ Il registro dell'esecuzione indica i principi applicati.
 
 Le fasi con un agente possono usare le **skill** di Claude Code: procedure scritte in un file `SKILL.md` (ad esempio "pubblica un articolo del blog" o "controllo SEO prima del rilascio").
 
-- **Dove le cerca Regia**: nella cartella `.claude/skills/` del progetto (attiva di serie) e tra le tue skill personali in `~/.claude/skills/`, comprese le sottocartelle (da attivare nelle impostazioni del workflow, sezione **Skill**).
+- **Dove le cerca Regia**: nelle cartelle `.claude/skills/` e `.agents/skills/` del progetto (attive di serie; la seconda è quella usata anche da altri strumenti come Codex, Junie e Copilot) e tra le tue skill personali in `~/.claude/skills/`, comprese le sottocartelle (da attivare nelle impostazioni del workflow, sezione **Skill**).
 - **Per ogni fase**, sezione **Skill**: *Nessuna* (predefinito), *Tutte* quelle delle fonti attive, oppure *Scelte* da un elenco con nome, descrizione e provenienza. Il riquadro della fase sul diagramma indica quante skill ha.
 - **In esecuzione** l'agente carica una skill solo quando gli serve; negli eventi vedi le skill disponibili, quale ha usato e la decisione "Ha usato la skill …". Le istruzioni della skill consumano token come il resto del contesto.
 - Se una skill scelta non si trova più, la validazione lo segnala e la fase prosegue senza.

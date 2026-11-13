@@ -161,8 +161,10 @@ export interface WorkflowSettings {
   applyGeneralRules?: boolean;
   /** Lingua delle istruzioni inviate agli agenti (protocollo di risposta, regole). Assente = it. */
   language?: string;
-  /** Dove cercare le skill: progetto (.claude/skills, predefinito) e personali (~/.claude/skills, da attivare). */
+  /** Dove cercare le skill: progetto (.claude/skills e .agents/skills, predefinito) e personali (~/.claude/skills, da attivare). */
   skillSources?: { project?: boolean; personal?: boolean };
+  /** Cartelle (percorsi assoluti) in cui le fasi possono leggere e scrivere oltre a quella del progetto. */
+  extraDirs?: string[];
   /** Principi di progettazione seguiti dal workflow (es. kiss, yagni): le fasi ne ricevono le indicazioni. Assente = nessuno. */
   principles?: string[];
   /**
@@ -299,6 +301,8 @@ export interface DeclaredOutcome {
   puntiOmessi?: string[];
   /** Fase ferma per un permesso che non ha: cosa le servirebbe. */
   permesso?: PermissionLevel;
+  /** Fase ferma perché deve lavorare fuori dalle cartelle consentite: la cartella che le servirebbe. */
+  cartella?: string;
 }
 
 /** Punti proposti da una fase a monte, mostrati come checklist nell'approvazione. */
@@ -367,6 +371,8 @@ export interface NodeRunState {
   reviewPoints?: ReviewPoints[];
   /** Fase ferma: il permesso chiesto dall'agente, concedibile con l'azione "consenti". */
   missingPermission?: PermissionLevel;
+  /** Fase ferma: la cartella esterna chiesta dall'agente, concedibile con l'azione "consenti_cartella". */
+  missingDir?: string;
   /** Solo fase "server": processo gestito da Regia. */
   service?: ServiceState;
   /** Fase agente fermata a metà (sospensione o chiusura di Regia): da dove riprenderla. */
@@ -399,7 +405,7 @@ export interface ResumeCheck {
   headChanged: boolean;
 }
 
-export type HumanAction = 'approva' | 'respingi' | 'consenti' | 'riprova' | 'riprendi' | 'salta' | 'annulla' | 'installa_node' | 'installa_dipendenze';
+export type HumanAction = 'approva' | 'respingi' | 'consenti' | 'consenti_cartella' | 'riprova' | 'riprendi' | 'salta' | 'annulla' | 'installa_node' | 'installa_dipendenze';
 
 export type EventKind =
   | 'run'

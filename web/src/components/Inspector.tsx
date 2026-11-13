@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { AppWindow, CircleCheck, Globe, TextSearch, FileCode2, Info, Lock, PencilLine, RefreshCw, RotateCcw, ScrollText, Sparkles, Terminal, Trash2, TriangleAlert, CircleAlert, X } from 'lucide-react';
+import { AppWindow, CircleCheck, FolderPlus, Globe, TextSearch, FileCode2, Info, Lock, PencilLine, RefreshCw, RotateCcw, ScrollText, Sparkles, Terminal, Trash2, TriangleAlert, CircleAlert, X } from 'lucide-react';
 import { KNOWN_TOOLS, READY_CHECKS, WRITE_TOOLS, type LaunchPlan, type PhaseConfig, type ShowConfig, type PhaseKind, type SkillInfo, type ValidationIssue, type Workflow, type WorkflowSettings } from '../../../shared/types.ts';
 import { isCustomTools, PERMISSION_LEVELS, permissionLevel, toolsForLevel } from '../../../shared/permissions.ts';
 import { phasePreset } from '../../../shared/presets.ts';
@@ -437,6 +437,28 @@ export function PhaseInspector({ cfg, settings, issues, onChange, onDelete }: { 
   );
 }
 
+/** Cartelle in cui le fasi possono lavorare oltre a quella del progetto. */
+function ExtraDirs({ dirs, onChange }: { dirs: string[]; onChange: (v: string[]) => void }) {
+  const { t } = useI18n();
+  const setAt = (i: number, v: string) => onChange(dirs.map((d, j) => (j === i ? v : d)));
+  return (
+    <Field label={t('settings.project.extraDirs')} hint={t('settings.project.extraDirsHint')}>
+      <div className="extra-dirs">
+        {dirs.map((d, i) => (
+          <div key={i} className="extra-dir">
+            <div className="extra-dir-row">
+              <input value={d} onChange={(e) => setAt(i, e.target.value)} placeholder={t('settings.project.extraDirPlaceholder')} aria-label={t('settings.project.extraDirs')} />
+              <button className="icon-btn ghost" onClick={() => onChange(dirs.filter((_, j) => j !== i))} title={t('settings.project.extraDirRemove')} aria-label={t('settings.project.extraDirRemove')}><X /></button>
+            </div>
+            {d.trim() && <FolderStatus path={d} compact />}
+          </div>
+        ))}
+        <button className="btn sm ghost" onClick={() => onChange([...dirs, ''])}><FolderPlus />{t('settings.project.extraDirAdd')}</button>
+      </div>
+    </Field>
+  );
+}
+
 export function WorkflowSettingsForm({ wf, groups = [], onChange, onShowRules }: { wf: Workflow; groups?: string[]; onChange: (w: Workflow) => void; onShowRules: () => void }) {
   const { t, languages } = useI18n();
   const s = wf.settings;
@@ -455,6 +477,7 @@ export function WorkflowSettingsForm({ wf, groups = [], onChange, onShowRules }:
       <Section title={t('settings.project.title')}>
         <Field label={t('settings.project.dir')}><input value={s.projectDir} onChange={(e) => set('projectDir', e.target.value)} placeholder={t('settings.project.dirPlaceholder')} /></Field>
         <FolderStatus path={s.projectDir} />
+        <ExtraDirs dirs={s.extraDirs ?? []} onChange={(v) => set('extraDirs', v.length ? v : undefined)} />
         <Field label={t('settings.project.goal')} hint={t('settings.project.goalHint')}>
           <textarea id="wf-goal" rows={5} value={s.goal} onChange={(e) => set('goal', e.target.value)} />
         </Field>

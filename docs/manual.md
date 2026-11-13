@@ -48,6 +48,8 @@ then restart with `npm start`. The check only reads the published version number
 1. On first start you see the welcome screen; later, open the menu with the workflow name at the top left → **New workflow…**. Pick a preset: *Fix a bug*, *New feature*, *Code review (read-only)*, *Add tests*, *Safe refactoring*, *Sync and verify* or *Empty*.
 2. Enter the **project folder**. Regia checks whether it is a git repository and whether it has uncommitted changes.
    > Before a real run, **commit or stash** your changes: you can then review the agents' work with `git diff` and undo it with `git checkout .`.
+
+   If phases must also read or write outside the project (another repository, a shared output folder), add those folders under **Additional folders** in the workflow settings. Every other folder stays off limits.
 3. Write the **goal**: what needs to be done and when it counts as finished. The more precise it is, the fewer rounds it takes.
 4. Optional: turn on one or more **design principles** (KISS, YAGNI, DRY, SOLID). See [Design principles](#design-principles).
 
@@ -101,6 +103,7 @@ When the workflow stops, the **Status** tab shows what is needed:
   When a review finds something to fix it still turns green: its task was to check. The points it proposes appear in the approval as **Points reported**, one per checkbox. Tick the ones to correct, optionally add your own instructions for refinements the review cannot judge, and reject: the chosen points and your comment go together to the phase that wrote the code. If you approve with points ticked, Regia asks you to confirm.
 - **Failed or blocked phase**: **Retry from scratch**, **Resume session** (with a message for the agent), **Skip phase** or **Cancel run**.
   If the phase stopped because it lacked permission for what it needed (for example running a script or creating a file in a read-only phase), **Allow changes and resume** also appears: the phase resumes the same session with the new permission, and the saved workflow is updated so the next run starts that way.
+  Likewise, if the phase stopped because it had to work in a folder outside the project, **Allow <folder> and resume** appears: the folder is added to the workflow's additional folders, the saved workflow included, and the phase resumes the same session.
 
 When a phase starts waiting for you, and when the run ends, Regia plays a short sound, even while you are in the editor. Turn it on or off with the bell button at the top right; the choice is remembered.
 
@@ -241,7 +244,7 @@ The reference run can be turned on for any workflow in the settings (**Reference
 The **Rules** button shows the rules added to every agent's instructions:
 
 - your **personal rules** (`~/.claude/CLAUDE.md`), read and never modified;
-- **Regia's rules**, editable here (by default: no commit or push unless the phase asks for it, no changes outside the project, no reading credential files);
+- **Regia's rules**, editable here (by default: no commit or push unless the phase asks for it, no changes outside the project and the additional folders, no reading credential files);
 - the **project's CLAUDE.md**, if you enable the option in the workflow.
 
 Each run stores the rules it used.
@@ -267,7 +270,7 @@ The run log lists the principles applied.
 
 Agent phases can use Claude Code **skills**: procedures written in a `SKILL.md` file (for example "publish a blog post" or "SEO check before release").
 
-- **Where Regia looks**: in the project's `.claude/skills/` folder (on by default) and among your personal skills in `~/.claude/skills/`, subfolders included (turn them on in the workflow settings, **Skills** section).
+- **Where Regia looks**: in the project's `.claude/skills/` and `.agents/skills/` folders (on by default; the latter is also used by other tools such as Codex, Junie and Copilot) and among your personal skills in `~/.claude/skills/`, subfolders included (turn them on in the workflow settings, **Skills** section).
 - **For each phase**, **Skills** section: *None* (default), *All* from the active sources, or *Selected* from a list with name, description and source. The phase box on the diagram shows how many skills it has.
 - **During a run** the agent loads a skill only when it needs it; the events show the available skills, which one was used and the decision "Used the skill …". Skill instructions use tokens like the rest of the context.
 - If a selected skill can no longer be found, validation warns you and the phase runs without it.
