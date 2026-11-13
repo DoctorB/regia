@@ -53,6 +53,8 @@ poi riavvia con `npm start`. Il controllo legge solo il numero di versione pubbl
 
    Se le fasi devono leggere o scrivere anche fuori dal progetto (un altro repository, una cartella di output condivisa), aggiungile in **Cartelle aggiuntive**, nelle impostazioni del workflow. Le altre cartelle restano escluse.
 3. Scrivi l'**obiettivo**: cosa va fatto e quando è finito. Più è preciso, meno passaggi servono.
+
+   Se il lavoro nasce da una user story, incolla il suo indirizzo in **User story**, nelle impostazioni del workflow: un work item di Azure DevOps (`dev.azure.com` o `*.visualstudio.com`) o una issue di GitHub. Con **Leggi** vedi un'anteprima: titolo, descrizione, criteri di accettazione, commenti recenti e immagini (mockup, screenshot, anche allegati). A ogni esecuzione Regia la rilegge e la passa agli agenti come riferimento: la revisione ne verifica i criteri, il collaudo ne ricava gli scenari e può confrontare la schermata con i mockup. Per Azure DevOps non c'è niente da configurare: Regia chiede l'accesso a Git, che lo ha già se cloni da lì; altrimenti, la prima volta, Git apre il login Microsoft nel browser e poi lo ricorda. Per GitHub usa la CLI `gh` già autenticata.
 4. Facoltativo: attiva uno o più **principi di progettazione** (KISS, YAGNI, DRY, SOLID). Vedi [Principi di progettazione](#principi-di-progettazione).
 
 ---

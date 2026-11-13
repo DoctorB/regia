@@ -674,7 +674,8 @@
       "duration": "Duration",
       "project": "Project folder",
       "continuedFrom": "Continued from",
-      "reference": "Reference run"
+      "reference": "Reference run",
+      "story": "User story"
     },
     "goal": "Goal",
     "phases": "Phases",
@@ -691,5 +692,30 @@
       "consenti": "Allow the permission",
       "consenti_cartella": "Allow the folder"
     }
+  },
+  "story": {
+    "label": "User story",
+    "hint": "Address of an Azure DevOps work item or a GitHub issue. It is read at every run, images included, and given to the agents as reference.",
+    "placeholder": "https://dev.azure.com/organization/project/_workitems/edit/123",
+    "read": "Read",
+    "reading": "Reading…",
+    "readingHint": "If this is the first access to Azure DevOps from this computer, Git may open the Microsoft login in the browser.",
+    "description": "Description",
+    "acceptance": "Acceptance criteria",
+    "comments": {
+      "one": "1 comment",
+      "other": "{count} comments"
+    },
+    "image": "image",
+    "fetched": {
+      "one": "Read {date} · 1 image.",
+      "other": "Read {date} · {count} images."
+    },
+    "imagesSkipped": {
+      "one": "1 image not downloaded (limits or access).",
+      "other": "{count} images not downloaded (limits or access)."
+    },
+    "runTitle": "User story",
+    "runError": "User story not read:"
   }
 }

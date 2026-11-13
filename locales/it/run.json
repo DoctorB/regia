@@ -674,7 +674,8 @@
       "duration": "Durata",
       "project": "Cartella del progetto",
       "continuedFrom": "Continua da",
-      "reference": "Esecuzione di riferimento"
+      "reference": "Esecuzione di riferimento",
+      "story": "User story"
     },
     "goal": "Obiettivo",
     "phases": "Fasi",
@@ -691,5 +692,30 @@
       "consenti": "Consenti il permesso",
       "consenti_cartella": "Consenti la cartella"
     }
+  },
+  "story": {
+    "label": "User story",
+    "hint": "Indirizzo di un work item di Azure DevOps o di una issue di GitHub. Viene letto a ogni esecuzione, immagini comprese, e passato agli agenti come riferimento.",
+    "placeholder": "https://dev.azure.com/organizzazione/progetto/_workitems/edit/123",
+    "read": "Leggi",
+    "reading": "Lettura…",
+    "readingHint": "Se è il primo accesso ad Azure DevOps da questo computer, Git può aprire il login Microsoft nel browser.",
+    "description": "Descrizione",
+    "acceptance": "Criteri di accettazione",
+    "comments": {
+      "one": "1 commento",
+      "other": "{count} commenti"
+    },
+    "image": "immagine",
+    "fetched": {
+      "one": "Letta {date} · 1 immagine.",
+      "other": "Letta {date} · {count} immagini."
+    },
+    "imagesSkipped": {
+      "one": "1 immagine non scaricata (limiti o accesso).",
+      "other": "{count} immagini non scaricate (limiti o accesso)."
+    },
+    "runTitle": "User story",
+    "runError": "User story non letta:"
   }
 }

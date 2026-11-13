@@ -25,6 +25,7 @@ Regia is a local app for designing development workflows as a diagram, running t
 - **General rules**: your personal rules and Regia's own rules are applied to every agent.
 - **Design principles**: turn on KISS, YAGNI, DRY or SOLID for a workflow; each phase gets guidance suited to its task and approvals get a checklist, without touching your instructions.
 - **Additional folders**: besides the project, phases can read and write in folders you list in the workflow, such as another repository or a shared output folder; every other folder stays off limits.
+- **Linked user story**: paste the address of an Azure DevOps work item or a GitHub issue; at every run Regia reads it, images included, and gives description and acceptance criteria to the agents. No setup: access comes from Git, which opens the Microsoft login once if needed.
 - **Skills**: phases can use the skills of the project (`.claude/skills`, or `.agents/skills` shared with other coding tools) or your personal ones, chosen per phase.
 - **Trial mode**: explore everything with simulated agents, at no cost.
 - **Update notice**: the version in use is shown in the interface, with a notice when a newer one is on GitHub (update with `git pull`).
@@ -53,7 +54,7 @@ Open <http://127.0.0.1:4317>, create a workflow from a preset and press **Prova*
 ## Costs and data
 
 - Costs shown are **estimates** computed by the SDK, not billing data. With an API key, the actual cost is in the Console; with a claude.ai login, usage counts against your plan limits.
-- Everything stays on your machine, in the `data/` folder (excluded from git). Regia never reads or stores credentials and listens on 127.0.0.1 only.
+- Everything stays on your machine, in the `data/` folder (excluded from git). Regia never stores credentials and listens on 127.0.0.1 only; to read a linked Azure DevOps user story it asks Git for a temporary access, kept in memory only.
 - The only exception is optional: on first start Regia asks whether it may send anonymous error reports (Regia's own errors, never code, prompts or agent texts; paths, user name and secrets removed) to `trace.lucabottani.dev`. Nothing is sent until you agree; the bug button shows every report sent, and `REGIA_REPORTS=0` turns them off entirely.
 - Agents can edit files and run commands in the project folder, limited to what you allow each phase. Use a clean git repository so you can review and undo their work.
 

@@ -51,6 +51,8 @@ then restart with `npm start`. The check only reads the published version number
 
    If phases must also read or write outside the project (another repository, a shared output folder), add those folders under **Additional folders** in the workflow settings. Every other folder stays off limits.
 3. Write the **goal**: what needs to be done and when it counts as finished. The more precise it is, the fewer rounds it takes.
+
+   If the work comes from a user story, paste its address in **User story**, in the workflow settings: an Azure DevOps work item (`dev.azure.com` or `*.visualstudio.com`) or a GitHub issue. **Read** shows a preview: title, description, acceptance criteria, recent comments and images (mockups, screenshots, attachments too). At every run Regia reads it again and gives it to the agents as reference: the review checks its criteria, the acceptance test derives its scenarios from it and can compare the screen with the mockups. For Azure DevOps there is nothing to configure: Regia asks Git for access, which it already has if you clone from there; otherwise, the first time, Git opens the Microsoft login in the browser and then remembers it. For GitHub it uses the already authenticated `gh` CLI.
 4. Optional: turn on one or more **design principles** (KISS, YAGNI, DRY, SOLID). See [Design principles](#design-principles).
 
 ---

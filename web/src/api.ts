@@ -1,5 +1,5 @@
 import { currentLocaleTag, tm } from './i18n.tsx';
-import type { ApiErrorBody, ContinuationPlan, EnvInfo, FolderInfo, HumanAction, Insight, LaunchPlan, PointRef, ReportsInfo, ResumeCheck, ScrcpyStatus, ShowConfig, RulesInfo, Run, RunMode, RunSummary, SkillInfo, ValidationIssue, VersionInfo, Workflow, WorkflowTemplate } from '../../shared/types.ts';
+import type { ApiErrorBody, ContinuationPlan, EnvInfo, FolderInfo, HumanAction, Insight, LaunchPlan, PointRef, ReportsInfo, ResumeCheck, UserStory, ScrcpyStatus, ShowConfig, RulesInfo, Run, RunMode, RunSummary, SkillInfo, ValidationIssue, VersionInfo, Workflow, WorkflowTemplate } from '../../shared/types.ts';
 
 async function req<T>(method: string, url: string, body?: unknown): Promise<T> {
   const r = await fetch(url, { method, headers: body ? { 'Content-Type': 'application/json' } : undefined, body: body ? JSON.stringify(body) : undefined });
@@ -41,6 +41,7 @@ export const api = {
   insights: (id: string) => req<Insight[]>('GET', `/api/runs/${id}/insights`),
   startRun: (workflowId: string, mode: RunMode, confirmReal = false, continueFrom?: string, referenceRunId?: string) => req<{ id: string }>('POST', '/api/runs', { workflowId, mode, confirmReal, continueFrom, referenceRunId }),
   continuation: (runId: string, workflowId: string) => req<ContinuationPlan & { mode: RunMode }>('GET', `/api/runs/${runId}/continuation?workflowId=${workflowId}`),
+  previewStory: (url: string) => req<UserStory>('POST', '/api/stories/preview', { url }),
   reports: () => req<ReportsInfo>('GET', '/api/reports'),
   setReportsConsent: (consent: 'si' | 'no') => req<ReportsInfo>('POST', '/api/reports/consent', { consent }),
   reportUi: (message: string, detail?: string) => req<{ ok: boolean }>('POST', '/api/reports/ui', { message, detail }),

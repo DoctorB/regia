@@ -4,7 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { query } from '@anthropic-ai/claude-agent-sdk';
 import type {
-  Attempt, ContinuationPlan, LaunchPlan, PointRef, ReviewPoints, RunReference, ServiceState, DeclaredOutcome, EventKind, HumanAction, InterruptedWork, NodeRunState, ReadyCheck, Run, RunEvent, RunMode, ShowTarget, Workflow, WorkflowNode, WorkflowSettings, PhaseQuestion,
+  Attempt, ContinuationPlan, LaunchPlan, PointRef, ReviewPoints, RunReference, ServiceState, DeclaredOutcome, EventKind, HumanAction, InterruptedWork, NodeRunState, ReadyCheck, Run, RunEvent, RunMode, ShowTarget, Workflow, WorkflowNode, WorkflowSettings, PhaseQuestion, UserStory,
 } from '../shared/types.ts';
 import { emptyTotals, isAgentKind, RESUMABLE } from '../shared/types.ts';
 import { msg, type Msg, type Params, type Translate } from '../shared/i18n.ts';
@@ -22,6 +22,7 @@ import { watchAppLog, type AppLogWatcher } from './uat.ts';
 import { scrcpyStatus, startMirror, type MirrorHandle } from './scrcpy.ts';
 import { startMirrorStream, type MirrorStream } from './mirror.ts';
 import { report } from './reports.ts';
+import { storyDir, storyPrompt } from './story.ts';
 import { gitState } from './folder.ts';
 import { cacheTtlMs, interruptedSummary, interruptNodes, isInterruptedNote } from './resume.ts';
 import { AttemptAccounting, sumTotals, type SessionSnapshot } from './usage.ts';
@@ -95,7 +96,7 @@ export function makeReference(ref: Run, lang: string): RunReference {
  * reference: esecuzione di riferimento scelta all'avvio (solo per i workflow con referenceRun);
  * in una continuazione senza nuova scelta resta quella dell'esecuzione di partenza.
  */
-export function startRun(wf: Workflow, mode: RunMode, from?: Run, reference?: Run): RunEngine {
+export function startRun(wf: Workflow, mode: RunMode, from?: Run, reference?: Run, story?: { story?: UserStory; error?: Msg }): RunEngine {
   const plan = from ? planContinuation(wf, from) : undefined;
   const run: Run = {
     id: `run_${new Date().toISOString().replace(/[-:T.Z]/g, '').slice(0, 14)}_${randomUUID().slice(0, 6)}`,
@@ -112,6 +113,8 @@ export function startRun(wf: Workflow, mode: RunMode, from?: Run, reference?: Ru
     rules: snapshotRules(wf.settings),
     continuedFrom: from?.id,
     reference: wf.settings.referenceRun ? (reference ? makeReference(reference, workflowLang(wf)) : from?.reference) : undefined,
+    story: story?.story,
+    storyError: story?.error,
   };
   // Fasi riprese: risultato, decisioni e sessione dell'esecuzione precedente, nessuna chiamata.
   for (const r of plan?.reused ?? []) {
@@ -191,6 +194,11 @@ export class RunEngine {
       if (q.sessionId && q.attempt.sessionCumulative) this.sessions.set(q.sessionId, q.attempt.sessionCumulative);
       if (q.status === 'in_corso') { q.status = 'errore'; q.error = this.t('agent.questionInterrupted'); q.attempt.status = 'interrotta'; }
     }
+  }
+
+  /** Cartelle di lavoro in più per gli agenti: aggiuntive del workflow, immagini della user story, prove del collaudo. */
+  private agentDirs(uatDir?: string): string[] {
+    return [...existingExtraDirs(this.wf.settings), ...(this.run.story?.images.length ? [storyDir(this.run.story)] : []), ...(uatDir ? [uatDir] : [])];
   }
 
   /** Schermo dal vivo del collaudo in corso nella fase, se c'è. */
@@ -295,6 +303,8 @@ export class RunEngine {
     }
     const ref = this.run.reference;
     if (ref) this.say('run', msg('events.reference', { name: ref.workflowName, id: ref.runId }));
+    if (this.run.story) this.say('run', msg('events.story.loaded', { type: this.run.story.type ?? '', id: this.run.story.id, title: this.run.story.title, count: this.run.story.images.length }));
+    else if (this.run.storyError) this.say('errore', msg('events.story.failed', { error: this.tx(this.run.storyError) }));
     const dirs = extraDirs(this.wf.settings);
     if (dirs.length) this.say('run', msg('events.extraDirs', { dirs: dirs.join(', '), count: dirs.length }));
     const r = this.run.rules;
@@ -443,6 +453,7 @@ export class RunEngine {
     const ctx = this.upstreamContext(n);
     return [
       this.wf.settings.goal ? this.t('agent.goal', { goal: this.wf.settings.goal }) : '',
+      this.run.story ? storyPrompt(this.run.story, this.t) : '',
       this.run.reference ? this.t('agent.reference', {
         name: this.run.reference.workflowName,
         date: new Date(this.run.reference.startedAt).toLocaleString(this.lang, { dateStyle: 'short', timeStyle: 'short' }),
@@ -574,7 +585,7 @@ export class RunEngine {
             cwd: this.wf.settings.projectDir,
             // Senza richieste di permesso, Claude Code nega le scritture fuori dalle cartelle di lavoro: queste le ampliano.
             // Il collaudo salva gli screenshot nella cartella delle prove, fuori dal progetto.
-            ...(existingExtraDirs(this.wf.settings).length || opts.uat ? { additionalDirectories: [...existingExtraDirs(this.wf.settings), ...(opts.uat ? [opts.uat.dir] : [])] } : {}),
+            ...(this.agentDirs(opts.uat?.dir).length ? { additionalDirectories: this.agentDirs(opts.uat?.dir) } : {}),
             model: d.model || undefined,
             tools,
             allowedTools: tools,
@@ -1389,7 +1400,7 @@ export class RunEngine {
     this.controllers.set(key, ctrl);
     const acc = new AttemptAccounting(a, this.sessions.get(from), this.run.mode === 'prova' ? 'simulato' : undefined);
     const tools = ['Read', 'Glob', 'Grep'];
-    const dirs = existingExtraDirs(this.wf.settings);
+    const dirs = this.agentDirs();
     let text = '';
     let gotResult = false;
     try {

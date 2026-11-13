@@ -171,6 +171,8 @@ export interface WorkflowSettings {
   skillSources?: { project?: boolean; personal?: boolean };
   /** Cartelle (percorsi assoluti) in cui le fasi possono leggere e scrivere oltre a quella del progetto. */
   extraDirs?: string[];
+  /** URL della user story collegata (work item di Azure DevOps o issue di GitHub): letta a ogni esecuzione. */
+  story?: string;
   /** Principi di progettazione seguiti dal workflow (es. kiss, yagni): le fasi ne ricevono le indicazioni. Assente = nessuno. */
   principles?: string[];
   /**
@@ -437,6 +439,34 @@ export interface ReportsInfo {
   reports: ErrorReport[];
 }
 
+/** Immagine di una user story, scaricata nella cartella della lettura. */
+export interface StoryImage {
+  /** Numero del segnaposto nel testo ("[immagine n: nome]"). */
+  n: number;
+  name: string;
+  file: string;
+  source: 'descrizione' | 'criteri' | 'commento' | 'allegato';
+}
+
+/** User story letta dall'URL: testo semplice e immagini, come la vedono gli agenti. */
+export interface UserStory {
+  url: string;
+  provider: 'azure' | 'github';
+  id: string;
+  type?: string;
+  title: string;
+  state?: string;
+  description: string;
+  acceptance?: string;
+  comments?: { author?: string; at?: string; text: string }[];
+  images: StoryImage[];
+  /** Immagini trovate nel testo e negli allegati (alcune possono non essere scaricate: limiti o accesso). */
+  imagesFound: number;
+  fetchedAt: string;
+  /** Cartella della lettura, relativa a data/stories. */
+  dir: string;
+}
+
 export interface NodeRunState {
   nodeId: string;
   status: NodeStatus;
@@ -533,6 +563,9 @@ export interface Run {
   workflowName: string;
   /** Copia del workflow al momento dell'avvio, per confronti. */
   snapshot: Workflow;
+  /** User story collegata, letta all'avvio; storyError se non è stato possibile leggerla. */
+  story?: UserStory;
+  storyError?: Msg;
   mode: RunMode;
   status: RunStatus;
   startedAt: string;

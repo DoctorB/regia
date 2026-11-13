@@ -807,3 +807,14 @@ input[type="checkbox"] { width: 16px; height: 16px; min-height: 0; accent-color:
 .reports-list summary { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .reports-msg { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; flex: 1; min-width: 160px; }
 .reports-json { font-size: 12px; max-height: 320px; overflow: auto; background: var(--surface-2); padding: 10px; border-radius: 8px; }
+
+/* User story collegata */
+.story-field { display: flex; flex-direction: column; gap: 8px; }
+.story { display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); }
+.story-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.story-title { font-weight: 600; color: var(--text); text-decoration: none; display: inline-flex; align-items: center; gap: 4px; }
+.story-title svg { width: 13px; height: 13px; color: var(--text-3, #999); }
+.story-title:hover { text-decoration: underline; }
+.story-sec > summary { cursor: pointer; font-size: 12.5px; font-weight: 600; color: var(--text-2); }
+.story-sec p { margin: 6px 0 0; font-size: 13px; max-height: 240px; overflow: auto; }
+.story-shots img { aspect-ratio: 4 / 3; object-position: center; }

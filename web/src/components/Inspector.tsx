@@ -6,6 +6,7 @@ import { phasePreset } from '../../../shared/presets.ts';
 import { useI18n } from '../i18n.tsx';
 import { Field, KIND_META, KindTile, Section, Switch, kindLabel } from '../ui.tsx';
 import { FolderStatus } from './Setup.tsx';
+import { StoryField } from './Story.tsx';
 import { PrinciplePicker, PrinciplesPreview } from './Principles.tsx';
 import { api } from '../api.ts';
 
@@ -524,6 +525,7 @@ export function WorkflowSettingsForm({ wf, groups = [], onChange, onShowRules }:
         <Field label={t('settings.project.goal')} hint={t('settings.project.goalHint')}>
           <textarea id="wf-goal" rows={5} value={s.goal} onChange={(e) => set('goal', e.target.value)} />
         </Field>
+        <StoryField value={s.story ?? ''} onChange={(v) => set('story', v.trim() ? v : undefined)} />
         <Field label={t('settings.project.description')}><textarea rows={2} value={wf.description} onChange={(e) => onChange({ ...wf, description: e.target.value })} /></Field>
         <Field label={t('manage.group')} hint={t('manage.groupHint')}>
           <input list="settings-groups" value={wf.group ?? ''} onChange={(e) => onChange({ ...wf, group: e.target.value || undefined })} placeholder={t('manage.groupPlaceholder')} />

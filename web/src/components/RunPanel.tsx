@@ -13,6 +13,7 @@ import { useI18n } from '../i18n.tsx';
 import { EmptyState, KindTile, Modal, RUN_STATUS_META, STATUS_META, StatusPill, runStatusLabel, serviceLabel, statusLabel, toast } from '../ui.tsx';
 import { AppliedRulesView } from './Setup.tsx';
 import { LivePhone } from './LivePhone.tsx';
+import { StoryView } from './Story.tsx';
 import { UsageView } from './UsageView.tsx';
 
 // Etichette e aiuti in locales/<lingua>/run.json (actions.<azione>.label e .help).
@@ -178,7 +179,7 @@ export function RunPanel({ run, runs, selectedNode, onSelectNode, onOpenRun, onC
 }
 
 function StatusTab({ run, ordered, label, selectedNode, onSelectNode, onGranted }: { run: Run; ordered: string[]; label: (id?: string) => string; selectedNode: string | null; onSelectNode: (id: string | null) => void; onGranted?: Props['onGranted'] }) {
-  const { t } = useI18n();
+  const { t, tm } = useI18n();
   const pending = ordered.map((id) => run.nodes[id]).filter((n) => n?.pendingActions?.length);
   const services = ordered.map((id) => run.nodes[id])
     .filter((n) => n?.service && !n.pendingActions?.length)
@@ -224,6 +225,13 @@ function StatusTab({ run, ordered, label, selectedNode, onSelectNode, onGranted 
           );
         })}
       </div>
+      {run.story && (
+        <details className="pred">
+          <summary><FileText /><strong>{t('story.runTitle')}</strong><span className="muted small">{run.story.type} {run.story.id} · {run.story.title}</span></summary>
+          <StoryView story={run.story} />
+        </details>
+      )}
+      {run.storyError && <div className="callout tone-warn"><TriangleAlert /><span>{t('story.runError')} {tm(run.storyError)}</span></div>}
       {run.reference && (
         <details className="pred">
           <summary><FileText /><strong>{t('run.reference.title')}</strong><span className="muted small">{run.reference.workflowName} · {fmtTime(run.reference.startedAt)}</span></summary>

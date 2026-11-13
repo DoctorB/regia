@@ -53,6 +53,8 @@ export function anonymize(text: string): string {
   t = t.replace(pathPattern(os.homedir()), '~');
   const user = os.userInfo().username;
   if (user.length >= 3) t = t.replace(new RegExp(`\\b${escape(user)}\\b`, 'gi'), '<utente>');
+  // Indirizzi delle user story: dicono organizzazione e progetto.
+  t = t.replace(/https?:\/\/(?:[\w-]+\.visualstudio\.com|dev\.azure\.com)\/\S+/gi, '<work-item>').replace(/https?:\/\/github\.com\/[^/\s]+\/[^/\s]+\/issues\/\d+/gi, '<issue>');
   // Indirizzi email rimasti (es. account mostrati in un messaggio).
   return t.replace(/[\w.+-]+@[\w-]+\.[\w.-]+/g, '<email>');
 }

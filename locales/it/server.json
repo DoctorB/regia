@@ -173,6 +173,10 @@
       "mirrorFailed": "{label}: schermo dal vivo non disponibile — {error}",
       "mirrorLive": "{label}: schermo del telefono dal vivo nella scheda Stato, nella card del collaudo.",
       "mirrorEnded": "{label}: trasmissione dello schermo interrotta ({reason})."
+    },
+    "story": {
+      "loaded": "User story letta: {type} {id} — {title} ({count} immagini).",
+      "failed": "User story non letta: {error} Le fasi lavorano senza."
     }
   },
   "interventions": {
@@ -255,6 +259,13 @@
       "unknownApp": "non rilevato: ricavalo con `shell dumpsys window | grep mCurrentFocus`",
       "noLog": "non disponibile",
       "crashPoint": "Il log dell'app registra un crash o un blocco durante il collaudo: {what}"
+    },
+    "story": {
+      "header": "# User story collegata\n{type} {id}: {title} (stato: {state})\n{url}\nÈ il riferimento del lavoro: rispettane descrizione e criteri di accettazione.",
+      "description": "## Descrizione",
+      "acceptance": "## Criteri di accettazione",
+      "comments": "## Commenti recenti",
+      "images": "## Immagini\nI segnaposto [immagine n] nel testo corrispondono a questi file. Aprili con Read solo quando servono (ad esempio un mockup da confrontare con la schermata): ogni immagine consuma token."
     }
   },
   "mock": {
@@ -412,6 +423,16 @@
       "noUrl": "Indica l'indirizzo del sito già attivo.",
       "noWeb": "Nessun progetto web riconosciuto nella cartella (né nelle sottocartelle dirette). Sono supportati progetti Node con script dev o start (Vite, Next.js, Angular, Astro…), ASP.NET Core, Django, Laravel, Rails e pagine statiche con index.html. Per un sito già attivo scegli \"Un sito già attivo\".",
       "noDesktop": "Nessuna app desktop riconosciuta nella cartella (né nelle sottocartelle dirette). Sono supportati Electron, Tauri, .NET (WPF, Windows Forms, WinUI, Avalonia, MAUI), Flutter con la cartella della piattaforma e Compose Desktop."
+    }
+  },
+  "story": {
+    "error": {
+      "url": "L'indirizzo non è un work item di Azure DevOps né una issue di GitHub.",
+      "auth": "Nessun accesso ad Azure DevOps: Git Credential Manager non ha fornito credenziali (login annullato?). Riprova con Leggi, oppure imposta la variabile AZURE_DEVOPS_EXT_PAT.",
+      "denied": "Accesso negato dal servizio ({detail}): l'account usato non vede questo elemento, oppure l'accesso non vale per le API di Azure DevOps.",
+      "notFound": "Elemento non trovato: controlla l'indirizzo.",
+      "network": "Servizio non raggiungibile: {detail}",
+      "gh": "La CLI gh non ha risposto: {detail}"
     }
   }
 }

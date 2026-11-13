@@ -173,6 +173,10 @@
       "mirrorFailed": "{label}: live screen not available — {error}",
       "mirrorLive": "{label}: live phone screen in the Status tab, in the test card.",
       "mirrorEnded": "{label}: screen stream interrupted ({reason})."
+    },
+    "story": {
+      "loaded": "User story read: {type} {id} — {title} ({count} images).",
+      "failed": "User story not read: {error} The phases work without it."
     }
   },
   "interventions": {
@@ -255,6 +259,13 @@
       "unknownApp": "not detected: find it with `shell dumpsys window | grep mCurrentFocus`",
       "noLog": "not available",
       "crashPoint": "The app log records a crash or freeze during the test: {what}"
+    },
+    "story": {
+      "header": "# Linked user story\n{type} {id}: {title} (state: {state})\n{url}\nIt is the reference for the work: respect its description and acceptance criteria.",
+      "description": "## Description",
+      "acceptance": "## Acceptance criteria",
+      "comments": "## Recent comments",
+      "images": "## Images\nThe [immagine n] placeholders in the text match these files. Open them with Read only when needed (for example a mockup to compare with the screen): every image costs tokens."
     }
   },
   "mock": {
@@ -412,6 +423,16 @@
       "noUrl": "Enter the address of the site already running.",
       "noWeb": "No web project found in the folder (or its direct subfolders). Supported: Node projects with a dev or start script (Vite, Next.js, Angular, Astro…), ASP.NET Core, Django, Laravel, Rails and static pages with index.html. For a site already running choose \"A site already running\".",
       "noDesktop": "No desktop app found in the folder (or its direct subfolders). Supported: Electron, Tauri, .NET (WPF, Windows Forms, WinUI, Avalonia, MAUI), Flutter with the platform folder, and Compose Desktop."
+    }
+  },
+  "story": {
+    "error": {
+      "url": "The address is neither an Azure DevOps work item nor a GitHub issue.",
+      "auth": "No access to Azure DevOps: Git Credential Manager gave no credentials (login cancelled?). Try Read again, or set the AZURE_DEVOPS_EXT_PAT variable.",
+      "denied": "Access denied by the service ({detail}): the account used cannot see this item, or the access is not valid for the Azure DevOps APIs.",
+      "notFound": "Item not found: check the address.",
+      "network": "Service not reachable: {detail}",
+      "gh": "The gh CLI did not answer: {detail}"
     }
   }
 }

@@ -47,6 +47,7 @@ export function runReport(run: Run, t: Translate, locale: string, opts: { compac
       fmtUsd(run.totals.costUsd)],
     [t('run.metrics.tokens'), num(tokens)],
   ];
+  if (run.story) rows.push([t('report.fields.story'), `[${cell(`${run.story.type ?? ''} ${run.story.id}: ${run.story.title}`)}](${run.story.url})`]);
   if (run.continuedFrom) rows.push([t('report.fields.continuedFrom'), `\`${run.continuedFrom}\``]);
   if (run.reference) rows.push([t('report.fields.reference'), `${run.reference.workflowName} · \`${run.reference.runId}\``]);
   if (!compact) out.push(`| | |`, `|---|---|`, ...rows.map(([k, v]) => `| ${cell(k)} | ${cell(v)} |`), '');

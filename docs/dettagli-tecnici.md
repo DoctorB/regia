@@ -62,6 +62,15 @@ Fase di tipo `collaudo`, in due passi nella stessa fase:
 - **Git**: ramo e commit del progetto sono registrati alla fine di ogni fase e alla sospensione. Prima di riprendere vengono confrontati con quelli attuali e, se sono diversi, l'interfaccia chiede conferma.
 - Un'esecuzione sospesa si può anche annullare senza riprenderla. La durata mostrata comprende il tempo di sospensione.
 
+## User story collegata
+
+- **Indirizzi**: work item di Azure DevOps (`https://dev.azure.com/<org>/<progetto>/_workitems/edit/<id>`, `https://<org>.visualstudio.com/<progetto>/_workitems/edit/<id>`, anche le bacheche con `?workitem=<id>`) e issue di GitHub (`https://github.com/<owner>/<repo>/issues/<n>`). Campo `settings.story` del workflow.
+- **Accesso ad Azure DevOps**, nell'ordine: variabile `AZURE_DEVOPS_EXT_PAT`; Git Credential Manager (`git credential fill` per l'host, o per `dev.azure.com` con l'organizzazione nel percorso: se non ha credenziali apre il login Microsoft una volta); la CLI `az` (`az account get-access-token`). Da Git Credential Manager Regia chiede il token OAuth del login Microsoft (`GCM_AZREPOS_CREDENTIALTYPE=oauth`), che vale per le API dei work item; il Personal Access Token che GCM crea per i repository ha solo il permesso sul codice e resta come ultima prova. Dopo la prima lettura riuscita, se l'organizzazione non ha un account associato, Regia la associa a quello del login (`git credential-manager azure-repos bind`), così GCM riusa la sessione senza chiedere di nuovo il login. Il token che ha funzionato resta in memoria fino a 5 minuti prima della scadenza (al massimo un'ora) e non viene mai salvato da Regia. GitHub: `gh api` e `gh auth token` per le immagini.
+- **Lettura**: `GET <base>/_apis/wit/workitems/<id>?$expand=relations&api-version=7.1` (titolo, tipo, stato, `System.Description` o i passi di un bug, `Microsoft.VSTS.Common.AcceptanceCriteria`, allegati) e gli ultimi 10 commenti. L'HTML diventa testo semplice; ogni immagine diventa un segnaposto `[immagine n: nome]` al suo posto. Testo al massimo 20.000 caratteri per sezione, passato dal filtro dei segreti.
+- **Immagini**: quelle nel testo e gli allegati immagine, al massimo 10 e 5 MB l'una, scaricate con lo stesso accesso (solo dalla stessa organizzazione) in `data/stories/<lettura>/`. La cartella è passata agli agenti come `additionalDirectories`, con l'elenco dei file e l'indicazione di aprirli solo se servono.
+- **Quando**: con **Leggi** nell'editor (anteprima in `data/stories/preview/`) e a ogni avvio di un'esecuzione, la cui copia resta nell'esecuzione (`run.story`). Se la lettura non riesce l'esecuzione parte lo stesso, con un avviso negli eventi. Il resoconto riporta link e titolo.
+- **Prompt**: dopo l'obiettivo, la sezione "User story collegata" con descrizione, criteri di accettazione, commenti e immagini.
+
 ## Esecuzione di riferimento
 
 Con l'impostazione **Esecuzione di riferimento** (attiva nel preset Allineamento e verifica) all'avvio si sceglie un'esecuzione di un altro workflow. Il suo resoconto, in versione compatta (obiettivo, risultati, decisioni dichiarate, file modificati, interventi, senza costi né tempi, al massimo 12.000 caratteri), viene fotografato nell'esecuzione e aggiunto al prompt di ogni fase agente, dopo l'obiettivo. Resta lo stesso anche se l'esecuzione di riferimento viene poi eliminata, e una continuazione lo mantiene. Entra nella chiave del riuso dei risultati: con un riferimento diverso le fasi non vengono riusate.
@@ -130,7 +139,7 @@ Hook, plugin e impostazioni personali di `~/.claude` non vengono caricati; le re
 
 - **Segnalazioni di errore** (solo con il consenso, chiesto al primo avvio; `REGIA_REPORTS=0` le disattiva): `server/reports.ts` registra gli errori di Regia (nelle esecuzioni reali `events.phaseFailed`, `events.service.startFailed`, `events.uat.mirrorFailed`, `events.skillsBundleFailed`, `events.questionFailed`; errori 500 delle API; eccezioni non gestite; errori dell'interfaccia, al massimo 5 per sessione). Il testo passa dal filtro dei segreti e poi viene anonimizzato (cartelle dei progetti e aggiuntive dei workflow → `<progetto>`, dati → `<dati>`, cartella utente → `~`, nome utente → `<utente>`, email → `<email>`). Copia locale in `data/reports/` (ultime 100), invio in JSON a `POST https://trace.lucabottani.dev/api/regia/report` (Worker Cloudflare con KV: 180 giorni, nessun IP salvato, 5 invii al minuto); senza rete si riprova all'avvio e ogni 10 minuti; lo stesso errore (chiave e testo senza numeri) non si rimanda prima di 24 ore. `npm run reports` scarica le segnalazioni in `local/reports/` per chi ha il token dell'area admin.
 - Tutto resta in locale in `data/`, che è escluso dal controllo di versione: workflow, esecuzioni, regole di Regia, cache di riuso e prove dei collaudi (screenshot e log dell'app, che possono contenere i dati mostrati dall'app, ad esempio quelli dell'account collegato). La cartella si può spostare con `REGIA_DATA_DIR`.
-- Regia non legge né salva credenziali. Dello stato di autenticazione espone solo metodo, provider e tipo di piano, senza email né organizzazione.
+- Regia non salva credenziali. L'unica che legge, solo se il workflow ha una user story di Azure DevOps, è l'accesso temporaneo che Git Credential Manager (o `AZURE_DEVOPS_EXT_PAT`, o `az`) fornisce per leggerla: resta in memoria il tempo della lettura. Dello stato di autenticazione espone solo metodo, provider e tipo di piano, senza email né organizzazione.
 - I testi prodotti dagli agenti passano da un filtro che oscura pattern comuni di segreti (chiavi API, token, chiavi private, assegnazioni `*_TOKEN=`/`*_SECRET=`/`PASSWORD=`) prima di essere salvati o mostrati. Il filtro è euristico e non sostituisce l'attenzione a cosa si fa leggere agli agenti.
 - Le API rifiutano richieste da origini diverse da localhost.
 - Le sessioni del SDK vengono salvate da Claude Code nella sua cartella dei progetti (`~/.claude/projects`), come per qualunque uso della CLI.
@@ -160,6 +169,7 @@ Interfaccia, messaggi di Regia e istruzioni inviate agli agenti sono tradotti tr
 | `REGIA_GLOBAL_RULES` | File delle regole personali (predefinito `~/.claude/CLAUDE.md`) |
 | `REGIA_SKILLS_DIR` | Cartella delle skill personali (predefinita `~/.claude/skills`) |
 | `REGIA_DISABLE_REAL=1` | Disattiva le esecuzioni reali |
+| `AZURE_DEVOPS_EXT_PAT` | Token per leggere le user story di Azure DevOps senza Git Credential Manager (facoltativo) |
 | `REGIA_REPORTS=0` | Disattiva le segnalazioni di errore, anche con il consenso |
 | `REGIA_REPORTS_URL` | Indirizzo a cui inviare le segnalazioni (predefinito `https://trace.lucabottani.dev/api/regia/report`) |
 | `REGIA_UPDATE_CHECK=0` | Disattiva il controllo di nuove versioni su GitHub (la versione in uso resta visibile accanto al nome) |
@@ -185,6 +195,7 @@ server/            API Express + SSE, motore di esecuzione, contabilità, simula
   mobile.ts        telefono: progetto mobile, dispositivi collegati, comando di build e installazione (Gradle con `.\gradlew.bat` su Windows e variante dei product flavor)
   uat.ts           collaudo: log dell'app da logcat, crash e ANR
   scrcpy.ts        finestra separata del collaudo: ricerca, installazione verificata, avvio di scrcpy
+  story.ts         user story collegata: Azure DevOps e GitHub, testo, immagini
   reports.ts       segnalazioni di errore: consenso, anonimizzazione, coda locale, invio
   mirror.ts        schermo dal vivo nella pagina: server di scrcpy sul telefono, flusso H.264 inoltrato alle pagine
   nodeenv.ts       versione di Node richiesta dal progetto, installazioni, diagnosi degli errori

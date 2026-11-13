@@ -62,6 +62,15 @@ Phase of type `collaudo`, in two steps within the same phase:
 - **Git**: the project branch and commit are recorded at the end of every phase and on suspend. Before resuming they are compared with the current ones and, if they differ, the interface asks for confirmation.
 - A suspended run can also be cancelled without resuming it. The duration shown includes the time spent suspended.
 
+## Linked user story
+
+- **Addresses**: Azure DevOps work items (`https://dev.azure.com/<org>/<project>/_workitems/edit/<id>`, `https://<org>.visualstudio.com/<project>/_workitems/edit/<id>`, also boards with `?workitem=<id>`) and GitHub issues (`https://github.com/<owner>/<repo>/issues/<n>`). Workflow field `settings.story`.
+- **Access to Azure DevOps**, in order: the `AZURE_DEVOPS_EXT_PAT` variable; Git Credential Manager (`git credential fill` for the host, or for `dev.azure.com` with the organization in the path: without credentials it opens the Microsoft login once); the `az` CLI (`az account get-access-token`). From Git Credential Manager Regia asks for the OAuth token of the Microsoft login (`GCM_AZREPOS_CREDENTIALTYPE=oauth`), valid for the work item APIs; the Personal Access Token GCM creates for repositories only has the code permission and remains as last try. After the first successful read, if the organization has no bound account, Regia binds it to the login account (`git credential-manager azure-repos bind`), so GCM reuses the session without asking to log in again. The token that worked stays in memory until 5 minutes before it expires (at most one hour) and is never saved by Regia. GitHub: `gh api` and `gh auth token` for images.
+- **Reading**: `GET <base>/_apis/wit/workitems/<id>?$expand=relations&api-version=7.1` (title, type, state, `System.Description` or a bug's repro steps, `Microsoft.VSTS.Common.AcceptanceCriteria`, attachments) and the last 10 comments. HTML becomes plain text; each image becomes a `[immagine n: name]` placeholder in place. Text at most 20,000 characters per section, passed through the secrets filter.
+- **Images**: those in the text and image attachments, at most 10 and 5 MB each, downloaded with the same access (only from the same organization) into `data/stories/<read>/`. The folder is given to the agents as `additionalDirectories`, with the list of files and the instruction to open them only when needed.
+- **When**: with **Read** in the editor (preview in `data/stories/preview/`) and at every run start, whose copy stays in the run (`run.story`). If reading fails the run starts anyway, with a warning in the events. The report shows link and title.
+- **Prompt**: after the goal, the "Linked user story" section with description, acceptance criteria, comments and images.
+
 ## Reference run
 
 With the **Reference run** setting (on in the Sync and verify preset), you pick a run of another workflow at start. Its compact report (goal, results, declared decisions, changed files, interventions, without costs or times, at most 12,000 characters) is captured in the run and added to the prompt of every agent phase, after the goal. It stays the same even if the reference run is later deleted, and a continuation keeps it. It is part of the result reuse key: with a different reference, phases are not reused.
@@ -130,7 +139,7 @@ Hooks, plugins and personal settings from `~/.claude` are not loaded; personal r
 
 - **Error reports** (only with consent, asked on first start; `REGIA_REPORTS=0` turns them off): `server/reports.ts` records Regia's own errors (in real runs `events.phaseFailed`, `events.service.startFailed`, `events.uat.mirrorFailed`, `events.skillsBundleFailed`, `events.questionFailed`; API 500 errors; unhandled exceptions; interface errors, at most 5 per session). The text goes through the secrets filter and is then anonymized (workflow project and additional folders → `<progetto>`, data → `<dati>`, home folder → `~`, user name → `<utente>`, emails → `<email>`). Local copy in `data/reports/` (last 100), sent as JSON to `POST https://trace.lucabottani.dev/api/regia/report` (Cloudflare Worker with KV: 180 days, no IP stored, 5 sends per minute); without network it retries at startup and every 10 minutes; the same error (key and text without numbers) is not sent again within 24 hours. `npm run reports` downloads the reports into `local/reports/` for whoever has the admin area token.
 - Everything stays local in `data/`, which is excluded from version control: workflows, runs, Regia rules, reuse cache and acceptance test evidence (screenshots and app log, which may contain data shown by the app, such as the signed-in account's). The folder can be moved with `REGIA_DATA_DIR`.
-- Regia never reads or stores credentials. Of the authentication status it exposes only method, provider and plan type, with no email or organization.
+- Regia never stores credentials. The only one it reads, only when the workflow has an Azure DevOps user story, is the temporary access that Git Credential Manager (or `AZURE_DEVOPS_EXT_PAT`, or `az`) gives to read it: it stays in memory for the duration of the read. Of the authentication status it exposes only method, provider and plan type, with no email or organization.
 - Text produced by agents goes through a filter that masks common secret patterns (API keys, tokens, private keys, `*_TOKEN=`/`*_SECRET=`/`PASSWORD=` assignments) before being stored or shown. The filter is heuristic and does not replace care about what agents are allowed to read.
 - The API rejects requests from origins other than localhost.
 - SDK sessions are saved by Claude Code in its projects folder (`~/.claude/projects`), as with any CLI use.
@@ -160,6 +169,7 @@ The interface, Regia's messages and the instructions sent to agents are translat
 | `REGIA_GLOBAL_RULES` | Personal rules file (default `~/.claude/CLAUDE.md`) |
 | `REGIA_SKILLS_DIR` | Personal skills folder (default `~/.claude/skills`) |
 | `REGIA_DISABLE_REAL=1` | Disables real runs |
+| `AZURE_DEVOPS_EXT_PAT` | Token to read Azure DevOps user stories without Git Credential Manager (optional) |
 | `REGIA_REPORTS=0` | Turns error reports off, even with consent |
 | `REGIA_REPORTS_URL` | Address reports are sent to (default `https://trace.lucabottani.dev/api/regia/report`) |
 | `REGIA_UPDATE_CHECK=0` | Disables the check for new versions on GitHub (the version in use stays visible next to the name) |
@@ -185,6 +195,7 @@ server/            Express API + SSE, execution engine, usage accounting, simula
   mobile.ts        phone: mobile project, connected devices, build and install command (Gradle with `.\gradlew.bat` on Windows and product flavor variant)
   uat.ts           acceptance test: app log from logcat, crashes and ANRs
   scrcpy.ts        separate window in the acceptance test: lookup, verified install, scrcpy launch
+  story.ts         linked user story: Azure DevOps and GitHub, text, images
   reports.ts       error reports: consent, anonymization, local queue, sending
   mirror.ts        live screen in the page: scrcpy server on the phone, H.264 stream forwarded to the pages
   nodeenv.ts       Node version required by the project, installations, error diagnosis

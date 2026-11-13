@@ -19,6 +19,8 @@ import { languages, mergedDict, serverT, systemLanguage } from './i18n.ts';
 import { installScrcpy, scrcpyStatus } from './scrcpy.ts';
 import { flush as flushReports, report, reportsInfo, setConsent } from './reports.ts';
 import { redact } from './redact.ts';
+import { STORIES_DIR, StoryError, fetchStory } from './story.ts';
+import { createHash } from 'node:crypto';
 import { ensureRegiaRules, getRules, saveRegiaRules } from './rules.ts';
 import {
   DATA_DIR, ROOT, deleteRunsOf, deleteWorkflow, getRun, getWorkflow, initStore, listRuns, listTemplates, listWorkflows, saveRun, saveWorkflow,
@@ -189,6 +191,32 @@ function cleanGroup(g: unknown): string | undefined {
 app.post('/api/validate', (req, res) => res.json(validateWorkflow(req.body.workflow as Workflow, req.body.mode)));
 
 app.get('/api/runs', (req, res) => res.json(listRuns(req.query.workflowId as string | undefined)));
+/** Messaggio leggibile per un errore di lettura della user story. */
+function storyErrorMsg(e: unknown): Msg {
+  if (e instanceof StoryError) return msg(`story.error.${e.code}`, { detail: redact(e.message).slice(0, 200) });
+  return msg('story.error.network', { detail: redact((e as Error).message).slice(0, 200) });
+}
+
+// User story: anteprima dall'editor (stessa lettura dell'avvio) e immagini scaricate.
+app.post('/api/stories/preview', h(async (req, res) => {
+  const url = (req.body as { url?: unknown }).url;
+  if (typeof url !== 'string' || !url.trim()) return void sendError(res, 400, msg('story.error.url'));
+  try {
+    res.json(await fetchStory(url, `preview/${createHash('sha1').update(url.trim()).digest('hex').slice(0, 12)}`));
+  } catch (e) {
+    sendError(res, 400, storyErrorMsg(e));
+  }
+}));
+app.get('/api/stories/file', (req, res) => {
+  const dir = String(req.query.dir ?? '');
+  const file = String(req.query.file ?? '');
+  if (!/^[\w./-]+$/.test(dir) || dir.includes('..') || !/^[\w.-]+\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(file)) return void sendError(res, 400, msg('api.invalidAction'));
+  const p = path.join(STORIES_DIR, dir, file);
+  if (!p.startsWith(STORIES_DIR) || !fs.existsSync(p)) return void res.status(404).end();
+  res.setHeader('Content-Security-Policy', "default-src 'none'; style-src 'unsafe-inline'");
+  res.sendFile(p);
+});
+
 // Segnalazioni di errore: consenso, elenco di quelle inviate, errori dell'interfaccia (inviati solo con il consenso).
 app.get('/api/reports', (_req, res) => res.json(reportsInfo()));
 app.post('/api/reports/consent', (req, res) => {
@@ -285,7 +313,16 @@ app.post('/api/runs', h(async (req, res) => {
     reference = getRun(referenceRunId) ?? undefined;
     if (!reference) return void sendError(res, 400, msg('api.referenceNotFound'));
   }
-  const eng = startRun(wf, mode, from, reference);
+  // User story collegata: letta a ogni avvio (può essere cambiata); se non si legge, si parte lo stesso.
+  let story: Parameters<typeof startRun>[4];
+  if (wf.settings.story?.trim()) {
+    try {
+      story = { story: await fetchStory(wf.settings.story, `run-${Date.now()}-${randomUUID().slice(0, 6)}`) };
+    } catch (e) {
+      story = { error: storyErrorMsg(e) };
+    }
+  }
+  const eng = startRun(wf, mode, from, reference, story);
   res.json({ id: eng.run.id });
 }));
 

@@ -67,6 +67,7 @@ test('anonimizzazione: progetto, cartella utente, nome utente, email e segreti s
   if (user.length >= 3) assert.ok(!new RegExp(`\\b${user}\\b`, 'i').test(a), a);
   assert.ok(a.includes('<email>') && !a.includes('mario.rossi'), a);
   assert.ok(!a.includes('abcdefghijklmnopqrstuvwxyz0123456789'), a);
+  assert.equal(reports.anonymize('vedi https://abbsace.visualstudio.com/ABB_Portfolio/_workitems/edit/248637 e https://github.com/o/r/issues/5'), 'vedi <work-item> e <issue>');
 });
 
 test('con il consenso: copia locale, invio senza i campi locali, stesso errore non rimandato prima di 24 ore', async () => {
