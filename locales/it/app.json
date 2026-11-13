@@ -283,5 +283,41 @@
     "none": "Nessuna",
     "loading": "Caricamento delle esecuzioni…",
     "empty": "Non ci sono esecuzioni di altri workflow: puoi avviare senza riferimento."
+  },
+  "reports": {
+    "button": "Segnalazioni di errore",
+    "title": "Segnalazioni di errore",
+    "toggle": "Invia segnalazioni di errore anonime",
+    "toggleHint": "Quando qualcosa in Regia non funziona (una fase che fallisce per un errore, un problema interno o dell'interfaccia), ne viene inviata una descrizione anonima per poterlo analizzare e correggere.",
+    "disabled": "Le segnalazioni sono disattivate su questo computer (REGIA_REPORTS=0).",
+    "what": {
+      "sent": "Si invia: versione di Regia, sistema operativo, versione di Node, tipo di fase, il messaggio di errore e qualche riga di contesto (ad esempio l'output della build), con un identificativo casuale dell'installazione.",
+      "notSent": "Non si invia mai: codice del progetto, prompt e testi degli agenti, screenshot, log dell'app. Percorsi, nome utente, email e segreti vengono sostituiti prima dell'invio.",
+      "where": "Le segnalazioni vanno a trace.lucabottani.dev, del creatore di Regia: restano 180 giorni e non vengono salvati indirizzi IP. Una copia resta qui, in data/reports."
+    },
+    "endpoint": "Indirizzo di invio: {url}",
+    "listTitle": {
+      "one": "Ultima segnalazione",
+      "other": "Ultime segnalazioni ({count})"
+    },
+    "none": "Nessuna segnalazione finora.",
+    "status": {
+      "sent": "inviata",
+      "queued": "in coda",
+      "rejected": "rifiutata"
+    },
+    "source": {
+      "fase": "fase",
+      "server": "server di Regia",
+      "ui": "interfaccia"
+    },
+    "close": "Chiudi",
+    "consent": {
+      "title": "Aiuta a migliorare Regia",
+      "body": "Se qualcosa non funziona, Regia può inviare una segnalazione di errore anonima al suo creatore, così il problema si può analizzare e correggere. Puoi cambiare idea quando vuoi dal pulsante con l'insetto, in alto.",
+      "what": "Cosa viene inviato",
+      "yes": "Sì, invia le segnalazioni",
+      "no": "No, grazie"
+    }
   }
 }

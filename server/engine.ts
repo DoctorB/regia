@@ -21,6 +21,7 @@ import { adbPath } from './mobile.ts';
 import { watchAppLog, type AppLogWatcher } from './uat.ts';
 import { scrcpyStatus, startMirror, type MirrorHandle } from './scrcpy.ts';
 import { startMirrorStream, type MirrorStream } from './mirror.ts';
+import { report } from './reports.ts';
 import { gitState } from './folder.ts';
 import { cacheTtlMs, interruptedSummary, interruptNodes, isInterruptedNote } from './resume.ts';
 import { AttemptAccounting, sumTotals, type SessionSnapshot } from './usage.ts';
@@ -238,6 +239,14 @@ export class RunEngine {
       : undefined;
     const safe: Msg = { key: m.key, params };
     this.event(kind, this.tx(safe), { ...extra, msg: safe });
+    if (kind === 'errore' && this.run.mode === 'reale' && REPORTED.has(m.key)) {
+      const st = extra.nodeId ? this.run.nodes[extra.nodeId] : undefined;
+      const node = extra.nodeId ? this.wf.nodes.find((x) => x.id === extra.nodeId) : undefined;
+      report({
+        source: 'fase', key: m.key, kind: node?.data.kind, lang: this.lang, message: this.tx(safe),
+        detail: st?.service?.log.length ? st.service.log.slice(-30).join('\n') : undefined,
+      });
+    }
   }
 
   /** Motivo dell'intervento: messaggio localizzabile e testo di riserva. */
@@ -1668,6 +1677,14 @@ export function parseDecisionLine(line: string): string | null {
 
 /** Percorso con le barre "/": la shell degli agenti su Windows è bash, dove le barre rovesciate sono caratteri di escape. */
 const slash = (p: string) => p.replace(/\\/g, '/');
+
+/**
+ * Errori che finiscono nelle segnalazioni (se la persona ha dato il consenso): quelli che dipendono da Regia o dal suo
+ * ambiente. Non i test falliti, gli esiti "ko" degli agenti, gli errori degli strumenti o i crash dell'app collaudata.
+ */
+const REPORTED = new Set([
+  'events.phaseFailed', 'events.service.startFailed', 'events.uat.mirrorFailed', 'events.skillsBundleFailed', 'events.questionFailed',
+]);
 
 /** Tentativo vuoto, con i contatori azzerati. */
 function blankAttempt(id: string, nodeId: string, index: number, reason: Attempt['reason']): Attempt {

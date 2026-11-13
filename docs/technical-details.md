@@ -128,6 +128,7 @@ Hooks, plugins and personal settings from `~/.claude` are not loaded; personal r
 
 ## Data and privacy
 
+- **Error reports** (only with consent, asked on first start; `REGIA_REPORTS=0` turns them off): `server/reports.ts` records Regia's own errors (in real runs `events.phaseFailed`, `events.service.startFailed`, `events.uat.mirrorFailed`, `events.skillsBundleFailed`, `events.questionFailed`; API 500 errors; unhandled exceptions; interface errors, at most 5 per session). The text goes through the secrets filter and is then anonymized (workflow project and additional folders → `<progetto>`, data → `<dati>`, home folder → `~`, user name → `<utente>`, emails → `<email>`). Local copy in `data/reports/` (last 100), sent as JSON to `POST https://trace.lucabottani.dev/api/regia/report` (Cloudflare Worker with KV: 180 days, no IP stored, 5 sends per minute); without network it retries at startup and every 10 minutes; the same error (key and text without numbers) is not sent again within 24 hours. `npm run reports` downloads the reports into `local/reports/` for whoever has the admin area token.
 - Everything stays local in `data/`, which is excluded from version control: workflows, runs, Regia rules, reuse cache and acceptance test evidence (screenshots and app log, which may contain data shown by the app, such as the signed-in account's). The folder can be moved with `REGIA_DATA_DIR`.
 - Regia never reads or stores credentials. Of the authentication status it exposes only method, provider and plan type, with no email or organization.
 - Text produced by agents goes through a filter that masks common secret patterns (API keys, tokens, private keys, `*_TOKEN=`/`*_SECRET=`/`PASSWORD=` assignments) before being stored or shown. The filter is heuristic and does not replace care about what agents are allowed to read.
@@ -159,6 +160,8 @@ The interface, Regia's messages and the instructions sent to agents are translat
 | `REGIA_GLOBAL_RULES` | Personal rules file (default `~/.claude/CLAUDE.md`) |
 | `REGIA_SKILLS_DIR` | Personal skills folder (default `~/.claude/skills`) |
 | `REGIA_DISABLE_REAL=1` | Disables real runs |
+| `REGIA_REPORTS=0` | Turns error reports off, even with consent |
+| `REGIA_REPORTS_URL` | Address reports are sent to (default `https://trace.lucabottani.dev/api/regia/report`) |
 | `REGIA_UPDATE_CHECK=0` | Disables the check for new versions on GitHub (the version in use stays visible next to the name) |
 | `REGIA_LANG` | Default server language (e.g. for the initial Regia rules); otherwise the system language |
 | `REGIA_CACHE_TTL_SEC` | Prompt cache lifetime used to decide how to resume an interrupted phase (default 300 seconds) |
@@ -182,6 +185,7 @@ server/            Express API + SSE, execution engine, usage accounting, simula
   mobile.ts        phone: mobile project, connected devices, build and install command (Gradle with `.\gradlew.bat` on Windows and product flavor variant)
   uat.ts           acceptance test: app log from logcat, crashes and ANRs
   scrcpy.ts        separate window in the acceptance test: lookup, verified install, scrcpy launch
+  reports.ts       error reports: consent, anonymization, local queue, sending
   mirror.ts        live screen in the page: scrcpy server on the phone, H.264 stream forwarded to the pages
   nodeenv.ts       Node version required by the project, installations, error diagnosis
   skills.ts        skill discovery and temporary per-phase plugin

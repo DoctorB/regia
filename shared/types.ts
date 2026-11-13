@@ -405,6 +405,38 @@ export interface ScrcpyStatus {
   install?: 'download' | 'brew' | 'manual';
 }
 
+/** Segnalazione di errore inviata (con il consenso) al servizio di raccolta; la copia locale ha anche lo stato dell'invio. */
+export interface ErrorReport {
+  v: 1;
+  /** Identificativo casuale dell'installazione: raggruppa le segnalazioni senza dire chi è. */
+  install: string;
+  regia: string;
+  os?: string;
+  node?: string;
+  lang?: string;
+  /** fase: errore di una fase in un'esecuzione reale; server: errore interno; ui: errore dell'interfaccia. */
+  source: 'fase' | 'server' | 'ui';
+  key?: string;
+  kind?: string;
+  message: string;
+  detail?: string;
+  at: string;
+  sent?: boolean;
+  sentAt?: string;
+  /** Il servizio ha rifiutato il formato: non si ritenta. */
+  rejected?: boolean;
+}
+
+export interface ReportsInfo {
+  /** Scelta della persona; assente finché non ha risposto (e allora non si invia nulla). */
+  consent?: 'si' | 'no';
+  /** REGIA_REPORTS=0: segnalazioni disattivate per tutti. */
+  disabled: boolean;
+  endpoint: string;
+  /** Ultime segnalazioni, con il contenuto esatto inviato. */
+  reports: ErrorReport[];
+}
+
 export interface NodeRunState {
   nodeId: string;
   status: NodeStatus;

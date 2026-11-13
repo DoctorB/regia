@@ -128,6 +128,7 @@ Hook, plugin e impostazioni personali di `~/.claude` non vengono caricati; le re
 
 ## Dati e riservatezza
 
+- **Segnalazioni di errore** (solo con il consenso, chiesto al primo avvio; `REGIA_REPORTS=0` le disattiva): `server/reports.ts` registra gli errori di Regia (nelle esecuzioni reali `events.phaseFailed`, `events.service.startFailed`, `events.uat.mirrorFailed`, `events.skillsBundleFailed`, `events.questionFailed`; errori 500 delle API; eccezioni non gestite; errori dell'interfaccia, al massimo 5 per sessione). Il testo passa dal filtro dei segreti e poi viene anonimizzato (cartelle dei progetti e aggiuntive dei workflow → `<progetto>`, dati → `<dati>`, cartella utente → `~`, nome utente → `<utente>`, email → `<email>`). Copia locale in `data/reports/` (ultime 100), invio in JSON a `POST https://trace.lucabottani.dev/api/regia/report` (Worker Cloudflare con KV: 180 giorni, nessun IP salvato, 5 invii al minuto); senza rete si riprova all'avvio e ogni 10 minuti; lo stesso errore (chiave e testo senza numeri) non si rimanda prima di 24 ore. `npm run reports` scarica le segnalazioni in `local/reports/` per chi ha il token dell'area admin.
 - Tutto resta in locale in `data/`, che è escluso dal controllo di versione: workflow, esecuzioni, regole di Regia, cache di riuso e prove dei collaudi (screenshot e log dell'app, che possono contenere i dati mostrati dall'app, ad esempio quelli dell'account collegato). La cartella si può spostare con `REGIA_DATA_DIR`.
 - Regia non legge né salva credenziali. Dello stato di autenticazione espone solo metodo, provider e tipo di piano, senza email né organizzazione.
 - I testi prodotti dagli agenti passano da un filtro che oscura pattern comuni di segreti (chiavi API, token, chiavi private, assegnazioni `*_TOKEN=`/`*_SECRET=`/`PASSWORD=`) prima di essere salvati o mostrati. Il filtro è euristico e non sostituisce l'attenzione a cosa si fa leggere agli agenti.
@@ -159,6 +160,8 @@ Interfaccia, messaggi di Regia e istruzioni inviate agli agenti sono tradotti tr
 | `REGIA_GLOBAL_RULES` | File delle regole personali (predefinito `~/.claude/CLAUDE.md`) |
 | `REGIA_SKILLS_DIR` | Cartella delle skill personali (predefinita `~/.claude/skills`) |
 | `REGIA_DISABLE_REAL=1` | Disattiva le esecuzioni reali |
+| `REGIA_REPORTS=0` | Disattiva le segnalazioni di errore, anche con il consenso |
+| `REGIA_REPORTS_URL` | Indirizzo a cui inviare le segnalazioni (predefinito `https://trace.lucabottani.dev/api/regia/report`) |
 | `REGIA_UPDATE_CHECK=0` | Disattiva il controllo di nuove versioni su GitHub (la versione in uso resta visibile accanto al nome) |
 | `REGIA_LANG` | Lingua predefinita del server (es. per le regole di Regia iniziali); altrimenti quella del sistema |
 | `REGIA_CACHE_TTL_SEC` | Durata della cache del prompt usata per decidere come riprendere una fase interrotta (predefinita 300 secondi) |
@@ -182,6 +185,7 @@ server/            API Express + SSE, motore di esecuzione, contabilità, simula
   mobile.ts        telefono: progetto mobile, dispositivi collegati, comando di build e installazione (Gradle con `.\gradlew.bat` su Windows e variante dei product flavor)
   uat.ts           collaudo: log dell'app da logcat, crash e ANR
   scrcpy.ts        finestra separata del collaudo: ricerca, installazione verificata, avvio di scrcpy
+  reports.ts       segnalazioni di errore: consenso, anonimizzazione, coda locale, invio
   mirror.ts        schermo dal vivo nella pagina: server di scrcpy sul telefono, flusso H.264 inoltrato alle pagine
   nodeenv.ts       versione di Node richiesta dal progetto, installazioni, diagnosi degli errori
   skills.ts        ricerca delle skill e plugin temporaneo per fase

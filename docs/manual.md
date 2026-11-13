@@ -306,6 +306,7 @@ Agent phases can use Claude Code **skills**: procedures written in a `SKILL.md` 
 - **Manage workflows…** (from the same menu): search, collapsible groups, and for each workflow open, rename, move to a group, duplicate, delete. Use the checkboxes to move or delete several workflows at once. A group can be renamed or removed (its workflows are kept, ungrouped). Deleting a workflow keeps its runs unless you choose to delete them; runs still in progress are never touched.
 - **Sounds**: the bell at the top right (see [Step in when needed](#5-step-in-when-needed)).
 - **Theme**: button at the top right, Match system / Light / Dark. **Language**: the button next to it. Both choices are remembered.
+- **Error reports**: on first start Regia asks whether it may send anonymous error reports to its author, to analyse and fix problems. Until you answer nothing is sent, and you can change the choice at any time from the bug button at the top, which also shows the exact content of every report sent. Only Regia's own errors are reported: a phase failing with an error in real runs, internal server or interface problems; not failing tests or agent outcomes. A report contains Regia version, system, Node version, phase type, the error message and a few lines of context, with a random installation identifier; never code, prompts, agent texts, screenshots or the app log. Paths, user name, emails and secrets are replaced before sending. Reports go to `trace.lucabottani.dev`, are kept 180 days and no IP addresses are stored.
 
 ## 11. Common problems
 

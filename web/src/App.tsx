@@ -14,6 +14,7 @@ import { Canvas } from './components/Canvas.tsx';
 import { Compare } from './components/Compare.tsx';
 import { PhaseInspector, WorkflowSettingsForm } from './components/Inspector.tsx';
 import { RunPanel } from './components/RunPanel.tsx';
+import { ReportsButton, ReportsConsent } from './components/Reports.tsx';
 import { WorkflowManager, groupNames, grouped } from './components/WorkflowManager.tsx';
 import { ContinueDialog, FolderStatus, NewWorkflowDialog, ReferenceDialog, RulesDialog } from './components/Setup.tsx';
 import { KindTile, Modal, Toasts, applyTheme, kindHint, kindLabel, readTheme, toast, type ThemeChoice } from './ui.tsx';
@@ -357,9 +358,10 @@ export function App() {
   if (!wf || !shownWf) {
     return (
       <div className="app">
-        <header className="topbar simple">{brand}<span className="grow" /><ThemeSwitch /><LanguageSwitch /><button className="btn ghost" onClick={() => setRulesDialog(true)}><ScrollText />{t('topbar.rules')}</button></header>
+        <header className="topbar simple">{brand}<span className="grow" /><ThemeSwitch /><LanguageSwitch /><ReportsButton /><button className="btn ghost" onClick={() => setRulesDialog(true)}><ScrollText />{t('topbar.rules')}</button></header>
         <NewWorkflowDialog inline groups={[]} onCreated={onCreated} />
         {rulesDialog && <RulesDialog onClose={() => setRulesDialog(false)} />}
+        <ReportsConsent />
         <Toasts />
       </div>
     );
@@ -436,6 +438,7 @@ export function App() {
           <SoundSwitch />
           <ThemeSwitch />
           <LanguageSwitch />
+          <ReportsButton />
           <button className="icon-btn" onClick={() => setRulesDialog(true)} title={t('topbar.rulesTitle')} aria-label={t('topbar.rulesTitle')}><ScrollText /></button>
           <button className="btn" disabled={busy || errCount > 0} onClick={() => start('prova')} title={t('topbar.testTitle')}><FlaskConical />{t('topbar.test')}</button>
           <button className="btn primary" disabled={busy || errCount > 0 || !env?.realRunsEnabled} onClick={() => { api.env(true).then(setEnv); setRealDialog(true); }}><Rocket />{t('topbar.runReal')}</button>
@@ -521,6 +524,7 @@ export function App() {
       {rulesDialog && <RulesDialog projectDir={wf.settings.projectDir} onClose={() => setRulesDialog(false)} />}
       {refDialog && <ReferenceDialog workflowId={wf.id} busy={busy} onCancel={() => setRefDialog(null)} onConfirm={(id) => start(refDialog, id)} />}
       {realDialog && <RealRunDialog env={env} wf={wf} busy={busy} onCancel={() => setRealDialog(false)} onConfirm={() => start('reale')} />}
+      <ReportsConsent />
       <Toasts />
     </div>
   );

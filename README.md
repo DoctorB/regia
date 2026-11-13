@@ -54,6 +54,7 @@ Open <http://127.0.0.1:4317>, create a workflow from a preset and press **Prova*
 
 - Costs shown are **estimates** computed by the SDK, not billing data. With an API key, the actual cost is in the Console; with a claude.ai login, usage counts against your plan limits.
 - Everything stays on your machine, in the `data/` folder (excluded from git). Regia never reads or stores credentials and listens on 127.0.0.1 only.
+- The only exception is optional: on first start Regia asks whether it may send anonymous error reports (Regia's own errors, never code, prompts or agent texts; paths, user name and secrets removed) to `trace.lucabottani.dev`. Nothing is sent until you agree; the bug button shows every report sent, and `REGIA_REPORTS=0` turns them off entirely.
 - Agents can edit files and run commands in the project folder, limited to what you allow each phase. Use a clean git repository so you can review and undo their work.
 
 ## Development

@@ -5,3 +5,6 @@ data/
 .env.*
 *.log
 .screens/
+
+# Segnalazioni di errore scaricate da scripts/fetch-reports.mjs
+local/

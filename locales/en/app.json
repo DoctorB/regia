@@ -283,5 +283,41 @@
     "none": "None",
     "loading": "Loading runs…",
     "empty": "There are no runs of other workflows: you can start without a reference."
+  },
+  "reports": {
+    "button": "Error reports",
+    "title": "Error reports",
+    "toggle": "Send anonymous error reports",
+    "toggleHint": "When something in Regia does not work (a phase failing with an error, an internal or interface problem), an anonymous description is sent so it can be analysed and fixed.",
+    "disabled": "Reports are turned off on this computer (REGIA_REPORTS=0).",
+    "what": {
+      "sent": "Sent: Regia version, operating system, Node version, phase type, the error message and a few lines of context (for example the build output), with a random installation identifier.",
+      "notSent": "Never sent: project code, prompts and agent texts, screenshots, the app log. Paths, user name, emails and secrets are replaced before sending.",
+      "where": "Reports go to trace.lucabottani.dev, run by Regia's author: they are kept 180 days and no IP addresses are stored. A copy stays here, in data/reports."
+    },
+    "endpoint": "Sent to: {url}",
+    "listTitle": {
+      "one": "Latest report",
+      "other": "Latest reports ({count})"
+    },
+    "none": "No reports so far.",
+    "status": {
+      "sent": "sent",
+      "queued": "queued",
+      "rejected": "rejected"
+    },
+    "source": {
+      "fase": "phase",
+      "server": "Regia server",
+      "ui": "interface"
+    },
+    "close": "Close",
+    "consent": {
+      "title": "Help improve Regia",
+      "body": "If something does not work, Regia can send an anonymous error report to its author, so the problem can be analysed and fixed. You can change your mind at any time from the bug button at the top.",
+      "what": "What is sent",
+      "yes": "Yes, send reports",
+      "no": "No, thanks"
+    }
   }
 }

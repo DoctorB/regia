@@ -17,6 +17,7 @@ import { withLayout } from '../shared/layout.ts';
 import { killAllServices } from './service.ts';
 import { languages, mergedDict, serverT, systemLanguage } from './i18n.ts';
 import { installScrcpy, scrcpyStatus } from './scrcpy.ts';
+import { flush as flushReports, report, reportsInfo, setConsent } from './reports.ts';
 import { redact } from './redact.ts';
 import { ensureRegiaRules, getRules, saveRegiaRules } from './rules.ts';
 import {
@@ -188,6 +189,22 @@ function cleanGroup(g: unknown): string | undefined {
 app.post('/api/validate', (req, res) => res.json(validateWorkflow(req.body.workflow as Workflow, req.body.mode)));
 
 app.get('/api/runs', (req, res) => res.json(listRuns(req.query.workflowId as string | undefined)));
+// Segnalazioni di errore: consenso, elenco di quelle inviate, errori dell'interfaccia (inviati solo con il consenso).
+app.get('/api/reports', (_req, res) => res.json(reportsInfo()));
+app.post('/api/reports/consent', (req, res) => {
+  const c = (req.body as { consent?: unknown }).consent;
+  if (c !== 'si' && c !== 'no') return void sendError(res, 400, msg('api.invalidAction'));
+  setConsent(c);
+  res.json(reportsInfo());
+});
+app.post('/api/reports/ui', (req, res) => {
+  const b = req.body as { message?: unknown; detail?: unknown };
+  if (typeof b.message === 'string' && b.message.trim()) {
+    report({ source: 'ui', message: b.message.slice(0, 2000), detail: typeof b.detail === 'string' ? b.detail.slice(0, 8000) : undefined });
+  }
+  res.json({ ok: true });
+});
+
 // Schermo del telefono dal vivo durante un collaudo: flusso H.264 grezzo, decodificato dalla pagina con WebCodecs.
 app.get('/api/runs/:id/mirror/:nodeId', (req, res) => {
   const m = getEngine(req.params.id)?.mirror(req.params.nodeId);
@@ -384,9 +401,15 @@ if (fs.existsSync(dist)) {
   app.get(/^(?!\/api).*/, (_req, res) => res.sendFile(path.join(dist, 'index.html')));
 }
 
-app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
+app.use((err: Error, req: Request, res: Response, _next: NextFunction) => {
+  report({ source: 'server', key: `${req.method} ${req.route?.path ?? req.path.replace(/run_[\w-]+/g, ':id')}`, message: err.message, detail: err.stack });
   sendThrown(res, 500, err);
 });
+
+// Errori non gestiti: annotati (con il consenso) prima che il processo si chiuda; si inviano al prossimo avvio se serve.
+process.on('uncaughtExceptionMonitor', (err) => report({ source: 'server', key: 'uncaught', message: err.message, detail: err.stack }));
+void flushReports();
+setInterval(() => void flushReports(), 10 * 60_000).unref();
 
 // Alla chiusura di Regia si fermano tutti i server avviati dalle fasi "server locale".
 process.on('exit', killAllServices);
