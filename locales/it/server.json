@@ -61,6 +61,19 @@
     "agentBlocked": "{label}: l'agente dichiara di essere bloccato — {summary}",
     "agentKo": "{label}: esito negativo — {summary}",
     "noOutcomeBlock": "{label}: l'agente non ha restituito il blocco di esito previsto; uso il testo finale come risultato.",
+    "pointsOmitted": {
+      "one": "{label}: un punto oltre il limite di {max}, non incluso nella checklist:\n{points}",
+      "other": "{label}: {count} punti oltre il limite di {max}, non inclusi nella checklist:\n{points}"
+    },
+    "permissionAsked": {
+      "modifica": "{label}: per proseguire la fase chiede di poter modificare il progetto.",
+      "internet": "{label}: per proseguire la fase chiede di poter usare internet."
+    },
+    "permissionGranted": {
+      "modifica": "{label}: concesso di modificare il progetto ({tools}).",
+      "internet": "{label}: concesso di usare internet ({tools})."
+    },
+    "permissionSaved": "{label}: aggiornato anche il workflow salvato, la prossima esecuzione parte già con questo permesso.",
     "phaseCompleted": "{label}: completata — {summary}",
     "awaitingApproval": "{label}: in attesa della tua approvazione.",
     "humanAction": "Intervento su {label}: {action}",
@@ -169,16 +182,28 @@
     }
   },
   "agent": {
-    "protocol": "# Protocollo di risposta\n- Quando prendi una decisione rilevante (cosa leggere, cosa modificare, come verificare), scrivi una riga che inizia con \"DECISIONE:\" seguita da una spiegazione breve, una sola frase.\n- Lavora solo nella cartella del progetto e solo con gli strumenti che hai a disposizione.\n- Termina SEMPRE la risposta con questo blocco, in JSON valido:\n```regia\n{\"esito\": \"ok\" | \"ko\" | \"bloccato\", \"sintesi\": \"risultato in 1-3 frasi, utile alla fase successiva\", \"decisioni\": [\"decisione principale e motivo\", \"...\"]}\n```\nUsa \"ko\" se il compito non è riuscito (es. test falliti), \"bloccato\" se non puoi procedere senza un intervento umano (spiega cosa serve nella sintesi).",
+    "protocol": "# Protocollo di risposta\n- Quando prendi una decisione rilevante (cosa leggere, cosa modificare, come verificare), scrivi una riga che inizia con \"DECISIONE:\" seguita da una spiegazione breve, una sola frase.\n- Lavora solo nella cartella del progetto e solo con gli strumenti che hai a disposizione.\n- Termina SEMPRE la risposta con questo blocco, in JSON valido:\n```regia\n{\"esito\": \"ok\" | \"ko\" | \"bloccato\", \"sintesi\": \"risultato in 1-3 frasi, utile alla fase successiva\", \"decisioni\": [\"decisione principale e motivo\", \"...\"]}\n```\nUsa \"ko\" se il compito non è riuscito (es. test falliti), \"bloccato\" se non puoi procedere senza un intervento umano (spiega cosa serve nella sintesi).\nSe ti fermi perché non hai gli strumenti per farlo, aggiungi al blocco \"permesso\": \"modifica\" se ti serve modificare file o eseguire comandi, \"internet\" se ti serve consultare il web: chi supervisiona potrà concederlo con un clic.",
+    "protocolPoints": "- Sei in una fase di revisione: se trovi modifiche concrete da fare, aggiungi al blocco la chiave \"punti\" con l'elenco delle correzioni proposte, una per voce (file o funzione, problema e correzione), in ordine di importanza dalla più importante, al massimo {max}: se ne trovi di più, accorpa quelle simili. Chi approva sceglierà quali far applicare. Trovare dei punti non rende il compito non riuscito: usa comunque \"ok\". Senza punti da segnalare ometti la chiave.",
     "goal": "# Obiettivo del workflow\n{goal}",
     "task": "# Il tuo compito: {label}\n{instructions}",
     "previousResults": "# Risultati delle fasi precedenti\n{results}",
     "skippedPhase": "(fase saltata)",
     "feedback": "Feedback della persona che supervisiona il workflow:\n{feedback}\n\nTieni conto di questo feedback e completa di nuovo il compito \"{label}\".\n\n{protocol}",
+    "chosenPoints": "Punti segnalati da \"{label}\" da correggere:\n{points}",
+    "extraComment": "Indicazioni aggiuntive:\n{comment}",
     "continue": "Continua dal punto in cui ti eri fermato.",
+    "permissionGranted": {
+      "modifica": "Ora puoi modificare i file ed eseguire comandi nella cartella del progetto. Riprendi il compito dal punto in cui ti eri fermato.",
+      "internet": "Ora puoi anche consultare il web, oltre a modificare i file ed eseguire comandi. Riprendi il compito dal punto in cui ti eri fermato."
+    },
     "role": "Ruolo in questo workflow: {role}",
     "output": {
       "decisions": "Decisioni:",
+      "points": "Punti da correggere:",
+      "pointsOmitted": {
+        "one": "(un altro punto oltre il limite, non riportato)",
+        "other": "(altri {count} punti oltre il limite, non riportati)"
+      },
       "approved": "Approvato dalla persona.",
       "approvedWith": "Approvato dalla persona: {feedback}",
       "skipped": "(fase saltata dalla persona)",
@@ -207,6 +232,7 @@
       "implEnd": "DECISIONE: I test passano, non aggiungo altre modifiche.",
       "test": "DECISIONE: Considero la suite superata perché tutti i 5 test passano.",
       "review": "DECISIONE: La modifica è minima e coperta dai test; non segnalo problemi bloccanti.",
+      "reviewPoints": "DECISIONE: Segnalo due punti da sistemare; nessuno blocca il resto della modifica.",
       "generic": "DECISIONE: Ho svolto il compito richiesto con il minimo di passaggi."
     },
     "fileContent": "…contenuto del file…",
@@ -218,7 +244,13 @@
     "summary": {
       "blocked": "Simulazione di blocco: serve una conferma umana prima di procedere.",
       "resumed": "Feedback applicato con una modifica mirata.",
-      "done": "Fase \"{label}\" completata in simulazione."
+      "done": "Fase \"{label}\" completata in simulazione.",
+      "needsPermission": "Non posso creare il file richiesto: questa fase può solo leggere, mi serve poter scrivere ed eseguire comandi."
+    },
+    "points": {
+      "first": "src/modulo.js, totale(): manca il controllo sul carrello vuoto, restituire 0 invece di NaN.",
+      "second": "test/modulo.test.js: aggiungere un test per gli sconti superiori al totale.",
+      "numbered": "Punto simulato numero {n}."
     },
     "finalDecision": "Esito {outcome} dichiarato al termine della fase {label}.",
     "workDone": "Lavoro completato.",
@@ -246,7 +278,7 @@
     "unexpected": "{message}",
     "phaseNotFound": "Fase inesistente",
     "actionUnavailable": "Azione \"{action}\" non disponibile per questa fase",
-    "rejectNeedsComment": "Per respingere serve un commento con le correzioni richieste",
+    "rejectNeedsComment": "Per respingere scegli almeno un punto o scrivi un commento con le correzioni richieste",
     "noSession": "Nessuna sessione da riprendere",
     "serverOnly": "Azione disponibile solo per le fasi Avvio app",
     "notServer": "La fase non è una fase Avvio app",

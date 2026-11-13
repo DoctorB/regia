@@ -6,6 +6,7 @@ import {
 } from '../../shared/types.ts';
 import { NODE_H, looksHorizontal, withLayout } from '../../shared/layout.ts';
 import { phasePreset, phaseSnippets } from '../../shared/presets.ts';
+import { grantLevel, type PermissionLevel } from '../../shared/permissions.ts';
 import { api, fmtTime, fmtUsd } from './api.ts';
 import { useI18n } from './i18n.tsx';
 import { useRunSounds, useSoundSetting } from './sound.ts';
@@ -202,6 +203,25 @@ export function App() {
   });
 
   const confirmDiscard = () => !dirty || confirm(t('app.confirmDiscard'));
+
+  /**
+   * Permesso concesso durante un'esecuzione: il server ha già aggiornato il workflow salvato. Qui si applica
+   * lo stesso cambio alla copia aperta e a quella di riferimento, così le altre modifiche non salvate restano
+   * e un salvataggio successivo non toglie il permesso.
+   */
+  const grantInEditor = useCallback((workflowId: string, nodeId: string, level: PermissionLevel) => {
+    const patch = (w: Workflow): Workflow => ({
+      ...w,
+      nodes: w.nodes.map((n) => (n.id === nodeId ? { ...n, data: { ...n.data, allowedTools: grantLevel(n.data.allowedTools, level) } } : n)),
+    });
+    setWf((w) => (w && w.id === workflowId ? patch(w) : w));
+    setSaved((s) => {
+      if (!s) return s;
+      const w = JSON.parse(s) as Workflow;
+      return w.id === workflowId ? JSON.stringify(patch(w)) : s;
+    });
+    setWorkflows((l) => l.map((x) => (x.id === workflowId ? patch(x) : x)));
+  }, []);
 
   async function save() {
     if (!wf || !dirty) return;
@@ -488,7 +508,8 @@ export function App() {
         {view === 'run' && run && (
           <aside className="inspector wide">
             <RunPanel run={run} runs={runs} selectedNode={selected} onSelectNode={setSelected} onOpenRun={openRun}
-              onContinue={run.workflowId === wf.id ? async () => { if (dirty) await save(); setContinueFrom(run.id); } : undefined} />
+              onContinue={run.workflowId === wf.id ? async () => { if (dirty) await save(); setContinueFrom(run.id); } : undefined}
+              onGranted={grantInEditor} />
           </aside>
         )}
         {view === 'compare' && <section className="scroll-page"><Compare workflowId={wf.id} initialB={run?.workflowId === wf.id ? run.id : undefined} /></section>}

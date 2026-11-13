@@ -1,6 +1,8 @@
-import { useEffect, useState } from 'react';
-import { AppWindow, CircleCheck, Globe, TextSearch, FileCode2, Info, Lock, PencilLine, RefreshCw, ScrollText, Sparkles, Terminal, Trash2, TriangleAlert, CircleAlert, X } from 'lucide-react';
+import { useEffect, useState, type ReactNode } from 'react';
+import { AppWindow, CircleCheck, Globe, TextSearch, FileCode2, Info, Lock, PencilLine, RefreshCw, RotateCcw, ScrollText, Sparkles, Terminal, Trash2, TriangleAlert, CircleAlert, X } from 'lucide-react';
 import { KNOWN_TOOLS, READY_CHECKS, WRITE_TOOLS, type LaunchPlan, type PhaseConfig, type ShowConfig, type PhaseKind, type SkillInfo, type ValidationIssue, type Workflow, type WorkflowSettings } from '../../../shared/types.ts';
+import { isCustomTools, PERMISSION_LEVELS, permissionLevel, toolsForLevel } from '../../../shared/permissions.ts';
+import { phasePreset } from '../../../shared/presets.ts';
 import { useI18n } from '../i18n.tsx';
 import { Field, KIND_META, KindTile, Section, Switch, kindLabel } from '../ui.tsx';
 import { FolderStatus } from './Setup.tsx';
@@ -39,7 +41,7 @@ function SkillsSection({ cfg, settings, onChange }: { cfg: PhaseConfig; settings
   const toggle = (id: string) => onChange(chosen.includes(id) ? chosen.filter((x) => x !== id) : [...chosen, id]);
   const count = mode === 'all' ? skills.length : chosen.length;
   return (
-    <Section title={t('inspector.skills.title')} aside={<span className="muted small">{t('inspector.skills.active', { count })}</span>}>
+    <Sub title={t('inspector.skills.title')} aside={<span className="muted small">{t('inspector.skills.active', { count })}</span>}>
       <div className="model-picker cols-3" role="radiogroup" aria-label={t('inspector.skills.title')}>
         {(['none', 'all', 'chosen'] as const).map((m) => (
           <button key={m} role="radio" aria-checked={shown === m} className={`model-opt ${shown === m ? 'on' : ''}`}
@@ -74,7 +76,17 @@ function SkillsSection({ cfg, settings, onChange }: { cfg: PhaseConfig; settings
         </div>
       )}
       {shown !== 'none' && <p className="hint">{t('inspector.skills.hint')}</p>}
-    </Section>
+    </Sub>
+  );
+}
+
+/** Gruppo di opzioni dentro la sezione Avanzate. */
+function Sub({ title, aside, children }: { title: string; aside?: ReactNode; children: ReactNode }) {
+  return (
+    <div className="adv-sub">
+      <div className="adv-sub-head"><h5>{title}</h5>{aside}</div>
+      {children}
+    </div>
   );
 }
 
@@ -264,6 +276,20 @@ export function PhaseInspector({ cfg, settings, issues, onChange, onDelete }: { 
   const custom = Boolean(cfg.model) && !known.includes(cfg.model);
   const modelHint = (id: string) => t(`inspector.models.${id}`);
   const toolHint = (name: string) => (TOOL_HINT.has(name) ? t(`inspector.tools.${name}`) : name);
+  const level = permissionLevel(cfg.allowedTools);
+  const customTools = isCustomTools(cfg.allowedTools);
+  const [advOpen, setAdvOpen] = useState(false);
+  // Valori consigliati per il tipo di fase: il riepilogo di Avanzate elenca solo ciò che se ne discosta.
+  const base = phasePreset(cfg.kind, t);
+  const sameTools = base.allowedTools.length === cfg.allowedTools.length && base.allowedTools.every((x) => cfg.allowedTools.includes(x));
+  const skillCount = cfg.skills === 'all' ? -1 : Array.isArray(cfg.skills) ? cfg.skills.length : 0;
+  const advDiffs = [
+    !sameTools && t('inspector.advanced.diff.tools', { count: cfg.allowedTools.length }),
+    skillCount === -1 ? t('inspector.advanced.diff.skillsAll') : skillCount > 0 && t('inspector.advanced.diff.skills', { count: skillCount }),
+    cfg.maxTurns !== base.maxTurns && (cfg.maxTurns ? t('inspector.advanced.diff.turns', { count: cfg.maxTurns }) : t('inspector.advanced.diff.noTurns')),
+    cfg.contextMode !== base.contextMode && t(`inspector.advanced.diff.context.${cfg.contextMode}`),
+    cfg.reuseResult !== base.reuseResult && t(cfg.reuseResult ? 'inspector.advanced.diff.reuseOn' : 'inspector.advanced.diff.reuseOff'),
+  ].filter((x): x is string => Boolean(x));
 
   return (
     <div className="inspector-inner">
@@ -341,7 +367,26 @@ export function PhaseInspector({ cfg, settings, issues, onChange, onDelete }: { 
             {(cfg.model === '' || custom) && <Field label={t('inspector.model.id')}><input className="mono" value={cfg.model} onChange={(e) => set('model', e.target.value.trim())} placeholder={t('inspector.model.idPlaceholder')} /></Field>}
           </Section>
 
-          <Section title={t('inspector.tools.title')} aside={<span className="muted small">{t('inspector.tools.active', { count: cfg.allowedTools.length })}</span>}>
+          <Section title={t('inspector.permissions.title')}>
+            <div className="model-picker perm-picker" role="radiogroup" aria-label={t('inspector.permissions.title')}>
+              {PERMISSION_LEVELS.map((lv) => (
+                <button key={lv} role="radio" aria-checked={level === lv} className={`model-opt ${level === lv ? 'on' : ''}`}
+                  onClick={() => set('allowedTools', toolsForLevel(cfg.allowedTools, lv))}>
+                  <span className="model-name">{t(`inspector.permissions.${lv}`)}</span>
+                </button>
+              ))}
+            </div>
+            <p className="hint">{t(`inspector.permissions.hint.${level}`)}{customTools ? ` ${t('inspector.permissions.custom')}` : ''}</p>
+          </Section>
+
+          {/* Opzioni tecniche: chiuse, con il riepilogo di ciò che non è al valore consigliato per il tipo di fase. */}
+          <details className="section advanced-section" open={advOpen} onToggle={(e) => setAdvOpen((e.target as HTMLDetailsElement).open)}>
+            <summary className="section-head">
+              <h4>{t('inspector.advanced.title')}</h4>
+              <span className="muted small adv-summary">{advDiffs.length ? advDiffs.join(' · ') : t('inspector.advanced.defaults')}</span>
+            </summary>
+            <div className="section-body">
+            <Sub title={t('inspector.tools.title')} aside={<span className="muted small">{t('inspector.tools.active', { count: cfg.allowedTools.length })}</span>}>
             <div className="tool-chips">
               {KNOWN_TOOLS.map((tool) => {
                 const on = cfg.allowedTools.includes(tool);
@@ -355,26 +400,33 @@ export function PhaseInspector({ cfg, settings, issues, onChange, onDelete }: { 
               })}
             </div>
             <p className="hint">{t('inspector.tools.hint')}</p>
-          </Section>
+            </Sub>
 
-          <SkillsSection cfg={cfg} settings={settings} onChange={(v) => set('skills', v)} />
+            <SkillsSection cfg={cfg} settings={settings} onChange={(v) => set('skills', v)} />
 
-          <Section title={t('inspector.limits.title')}>
-            <div className="grid2">
-              <Field label={t('inspector.limits.maxTurns')}><Num value={cfg.maxTurns} onChange={(v) => set('maxTurns', v)} min={1} placeholder={t('inspector.limits.none')} /></Field>
+            <Sub title={t('inspector.limits.title')}>
+              <div className="grid2">
+                <Field label={t('inspector.limits.maxTurns')}><Num value={cfg.maxTurns} onChange={(v) => set('maxTurns', v)} min={1} placeholder={t('inspector.limits.none')} /></Field>
+              </div>
+            </Sub>
+
+            <Sub title={t('inspector.context.title')}>
+              <Field label={t('inspector.context.label')}>
+                <select value={cfg.contextMode} onChange={(e) => set('contextMode', e.target.value as PhaseConfig['contextMode'])}>
+                  <option value="sintesi">{t('inspector.context.sintesi')}</option>
+                  <option value="completo">{t('inspector.context.completo')}</option>
+                  <option value="nessuno">{t('inspector.context.nessuno')}</option>
+                </select>
+              </Field>
+              <Switch checked={cfg.reuseResult} onChange={(v) => set('reuseResult', v)} label={t('inspector.context.reuse')} hint={t('inspector.context.reuseHint')} />
+            </Sub>
+            {advDiffs.length > 0 && (
+              <button className="btn sm ghost adv-reset" onClick={() => onChange({ ...cfg, allowedTools: base.allowedTools, skills: base.skills, maxTurns: base.maxTurns, contextMode: base.contextMode, reuseResult: base.reuseResult })}>
+                <RotateCcw />{t('inspector.advanced.reset')}
+              </button>
+            )}
             </div>
-          </Section>
-
-          <Section title={t('inspector.context.title')}>
-            <Field label={t('inspector.context.label')}>
-              <select value={cfg.contextMode} onChange={(e) => set('contextMode', e.target.value as PhaseConfig['contextMode'])}>
-                <option value="sintesi">{t('inspector.context.sintesi')}</option>
-                <option value="completo">{t('inspector.context.completo')}</option>
-                <option value="nessuno">{t('inspector.context.nessuno')}</option>
-              </select>
-            </Field>
-            <Switch checked={cfg.reuseResult} onChange={(v) => set('reuseResult', v)} label={t('inspector.context.reuse')} hint={t('inspector.context.reuseHint')} />
-          </Section>
+          </details>
         </>
       )}
 

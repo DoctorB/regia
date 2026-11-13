@@ -63,8 +63,9 @@ then restart with `npm start`. The check only reads the published version number
 - **Configure** the selected phase in the right panel:
   - *Instructions*: what it must do, ideally naming the files to look at.
   - *Model*: Haiku ($) for simple tasks (tests, checks), Sonnet ($$) as the balanced choice, Opus ($$$) for the hardest tasks.
-  - *Tools*: turn on only those needed. Tools with a pencil icon edit files or run commands.
-  - *Max turns*: safety cap.
+  - *What it can do*: **Read only**, **Change the project** (creates and edits files, runs commands such as tests, builds, git and scripts) or **Also internet**. New phases start with the choice that fits their type: analysis and review read, implementation and custom phases change the project. Individual tools are under **Advanced** for those who want to pick them by hand.
+  - *Advanced*, collapsed: individual tools, skills, max turns (a safety cap), what the phase receives from earlier phases and result reuse. Each phase type already has recommended values; when collapsed, the section lists only what differs from them, and **Back to recommended values** restores them.
+- On the diagram each agent phase shows what it can do (*read only*, *changes the project*, *also internet*).
 - With no phase selected, the panel shows the **workflow settings**: folder, goal, phases in parallel, rules.
 - The indicator at the top tells you whether the workflow is **Valid**: click it to see errors and warnings and jump to the phase concerned. Errors block the start. **Save** appears when there are changes (also `Ctrl+S`).
 
@@ -97,7 +98,9 @@ On the diagram each phase shows its state (waiting, active, completed, failed, b
 When the workflow stops, the **Status** tab shows what is needed:
 
 - **Approval**: read the summaries of the previous phases and check the project (`git diff`), then **Approve** or **Reject with comment**: the phase that produced the work resumes where it left off with your comment, and tests and review run again.
+  When a review finds something to fix it still turns green: its task was to check. The points it proposes appear in the approval as **Points reported**, one per checkbox. Tick the ones to correct, optionally add your own instructions for refinements the review cannot judge, and reject: the chosen points and your comment go together to the phase that wrote the code. If you approve with points ticked, Regia asks you to confirm.
 - **Failed or blocked phase**: **Retry from scratch**, **Resume session** (with a message for the agent), **Skip phase** or **Cancel run**.
+  If the phase stopped because it lacked permission for what it needed (for example running a script or creating a file in a read-only phase), **Allow changes and resume** also appears: the phase resumes the same session with the new permission, and the saved workflow is updated so the next run starts that way.
 
 When a phase starts waiting for you, and when the run ends, Regia plays a short sound, even while you are in the editor. Turn it on or off with the bell button at the top right; the choice is remembered.
 
@@ -156,7 +159,7 @@ Under **More options** you can set a subfolder, change the maximum wait or switc
 
 On a Mac with **Xcode** (and its command line tools: `xcode-select --install`) Regia also orchestrates iOS apps: Regia is installed and started just as on Windows.
 
-- **Agents**: they build and run tests with `xcodebuild` through Bash; enable Bash in the phases that need it. Builds are slow: raise the maximum turns of those phases.
+- **Agents**: they build and run tests with `xcodebuild` through Bash: set the phases that need it to **Change the project**. Builds are slow: raise the maximum turns of those phases.
 - **Show on phone** also works with a connected iPhone and with a simulator already booted, for Flutter, React Native, Expo and Capacitor.
 - **Native Xcode project**: use a **Run app** phase with the "The command succeeds" criterion, for example `xcodebuild -scheme App -destination 'platform=iOS Simulator,name=iPhone 16' -derivedDataPath build build && xcrun simctl install booted build/Build/Products/Debug-iphonesimulator/App.app && xcrun simctl launch booted com.example.App` (adjust scheme, app name and bundle id).
 - **After the phase** add an **Approval**: check the app and decide.

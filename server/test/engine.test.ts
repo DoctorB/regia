@@ -347,6 +347,145 @@ test('server locale "intelligente": versione di Node dal progetto, ritentativo a
   e4.cancel();
 });
 
+test('punti della revisione: dichiarati a parte, scelti nell\'approvazione e inviati alla fase da correggere', async () => {
+  const { agentProtocol, parseDeclared } = await import('../engine.ts');
+  // Solo le revisioni ricevono la richiesta dei punti, in entrambe le lingue con la chiave invariata.
+  assert.match(agentProtocol('it', 'revisione'), /"punti"/);
+  assert.match(agentProtocol('en', 'revisione'), /"punti"/);
+  assert.doesNotMatch(agentProtocol('it', 'implementazione'), /"punti"/);
+  // Lettura: voci vuote scartate, numero limitato; senza punti la chiave non compare.
+  const d = parseDeclared('```regia\n{"esito":"ok","sintesi":"s","decisioni":[],"punti":["a"," ",null,"b"]}\n```');
+  assert.deepEqual(d?.punti, ['a', 'b']);
+  assert.equal(d?.esito, 'ok');
+  assert.equal(parseDeclared('```regia\n{"esito":"ok","sintesi":"s","decisioni":[],"punti":"x"}\n```')?.punti, undefined);
+  assert.match(agentProtocol('it', 'revisione'), /in ordine di importanza[\s\S]*al massimo 25/);
+  // Oltre il limite si tengono i primi 25; gli altri restano a parte, per l'evento e la nota nell'approvazione.
+  const many = parseDeclared(`\`\`\`regia\n${JSON.stringify({ esito: 'ok', sintesi: 's', punti: Array.from({ length: 28 }, (_, i) => `p${i}`) })}\n\`\`\``);
+  assert.equal(many?.punti?.length, 25);
+  assert.deepEqual(many?.puntiOmessi, ['p25', 'p26', 'p27']);
+  assert.equal(d?.puntiOmessi, undefined);
+
+  const eng = startRun(bugWf(), 'prova');
+  const run = eng.run;
+  await waitFor(() => run.nodes.approvazione.status === 'attesa_intervento');
+  // La revisione resta completata (verde) e i suoi punti arrivano all'approvazione.
+  assert.equal(run.nodes.revisione.status, 'completata');
+  const groups = run.nodes.approvazione.reviewPoints!;
+  assert.equal(groups.length, 1);
+  assert.equal(groups[0].nodeId, 'revisione');
+  assert.equal(groups[0].items.length, 2);
+  assert.match(run.nodes.revisione.output!, /Punti da correggere:\n- src\/modulo\.js/);
+
+  // Senza punti né commento non si respinge; un indice inesistente viene ignorato.
+  await assert.rejects(eng.human('approvazione', 'respingi', '', [{ nodeId: 'revisione', index: 9 }]));
+  assert.ok(run.nodes.approvazione.pendingActions?.includes('respingi'));
+
+  await eng.human('approvazione', 'respingi', 'Aggiorna anche il README', [{ nodeId: 'revisione', index: 1 }]);
+  await waitFor(() => run.nodes.approvazione.status === 'attesa_intervento');
+  const fb = run.nodes.correzione.attempts[1].feedback!;
+  assert.match(fb, /Punti segnalati da "Revisione" da correggere:\n- test\/modulo\.test\.js/);
+  assert.doesNotMatch(fb, /src\/modulo\.js, totale/);
+  assert.match(fb, /Indicazioni aggiuntive:\nAggiorna anche il README/);
+  // La revisione rifatta dopo la correzione non trova altro: la lista sparisce.
+  assert.equal(run.nodes.revisione.attempts.length, 2);
+  assert.equal(run.nodes.approvazione.reviewPoints, undefined);
+  eng.cancel();
+});
+
+test('punti delle revisioni non collegate direttamente all\'approvazione', async () => {
+  const wf = bugWf();
+  // Revisione → fase intermedia → approvazione: i punti vengono raccolti lo stesso.
+  wf.nodes.push({ id: 'riepilogo', position: { x: 750, y: 210 }, data: { label: 'Riepilogo', kind: 'personalizzata', role: '', instructions: 'Riassumi.', model: 'haiku', allowedTools: ['Read'], maxTurns: 3, contextMode: 'sintesi', reuseResult: false } });
+  wf.edges = wf.edges.filter((e) => e.id !== 'e5');
+  wf.edges.push({ id: 'r1', source: 'revisione', target: 'riepilogo' }, { id: 'r2', source: 'riepilogo', target: 'approvazione' });
+  const eng = startRun(wf, 'prova');
+  await waitFor(() => eng.run.nodes.approvazione.status === 'attesa_intervento');
+  assert.deepEqual(eng.run.nodes.approvazione.reviewPoints?.map((g) => g.nodeId), ['revisione']);
+  eng.cancel();
+});
+
+test('punti oltre il limite: checklist con i primi 25, gli altri in un evento e segnalati nell\'approvazione', async () => {
+  const wf = bugWf();
+  wf.nodes.find((x) => x.id === 'revisione')!.data.instructions += ' [simula-molti-punti]';
+  const eng = startRun(wf, 'prova');
+  const run = eng.run;
+  await waitFor(() => run.nodes.approvazione.status === 'attesa_intervento');
+  const g = run.nodes.approvazione.reviewPoints![0];
+  assert.equal(g.items.length, 25);
+  assert.equal(g.omitted, 2);
+  const ev = run.events.find((e) => e.nodeId === 'revisione' && e.text.includes('oltre il limite di 25'));
+  assert.match(ev!.text, /2 punti oltre il limite di 25[\s\S]*- Punto simulato numero 26\.\n- Punto simulato numero 27\./);
+  assert.match(run.nodes.revisione.output!, /\(altri 2 punti oltre il limite, non riportati\)/);
+  eng.cancel();
+});
+
+test('permessi in parole semplici: livello dagli strumenti, scelta nell\'editor, concessione', async () => {
+  const { permissionLevel, isCustomTools, toolsForLevel, grantLevel, lacksLevel, LEVEL_TOOLS } = await import('../../shared/permissions.ts');
+  assert.equal(permissionLevel(['Read', 'Glob', 'Grep']), 'lettura');
+  assert.equal(permissionLevel([]), 'lettura');
+  assert.equal(permissionLevel(['Read', 'Bash']), 'modifica');
+  assert.equal(permissionLevel(['Read', 'WebSearch']), 'internet');
+  // La fase Test (Bash senza Edit) è "modificare", ma su misura.
+  assert.equal(isCustomTools(['Read', 'Glob', 'Grep', 'Bash']), true);
+  assert.equal(isCustomTools(['Grep', 'Read', 'Glob']), false);
+  // Cambiando livello restano subagenti e lista di attività.
+  assert.deepEqual(toolsForLevel(['Read', 'Glob', 'Grep', 'Agent'], 'modifica'), [...LEVEL_TOOLS.modifica, 'Agent']);
+  assert.deepEqual(toolsForLevel(['Read', 'Edit', 'NotebookEdit'], 'lettura'), LEVEL_TOOLS.lettura);
+  // Concedere aggiunge senza togliere.
+  assert.deepEqual(grantLevel(['Read', 'Agent'], 'modifica'), ['Read', 'Agent', 'Glob', 'Grep', 'Edit', 'Write', 'Bash']);
+  assert.equal(lacksLevel(LEVEL_TOOLS.modifica, 'modifica'), false);
+  assert.equal(lacksLevel(LEVEL_TOOLS.modifica, 'internet'), true);
+  // Una fase personalizzata nuova parte potendo modificare il progetto.
+  const { phasePreset } = await import('../../shared/presets.ts');
+  assert.equal(permissionLevel(phasePreset('personalizzata', serverT('it')).allowedTools), 'modifica');
+});
+
+test('fase ferma per un permesso mancante: si concede con un clic, anche nel workflow salvato', async () => {
+  const { parseDeclared } = await import('../engine.ts');
+  assert.equal(parseDeclared('```regia\n{"esito":"bloccato","sintesi":"s","permesso":"modifica"}\n```')?.permesso, 'modifica');
+  assert.equal(parseDeclared('```regia\n{"esito":"ok","sintesi":"s","permesso":"modifica"}\n```')?.permesso, undefined);
+  assert.equal(parseDeclared('```regia\n{"esito":"bloccato","sintesi":"s","permesso":"tutto"}\n```')?.permesso, undefined);
+
+  const wf: Workflow = {
+    id: 'wf_permesso', name: 'Permesso', description: '', updatedAt: '',
+    settings: { maxParallel: 1, loadProjectSettings: false, applyGeneralRules: false, projectDir, goal: 'Crea il file delle traduzioni' },
+    nodes: [{ id: 'crea', position: { x: 0, y: 0 }, data: { label: 'Crea file', kind: 'personalizzata', role: '', instructions: 'Crea il file. [simula-permesso]', model: 'haiku', allowedTools: ['Read', 'Glob', 'Grep'], maxTurns: 5, contextMode: 'sintesi', reuseResult: false } }],
+    edges: [],
+  };
+  store.saveWorkflow(structuredClone(wf));
+  const eng = startRun(wf, 'prova');
+  const run = eng.run;
+  await waitFor(() => run.nodes.crea.status === 'bloccata');
+  assert.equal(run.nodes.crea.missingPermission, 'modifica');
+  assert.deepEqual(run.nodes.crea.pendingActions, ['consenti', 'riprendi', 'riprova', 'salta', 'annulla']);
+  assert.ok(run.events.some((e) => e.text === 'Crea file: per proseguire la fase chiede di poter modificare il progetto.'));
+
+  await eng.human('crea', 'consenti');
+  await waitFor(() => run.status === 'completata');
+  // Stessa sessione, ripresa con gli strumenti nuovi; la concessione resta nel registro.
+  const att = run.nodes.crea.attempts;
+  assert.equal(att.length, 2);
+  assert.equal(att[1].reason, 'ripresa_con_feedback');
+  assert.equal(att[1].resumedSessionId ?? att[1].sessionId, att[0].sessionId);
+  assert.match(att[1].feedback!, /Ora puoi modificare i file/);
+  assert.deepEqual(run.snapshot.nodes[0].data.allowedTools, ['Read', 'Glob', 'Grep', 'Edit', 'Write', 'Bash']);
+  assert.ok(run.events.some((e) => e.text === 'Crea file: concesso di modificare il progetto (Edit, Write, Bash).'));
+  assert.equal(run.nodes.crea.missingPermission, undefined);
+  // Anche il workflow salvato: la prossima esecuzione parte già con il permesso.
+  assert.deepEqual(store.getWorkflow('wf_permesso')!.nodes[0].data.allowedTools, ['Read', 'Glob', 'Grep', 'Edit', 'Write', 'Bash']);
+
+  // Una fase che ha già il permesso non riceve il pulsante, anche se l'agente lo chiede.
+  const wf2 = structuredClone(wf);
+  wf2.id = 'wf_permesso2';
+  wf2.nodes[0].data.allowedTools = ['Read', 'Glob', 'Grep', 'Edit', 'Write', 'Bash'];
+  wf2.nodes[0].data.instructions = 'Crea il file. [simula-blocco]';
+  const eng2 = startRun(wf2, 'prova');
+  await waitFor(() => eng2.run.nodes.crea.status === 'bloccata');
+  assert.equal(eng2.run.nodes.crea.pendingActions?.includes('consenti'), false);
+  await assert.rejects(eng2.human('crea', 'consenti'));
+  eng2.cancel();
+});
+
 test('workflow in inglese: eventi, protocollo e testi simulati nella lingua del workflow', async () => {
   const { agentProtocol, parseDecisionLine } = await import('../engine.ts');
   // Protocollo: istruzioni nella lingua scelta, parti lette da Regia invariate.

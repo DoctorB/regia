@@ -65,8 +65,9 @@ poi riavvia con `npm start`. Il controllo legge solo il numero di versione pubbl
 - **Configura** la fase selezionata nel pannello a destra:
   - *Istruzioni*: cosa deve fare, idealmente con i file da guardare.
   - *Modello*: Haiku ($) per compiti semplici (test, controlli), Sonnet ($$) come scelta equilibrata, Opus ($$$) per i compiti più difficili.
-  - *Strumenti*: attiva solo quelli necessari. Quelli con la matita modificano file o eseguono comandi.
-  - *Turni massimi*: tetto di sicurezza.
+  - *Cosa può fare*: **Solo leggere**, **Modificare il progetto** (crea e modifica file, esegue comandi come test, build, git e script) oppure **Anche internet**. Le fasi nuove partono con la scelta adatta al tipo: analisi e revisione leggono, implementazione e fasi personalizzate modificano. Gli strumenti uno per uno sono in **Avanzate**, per chi vuole sceglierli a mano.
+  - *Avanzate*, chiusa: strumenti uno per uno, skill, turni massimi (un tetto di sicurezza), cosa riceve dalle fasi precedenti e riuso del risultato. Ogni tipo di fase ha già valori consigliati; da chiusa la sezione elenca solo ciò che se ne discosta, e **Torna ai valori consigliati** li ripristina.
+- Sul diagramma ogni fase agente mostra cosa può fare (*solo lettura*, *modifica il progetto*, *anche internet*).
 - Senza fasi selezionate il pannello mostra le **impostazioni del workflow**: cartella, obiettivo, fasi in parallelo, regole.
 - L'indicatore in alto dice se il workflow è **Valido**: cliccalo per vedere errori e avvisi e andare alla fase interessata. Gli errori bloccano l'avvio. **Salva** compare quando ci sono modifiche (anche `Ctrl+S`).
 
@@ -99,7 +100,9 @@ Sul diagramma ogni fase mostra lo stato (in attesa, attiva, completata, fallita,
 Quando il workflow si ferma, la scheda **Stato** mostra cosa serve:
 
 - **Approvazione**: leggi le sintesi delle fasi precedenti e controlla il progetto (`git diff`), poi **Approva** oppure **Respingi con commento**: la fase che ha prodotto il lavoro riprende da dove era con il tuo commento, e test e revisione vengono rifatti.
+  Se una revisione ha trovato qualcosa da sistemare, resta comunque verde: il suo compito era controllare. I punti che propone compaiono nell'approvazione come **Punti segnalati**, uno per casella. Spunta quelli da correggere, aggiungi se vuoi le tue indicazioni per le rifiniture che la revisione non può valutare, e respingi: punti scelti e commento arrivano insieme alla fase che ha scritto il codice. Se approvi con dei punti spuntati, Regia ti chiede conferma.
 - **Fase fallita o bloccata**: **Riprova da capo**, **Riprendi la sessione** (con un messaggio per l'agente), **Salta la fase** o **Annulla esecuzione**.
+  Se la fase si è fermata perché non aveva il permesso di fare ciò che serviva (ad esempio eseguire uno script o creare un file in una fase che può solo leggere), compare anche **Consenti modifiche e riprendi**: la fase riparte dalla stessa sessione con il nuovo permesso, e il workflow salvato viene aggiornato, così la volta successiva parte già così.
 
 Quando una fase comincia ad aspettarti, e quando l'esecuzione termina, Regia emette un breve suono, anche se stai guardando l'editor. Si attiva e disattiva con il pulsante a forma di campanella in alto a destra; la scelta viene ricordata.
 
@@ -158,7 +161,7 @@ In **Altre opzioni** puoi indicare una sottocartella, cambiare l'attesa massima 
 
 Su un Mac con **Xcode** (e i suoi strumenti da riga di comando: `xcode-select --install`) Regia orchestra anche le app iOS: Regia si installa e si avvia come su Windows.
 
-- **Agenti**: compilano e lanciano i test con `xcodebuild` tramite Bash; abilita Bash nelle fasi che devono farlo. Le compilazioni sono lente: alza il numero massimo di turni delle fasi interessate.
+- **Agenti**: compilano e lanciano i test con `xcodebuild` tramite Bash: le fasi che devono farlo vanno impostate su **Modificare il progetto**. Le compilazioni sono lente: alza il numero massimo di turni delle fasi interessate.
 - **Mostra sul telefono** funziona anche con un iPhone collegato e con un simulatore già avviato, per Flutter, React Native, Expo e Capacitor.
 - **Progetto Xcode nativo**: usa una fase **Avvio app** con criterio "Il comando termina con successo", ad esempio `xcodebuild -scheme App -destination 'platform=iOS Simulator,name=iPhone 16' -derivedDataPath build build && xcrun simctl install booted build/Build/Products/Debug-iphonesimulator/App.app && xcrun simctl launch booted com.example.App` (adatta schema, nome dell'app e bundle id).
 - **Dopo la fase** metti un'**Approvazione**: guardi l'app e decidi.

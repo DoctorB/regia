@@ -29,7 +29,9 @@ L'app viene fermata (insieme ai processi figli) quando l'esecuzione termina o vi
 ## Interventi
 
 - **Approvazione umana**: approva, oppure respingi con un commento. La fase a monte più vicina che può modificare file riprende la propria sessione con il commento; le fasi intermedie (test, revisione) vengono rieseguite e l'approvazione viene richiesta di nuovo. Al massimo 3 cicli.
+- **Punti della revisione**: alle fasi di tipo *revisione* il protocollo chiede di elencare le modifiche proposte nella chiave `punti` del blocco di esito, in ordine di importanza e al massimo 25, lasciando l'esito `ok`. Se ne arrivano di più, la checklist tiene i primi 25: gli altri sono elencati in un evento della fase e l'approvazione indica quanti sono. Restano nel testo passato alle fasi successive e l'approvazione li mostra come caselle: vengono raccolti dalle fasi che un respingi farebbe rieseguire, anche se non collegate direttamente, più quelle collegate direttamente, dall'ultimo tentativo di ciascuna. Respingendo, i punti scelti (raggruppati per fase) e il commento formano il feedback; serve almeno uno dei due.
 - **Fase fallita o bloccata**: l'agente può dichiarare un esito `ko` o `bloccato`. Le scelte sono riprova da capo, riprendi la sessione con un messaggio, salta oppure annulla l'esecuzione.
+- **Permesso mancante**: il protocollo chiede all'agente che si ferma per mancanza di strumenti di indicare nel blocco di esito `permesso`: `modifica` o `internet`. Se alla fase mancano davvero gli strumenti di quel livello (`modifica`: Read, Glob, Grep, Edit, Write, Bash; `internet`: in più WebFetch e WebSearch), compare l'azione **Consenti**: gli strumenti mancanti vengono aggiunti, senza toglierne nessuno, alla copia del workflow dell'esecuzione e al workflow salvato, se la fase esiste ancora; la fase riprende la stessa sessione. Gli eventi registrano cosa è stato concesso.
 - **Suono**: generato dal browser (Web Audio, nessun file audio) per l'esecuzione aperta nella pagina, quando una fase comincia ad aspettare un intervento e quando l'esecuzione termina (non quando la annulli tu). Con la pagina chiusa non suona. La scelta attivo/disattivo è ricordata nel browser.
 
 ## Sospensione e ripresa
@@ -68,7 +70,7 @@ Ogni esecuzione salva le regole che ha usato: le trovi nella scheda Stato ("Rego
 
 ## Decisioni mostrate
 
-- **Dichiarate**: righe `DECISIONE: …` che l'agente scrive su richiesta del protocollo di risposta, più l'elenco `decisioni` del blocco di esito finale.
+- **Dichiarate**: righe `DECISIONE: …` che l'agente scrive su richiesta del protocollo di risposta, più l'elenco `decisioni` del blocco di esito finale. I `punti` delle revisioni non sono decisioni: compaiono nell'approvazione.
 - **Osservate**: dedotte da eventi visibili, cioè file modificati, comandi eseguiti, skill usate, subagenti avviati e strumenti negati.
 
 I blocchi di ragionamento interno (thinking) non vengono mai mostrati né salvati.

@@ -146,15 +146,11 @@
     "noSkills": "none"
   },
   "canvas": {
-    "tools": {
-      "one": "{count} tool",
-      "other": "{count} tools"
+    "permission": {
+      "lettura": "read only",
+      "modifica": "changes the project",
+      "internet": "also internet"
     },
-    "turns": {
-      "one": "{count} turn",
-      "other": "{count} turns"
-    },
-    "freeTurns": "unlimited turns",
     "reuse": "reuse",
     "noCommand": "no command",
     "waitsForYou": "Stops until you decide",

@@ -12,7 +12,8 @@ const BASE: Record<PhaseKind, Base> = {
   revisione: { kind: 'revisione', model: 'sonnet', allowedTools: ['Read', 'Glob', 'Grep'], maxTurns: 15, contextMode: 'sintesi', reuseResult: false },
   approvazione: { kind: 'approvazione', model: '', allowedTools: [], contextMode: 'sintesi', reuseResult: false },
   server: { kind: 'server', model: '', allowedTools: [], contextMode: 'nessuno', reuseResult: false, command: 'npm run dev', url: '', subdir: '', readyTimeoutSec: 90 },
-  personalizzata: { kind: 'personalizzata', model: 'sonnet', allowedTools: ['Read', 'Glob', 'Grep'], maxTurns: 15, contextMode: 'sintesi', reuseResult: false },
+  // Una fase personalizzata di solito deve fare qualcosa: parte potendo modificare il progetto.
+  personalizzata: { kind: 'personalizzata', model: 'sonnet', allowedTools: ['Read', 'Glob', 'Grep', 'Edit', 'Write', 'Bash'], maxTurns: 15, contextMode: 'sintesi', reuseResult: false },
 };
 
 /** Configurazione iniziale di una fase nuova, con i testi nella lingua indicata da t. */

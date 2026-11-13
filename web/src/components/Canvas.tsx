@@ -6,6 +6,7 @@ import {
 import { ChevronUp, Crosshair, ExternalLink, LayoutGrid, Maximize2, Minus, Plus, Target, Trash2, TriangleAlert } from 'lucide-react';
 import { isAgentKind, type NodeRunState, type PhaseConfig, type PhaseKind, type ServiceStatus, type ValidationIssue, type Workflow } from '../../../shared/types.ts';
 import { layoutGraph, NODE_W } from '../../../shared/layout.ts';
+import { permissionLevel } from '../../../shared/permissions.ts';
 import { fmtTok, fmtUsd } from '../api.ts';
 import { useI18n } from '../i18n.tsx';
 import { KindTile, STATUS_META, StatusPill, kindLabel, serviceLabel } from '../ui.tsx';
@@ -54,7 +55,7 @@ function PhaseNode({ data, selected }: NodeProps<Node<PhaseData>>) {
 
       {!live && (
         <div className="node-foot">
-          {agent && <><span>{t('canvas.tools', { count: cfg.allowedTools.length })}</span><span>{cfg.maxTurns ? t('canvas.turns', { count: cfg.maxTurns }) : t('canvas.freeTurns')}</span>{cfg.skills === 'all' ? <span>{t('canvas.skillsAll')}</span> : cfg.skills?.length ? <span>{t('canvas.skills', { count: cfg.skills.length })}</span> : null}{cfg.reuseResult && <span>{t('canvas.reuse')}</span>}</>}
+          {agent && <><span>{t(`canvas.permission.${permissionLevel(cfg.allowedTools)}`)}</span>{cfg.skills === 'all' ? <span>{t('canvas.skillsAll')}</span> : cfg.skills?.length ? <span>{t('canvas.skills', { count: cfg.skills.length })}</span> : null}{cfg.reuseResult && <span>{t('canvas.reuse')}</span>}</>}
           {cfg.kind === 'server' && (cfg.show
             ? <span>{t(`canvas.show.${cfg.show.target}`)}</span>
             : <code className="node-cmd">{cfg.command?.trim() || cfg.url?.trim() || t('canvas.noCommand')}</code>)}

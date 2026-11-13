@@ -146,15 +146,11 @@
     "noSkills": "nessuna"
   },
   "canvas": {
-    "tools": {
-      "one": "{count} strumento",
-      "other": "{count} strumenti"
+    "permission": {
+      "lettura": "solo lettura",
+      "modifica": "modifica il progetto",
+      "internet": "anche internet"
     },
-    "turns": {
-      "one": "{count} turno",
-      "other": "{count} turni"
-    },
-    "freeTurns": "turni liberi",
     "reuse": "riuso",
     "noCommand": "nessun comando",
     "waitsForYou": "Si ferma finché non decidi",

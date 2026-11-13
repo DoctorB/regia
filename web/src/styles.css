@@ -333,6 +333,19 @@ input[type="checkbox"] { width: 16px; height: 16px; min-height: 0; accent-color:
 .ready-text small { font-size: 11.5px; color: var(--muted); line-height: 1.35; }
 @media (max-width: 1300px) { .ready-picker { grid-template-columns: 1fr; } }
 .model-picker.cols-3 { grid-template-columns: repeat(3, 1fr); }
+.perm-picker { grid-template-columns: repeat(3, 1fr); }
+.advanced-section > summary { cursor: pointer; list-style: none; justify-content: flex-start; flex-wrap: wrap; gap: 2px 8px; margin-bottom: 0; }
+.advanced-section > summary::-webkit-details-marker { display: none; }
+.advanced-section > summary::before { content: "\25B8"; font-size: 13px; line-height: 1; color: var(--text-2); transition: transform .15s; }
+.advanced-section[open] > summary { margin-bottom: 12px; }
+.advanced-section[open] > summary::before { transform: rotate(90deg); }
+/* Riepilogo a capo sotto il titolo, allineato al testo (dopo la freccia). */
+.adv-summary { flex-basis: 100%; padding-left: 18px; }
+.adv-sub { display: flex; flex-direction: column; gap: 8px; }
+.adv-sub + .adv-sub { padding-top: 12px; border-top: 1px dashed var(--border); }
+.adv-sub-head { display: flex; align-items: center; justify-content: space-between; }
+.adv-sub-head h5 { margin: 0; font-size: 12px; font-weight: 600; color: var(--text-2); }
+.adv-reset { align-self: flex-start; }
 .skill-list { display: flex; flex-direction: column; gap: 4px; max-height: 260px; overflow: auto; }
 .skill-row { display: flex; align-items: flex-start; gap: 8px; padding: 7px 9px; border: 1px solid var(--border); border-radius: var(--r-sm); cursor: pointer; background: var(--surface); }
 .skill-row:hover { border-color: var(--border-strong); }
@@ -425,6 +438,13 @@ input[type="checkbox"] { width: 16px; height: 16px; min-height: 0; accent-color:
 .pred summary::-webkit-details-marker { display: none; }
 .pred summary .pill { margin-left: auto; }
 .pred p { margin: 0; padding: 0 12px 10px 40px; font-size: 13px; color: var(--text-2); }
+.points { border: 1px solid var(--border); border-radius: var(--r-md); background: var(--surface-2); padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
+.points-head { display: flex; flex-direction: column; gap: 2px; font-size: 13px; }
+.points-group { display: flex; flex-direction: column; gap: 6px; }
+.points-label { font-size: 12px; font-weight: 600; color: var(--text-2); }
+.check.point { align-items: flex-start; font-size: 13px; line-height: 1.4; overflow-wrap: anywhere; }
+.check.point input { margin-top: 2px; }
+.points-omitted { margin: 0; }
 .actions { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 
 .service { display: flex; flex-direction: column; gap: 8px; }

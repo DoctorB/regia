@@ -37,10 +37,19 @@
     "continuedFrom": "Continua dall'esecuzione {id}.",
     "intervention": {
       "needComment": "Scrivi un commento con le correzioni da fare.",
+      "needPointOrComment": "Scegli almeno un punto o scrivi un commento con le correzioni da fare.",
       "awaitingApproval": "In attesa della tua approvazione",
       "outcome": "esito {esito}",
       "noOutput": "Nessun risultato.",
+      "pointsTitle": "Punti segnalati",
+      "pointsHint": "Spunta quelli da correggere e respingi: arrivano alla fase che ha scritto il codice, insieme al tuo commento.",
+      "pointsOmitted": {
+        "one": "Un altro punto oltre il limite, non mostrato qui: lo trovi nella scheda Eventi.",
+        "other": "Altri {count} punti oltre il limite, non mostrati qui: li trovi nella scheda Eventi."
+      },
+      "approveWithPoints": "Hai selezionato dei punti da correggere ({count}). Approvare senza farli applicare?",
       "commentPlaceholder": "Commento: obbligatorio per respingere, facoltativo per approvare",
+      "commentPlaceholderPoints": "Indicazioni aggiuntive (facoltative se hai selezionato dei punti)",
       "messagePlaceholder": "Messaggio per l'agente (per \"Riprendi la sessione\")",
       "resumeToAct": "Riprendi l'esecuzione per intervenire."
     },
@@ -104,6 +113,13 @@
     "installa_dipendenze": {
       "label": "Installa le dipendenze e riprova",
       "help": "Esegue il comando di installazione indicato sopra."
+    },
+    "consenti": {
+      "label": {
+        "modifica": "Consenti modifiche e riprendi",
+        "internet": "Consenti internet e riprendi"
+      },
+      "help": "La fase riprende la stessa sessione con il nuovo permesso. Il workflow salvato viene aggiornato: la prossima volta parte già così."
     }
   },
   "events": {
@@ -332,6 +348,46 @@
       "haiku": "Veloce ed economico: test, controlli, compiti semplici",
       "sonnet": "Equilibrato: la scelta giusta per la maggior parte delle fasi",
       "opus": "Il più capace: compiti difficili, ragionamento lungo"
+    },
+    "permissions": {
+      "title": "Cosa può fare",
+      "lettura": "Solo leggere",
+      "modifica": "Modificare il progetto",
+      "internet": "Anche internet",
+      "hint": {
+        "lettura": "Legge e cerca nei file del progetto, senza cambiare nulla.",
+        "modifica": "Crea e modifica file ed esegue comandi nella cartella del progetto: test, build, git, script.",
+        "internet": "Come \"Modificare il progetto\", più ricerche e pagine web."
+      },
+      "custom": "Strumenti scelti su misura: li trovi in Avanzate."
+    },
+    "advanced": {
+      "title": "Avanzate",
+      "defaults": "valori consigliati",
+      "reset": "Torna ai valori consigliati",
+      "diff": {
+        "tools": {
+          "one": "1 strumento su misura",
+          "other": "{count} strumenti su misura"
+        },
+        "skills": {
+          "one": "1 skill",
+          "other": "{count} skill"
+        },
+        "skillsAll": "tutte le skill",
+        "turns": {
+          "one": "1 turno",
+          "other": "{count} turni"
+        },
+        "noTurns": "turni senza limite",
+        "context": {
+          "sintesi": "riceve la sintesi",
+          "completo": "riceve il testo completo",
+          "nessuno": "non riceve nulla"
+        },
+        "reuseOn": "riusa il risultato",
+        "reuseOff": "non riusa il risultato"
+      }
     },
     "tools": {
       "title": "Strumenti",

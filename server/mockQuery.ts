@@ -47,7 +47,7 @@ type Step =
   | { kind: 'tools'; calls: { name: string; input: Record<string, unknown>; result: string }[] }
   | { kind: 'subagent'; description: string; calls: number };
 
-function script(p: PhaseConfig, resumed: boolean, t: Translate): Step[] {
+function script(p: PhaseConfig, resumed: boolean, t: Translate, withPoints: boolean): Step[] {
   if (resumed) {
     return [
       { kind: 'text', text: t('mock.decisions.feedback') },
@@ -88,7 +88,7 @@ function script(p: PhaseConfig, resumed: boolean, t: Translate): Step[] {
           { name: 'Read', input: { file_path: 'src/modulo.js' }, result: '…' },
           { name: 'Read', input: { file_path: 'test/modulo.test.js' }, result: '…' },
         ] },
-        { kind: 'text', text: t('mock.decisions.review') },
+        { kind: 'text', text: t(withPoints ? 'mock.decisions.reviewPoints' : 'mock.decisions.review') },
       ];
     default:
       return [
@@ -119,7 +119,12 @@ export async function* mockQuery(o: MockOptions): AsyncGenerator<Record<string, 
   const stepMs = o.stepMs ?? Number(process.env.REGIA_MOCK_SPEED ?? 600);
   const resumed = Boolean(o.resume);
   const failFirst = p.instructions.includes('[simula-errore]') && o.attemptIndex === 0;
-  const blockFirst = p.instructions.includes('[simula-blocco]') && o.attemptIndex === 0;
+  // Senza il permesso di modificare, la fase si ferma e lo chiede (finché non le viene concesso).
+  const needsEdit = p.instructions.includes('[simula-permesso]') && !p.allowedTools.includes('Edit');
+  const blockFirst = (p.instructions.includes('[simula-blocco]') && o.attemptIndex === 0) || needsEdit;
+  // La prima revisione propone dei punti da correggere; quella rifatta dopo la correzione non ne trova.
+  const withPoints = p.kind === 'revisione' && o.attemptIndex === 0 && !o.resume && !blockFirst;
+  const manyPoints = p.instructions.includes('[simula-molti-punti]');
   // Le fasi di implementazione hanno un contesto più ampio, così da produrre dati interessanti.
   const ctxBase = p.kind === 'implementazione' ? 26000 : p.kind === 'analisi' ? 14000 : 9000;
   let mainOutput = 0;
@@ -156,7 +161,7 @@ export async function* mockQuery(o: MockOptions): AsyncGenerator<Record<string, 
   yield { type: 'system', subtype: 'init', apiKeySource: 'none', model, session_id: sessionId, tools: p.allowedTools, cwd: '(simulato)', permissionMode: 'dontAsk' };
   await sleep(stepMs / 2, o.signal);
 
-  const steps = script(p, resumed, t);
+  const steps = script(p, resumed, t, withPoints);
   if (!resumed && o.skills?.length) {
     steps.unshift({ kind: 'tools', calls: [{ name: 'Skill', input: { skill: o.skills[0] }, result: t('mock.skillLoaded', { skill: o.skills[0] }) }] });
   }
@@ -212,11 +217,13 @@ export async function* mockQuery(o: MockOptions): AsyncGenerator<Record<string, 
   await sleep(stepMs, o.signal);
   turns++;
   const esito = blockFirst ? 'bloccato' : 'ok';
-  const sintesi = blockFirst
-    ? t('mock.summary.blocked')
+  const sintesi = needsEdit ? t('mock.summary.needsPermission')
+    : blockFirst ? t('mock.summary.blocked')
     : resumed ? t('mock.summary.resumed') : t('mock.summary.done', { label: p.label });
   const decisione = t('mock.finalDecision', { outcome: esito, label: p.label });
-  const finalText = `${t('mock.workDone')}\n\n\`\`\`regia\n${JSON.stringify({ esito, sintesi, decisioni: [decisione] }, null, 1)}\n\`\`\``;
+  const finalText = `${t('mock.workDone')}\n\n\`\`\`regia\n${JSON.stringify({ esito, sintesi, decisioni: [decisione], ...(needsEdit ? { permesso: 'modifica' } : {}), ...(withPoints ? { punti: manyPoints
+    ? Array.from({ length: 27 }, (_, i) => t('mock.points.numbered', { n: i + 1 }))
+    : [t('mock.points.first'), t('mock.points.second')] } : {}) }, null, 1)}\n\`\`\``;
   const fid = `msg_sim_${randomUUID().slice(0, 12)}`;
   const usage = { input_tokens: 20, output_tokens: 1, cache_creation_input_tokens: 400, cache_read_input_tokens: ctx };
   mainInput += 20; mainCC += 400; mainCR += ctx; mainOutput += 260;

@@ -3,7 +3,7 @@ import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import express, { type NextFunction, type Request, type Response } from 'express';
 import { msg, type Msg } from '../shared/i18n.ts';
-import type { ApiErrorBody, HumanAction, LaunchPlan, Run, RunMode, ShowConfig, ValidationIssue, Workflow } from '../shared/types.ts';
+import type { ApiErrorBody, HumanAction, LaunchPlan, PointRef, Run, RunMode, ShowConfig, ValidationIssue, Workflow } from '../shared/types.ts';
 import { RESUMABLE } from '../shared/types.ts';
 import { RegiaError, getEngine, planContinuation, resumeRun, startRun } from './engine.ts';
 import { envInfo } from './env.ts';
@@ -293,9 +293,12 @@ app.get('/api/runs/:id/stream', (req, res) => {
 app.post('/api/runs/:id/action', h(async (req, res) => {
   const eng = getEngine(req.params.id);
   if (!eng) return void sendError(res, 409, msg('api.runNotActive'));
-  const { nodeId, action, feedback } = req.body as { nodeId: string; action: HumanAction; feedback?: string };
+  const { nodeId, action, feedback, points } = req.body as { nodeId: string; action: HumanAction; feedback?: string; points?: unknown };
+  const refs = Array.isArray(points)
+    ? points.filter((x): x is PointRef => typeof x?.nodeId === 'string' && Number.isInteger(x?.index) && x.index >= 0)
+    : [];
   // Le riprese possono durare minuti: rispondi subito, gli aggiornamenti arrivano via stream.
-  const p = eng.human(nodeId, action, feedback);
+  const p = eng.human(nodeId, action, feedback, refs);
   const early = await Promise.race([p.then(() => null, (e: Error) => e), new Promise((r) => setTimeout(() => r(null), 50))]);
   if (early instanceof Error) return void sendThrown(res, 400, early);
   p.catch(() => undefined);

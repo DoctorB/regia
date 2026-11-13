@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Activity, Bot, CircleAlert, CircleCheck, Clock, Coins, Copy, CornerDownRight, Download, ExternalLink, FileText, Flag, Gauge, Globe, Hand, Info, Lightbulb, ListTree,
-  MessageSquareText, OctagonX, Pause, Play, Recycle, RotateCcw, SkipForward, Square, Terminal, TriangleAlert, Undo2, Workflow as WorkflowIcon, X,
+  MessageSquareText, OctagonX, Pause, Play, Recycle, RotateCcw, ShieldCheck, SkipForward, Square, Terminal, TriangleAlert, Undo2, Workflow as WorkflowIcon, X,
   type LucideIcon,
 } from 'lucide-react';
 import { isAgentKind, RESUMABLE, type EventKind, type HumanAction, type Insight, type Run, type RunSummary } from '../../../shared/types.ts';
 import { layoutGraph } from '../../../shared/layout.ts';
+import type { PermissionLevel } from '../../../shared/permissions.ts';
 import { runReport } from '../../../shared/report.ts';
 import { api, fmtDur, fmtTime, fmtTok, fmtUsd, runDuration } from '../api.ts';
 import { useI18n } from '../i18n.tsx';
@@ -23,6 +24,7 @@ const ACTION: Record<HumanAction, { icon: LucideIcon; cls?: string; help?: boole
   annulla: { icon: OctagonX, cls: 'danger' },
   installa_node: { icon: Play, cls: 'primary', help: true },
   installa_dipendenze: { icon: Play, cls: 'primary', help: true },
+  consenti: { icon: ShieldCheck, cls: 'primary', help: true },
 };
 
 // Etichette in locales/<lingua>/run.json (events.kind.<tipo>).
@@ -42,9 +44,11 @@ interface Props {
   onSelectNode: (id: string | null) => void;
   onOpenRun: (id: string) => void;
   onContinue?: () => void;
+  /** Permesso concesso a una fase dell'esecuzione: l'editor aggiorna il workflow aperto. */
+  onGranted?: (workflowId: string, nodeId: string, level: PermissionLevel) => void;
 }
 
-export function RunPanel({ run, runs, selectedNode, onSelectNode, onOpenRun, onContinue }: Props) {
+export function RunPanel({ run, runs, selectedNode, onSelectNode, onOpenRun, onContinue, onGranted }: Props) {
   const { t } = useI18n();
   const [tab, setTab] = useState<Tab>('stato');
   const [report, setReport] = useState(false);
@@ -160,7 +164,7 @@ export function RunPanel({ run, runs, selectedNode, onSelectNode, onOpenRun, onC
         ))}
       </nav>
       <div className="tab-body">
-        {tab === 'stato' && <StatusTab run={run} ordered={ordered.map((n) => n.id)} label={label} selectedNode={selectedNode} onSelectNode={onSelectNode} />}
+        {tab === 'stato' && <StatusTab run={run} ordered={ordered.map((n) => n.id)} label={label} selectedNode={selectedNode} onSelectNode={onSelectNode} onGranted={onGranted} />}
         {tab === 'eventi' && <EventsTab run={run} label={label} selectedNode={selectedNode} onSelectNode={onSelectNode} />}
         {tab === 'decisioni' && <DecisionsTab run={run} label={label} selectedNode={selectedNode} onSelectNode={onSelectNode} />}
         {tab === 'consumi' && <UsageView run={run} />}
@@ -171,7 +175,7 @@ export function RunPanel({ run, runs, selectedNode, onSelectNode, onOpenRun, onC
   );
 }
 
-function StatusTab({ run, ordered, label, selectedNode, onSelectNode }: { run: Run; ordered: string[]; label: (id?: string) => string; selectedNode: string | null; onSelectNode: (id: string | null) => void }) {
+function StatusTab({ run, ordered, label, selectedNode, onSelectNode, onGranted }: { run: Run; ordered: string[]; label: (id?: string) => string; selectedNode: string | null; onSelectNode: (id: string | null) => void; onGranted?: Props['onGranted'] }) {
   const { t } = useI18n();
   const pending = ordered.map((id) => run.nodes[id]).filter((n) => n?.pendingActions?.length);
   const services = ordered.map((id) => run.nodes[id])
@@ -190,7 +194,7 @@ function StatusTab({ run, ordered, label, selectedNode, onSelectNode }: { run: R
           </span>
         </div>
       )}
-      {pending.map((n) => <InterventionCard key={n.nodeId} run={run} nodeId={n.nodeId} label={label(n.nodeId)} readOnly={resumable} />)}
+      {pending.map((n) => <InterventionCard key={n.nodeId} run={run} nodeId={n.nodeId} label={label(n.nodeId)} readOnly={resumable} onGranted={onGranted} />)}
       {services.map((n) => <ServiceCard key={n.nodeId} run={run} nodeId={n.nodeId} />)}
       {run.notes.map((n, i) => <div key={i} className="callout tone-warn"><TriangleAlert /><span>{n}</span></div>)}
       {run.rateLimit && run.rateLimit.status !== 'allowed' && (
@@ -226,20 +230,34 @@ function StatusTab({ run, ordered, label, selectedNode, onSelectNode }: { run: R
   );
 }
 
-function InterventionCard({ run, nodeId, label, readOnly = false }: { run: Run; nodeId: string; label: string; readOnly?: boolean }) {
+function InterventionCard({ run, nodeId, label, readOnly = false, onGranted }: { run: Run; nodeId: string; label: string; readOnly?: boolean; onGranted?: Props['onGranted'] }) {
   const { t, tm } = useI18n();
   const n = run.nodes[nodeId];
   const [fb, setFb] = useState('');
   const [busy, setBusy] = useState(false);
+  // Punti scelti, come "nodeId:indice"; si azzerano quando arriva una nuova lista (nuovo giro di revisione).
+  const [chosen, setChosen] = useState<Set<string>>(new Set());
+  const pointsKey = JSON.stringify(n.reviewPoints ?? []);
+  useEffect(() => setChosen(new Set()), [pointsKey]);
   const node = run.snapshot.nodes.find((x) => x.id === nodeId)!;
   const isApproval = node.data.kind === 'approvazione';
   const preds = run.snapshot.edges.filter((e) => e.target === nodeId).map((e) => run.nodes[e.source]).filter(Boolean);
   const needsText = n.pendingActions?.includes('respingi') || n.pendingActions?.includes('riprendi');
+  const points = isApproval && n.pendingActions?.includes('respingi') ? n.reviewPoints ?? [] : [];
+  const toggle = (k: string) => setChosen((s) => { const x = new Set(s); if (x.has(k)) x.delete(k); else x.add(k); return x; });
   const act = async (a: HumanAction) => {
     if (a === 'annulla' && !confirm(t('run.confirmCancelShort'))) return;
-    if (a === 'respingi' && !fb.trim()) { toast(t('run.intervention.needComment'), 'bad'); return; }
+    if (a === 'respingi' && !fb.trim() && !chosen.size) { toast(t(points.length ? 'run.intervention.needPointOrComment' : 'run.intervention.needComment'), 'bad'); return; }
+    if (a === 'approva' && chosen.size && !confirm(t('run.intervention.approveWithPoints', { count: chosen.size }))) return;
+    const refs = a === 'respingi'
+      ? [...chosen].map((k) => { const i = k.lastIndexOf(':'); return { nodeId: k.slice(0, i), index: Number(k.slice(i + 1)) }; })
+      : undefined;
     setBusy(true);
-    try { await api.action(run.id, nodeId, a, fb); setFb(''); } catch (e) { toast((e as Error).message, 'bad'); } finally { setBusy(false); }
+    const asked = n.missingPermission;
+    try {
+      await api.action(run.id, nodeId, a, fb, refs); setFb(''); setChosen(new Set());
+      if (a === 'consenti' && asked) onGranted?.(run.workflowId, nodeId, asked);
+    } catch (e) { toast((e as Error).message, 'bad'); } finally { setBusy(false); }
   };
   const primary = n.pendingActions!.filter((a) => a !== 'annulla');
   const reason = tm(n.pendingMsg, n.pendingReason);
@@ -263,19 +281,40 @@ function InterventionCard({ run, nodeId, label, readOnly = false }: { run: Run; 
               <KindTile kind={pn.data.kind} size="sm" /><strong>{pn.data.label}</strong>
               {last?.declared && <span className={`pill ${last.declared.esito === 'ok' ? 'tone-good' : 'tone-bad'}`}>{t('run.intervention.outcome', { esito: last.declared.esito })}</span>}
             </summary>
-            <p className="pre">{p.output ?? t('run.intervention.noOutput')}</p>
+            {/* Con dei punti da scegliere qui sotto, la sintesi basta: i punti non si ripetono. */}
+            <p className="pre">{(points.some((g) => g.nodeId === p.nodeId) ? last?.declared?.sintesi : p.output) ?? t('run.intervention.noOutput')}</p>
           </details>
         );
       })}
+      {points.length > 0 && (
+        <div className="points">
+          <div className="points-head"><strong>{t('run.intervention.pointsTitle')}</strong><span className="muted small">{t('run.intervention.pointsHint')}</span></div>
+          {points.map((g) => (
+            <div key={g.nodeId} className="points-group">
+              {points.length > 1 && <div className="points-label">{g.label}</div>}
+              {g.items.map((item, i) => {
+                const k = `${g.nodeId}:${i}`;
+                return (
+                  <label key={k} className="check point">
+                    <input type="checkbox" checked={chosen.has(k)} disabled={readOnly || busy} onChange={() => toggle(k)} />
+                    <span>{item}</span>
+                  </label>
+                );
+              })}
+              {g.omitted ? <p className="muted small points-omitted">{t('run.intervention.pointsOmitted', { count: g.omitted })}</p> : null}
+            </div>
+          ))}
+        </div>
+      )}
       {readOnly && <p className="muted small">{t('run.intervention.resumeToAct')}</p>}
       {needsText && !readOnly && (
-        <textarea rows={3} placeholder={isApproval ? t('run.intervention.commentPlaceholder') : t('run.intervention.messagePlaceholder')} value={fb} onChange={(e) => setFb(e.target.value)} />
+        <textarea rows={3} placeholder={isApproval ? t(points.length ? 'run.intervention.commentPlaceholderPoints' : 'run.intervention.commentPlaceholder') : t('run.intervention.messagePlaceholder')} value={fb} onChange={(e) => setFb(e.target.value)} />
       )}
       {!readOnly && <div className="actions">
         {primary.map((a) => {
           const m = ACTION[a];
           const Icon = m.icon;
-          return <button key={a} disabled={busy} className={`btn ${m.cls ?? 'ghost'}`} title={m.help ? t(`actions.${a}.help`) : undefined} onClick={() => act(a)}><Icon />{t(`actions.${a}.label`)}</button>;
+          return <button key={a} disabled={busy} className={`btn ${m.cls ?? 'ghost'}`} title={m.help ? t(`actions.${a}.help`) : undefined} onClick={() => act(a)}><Icon />{a === 'consenti' ? t(`actions.consenti.label.${n.missingPermission ?? 'modifica'}`) : t(`actions.${a}.label`)}</button>;
         })}
         <span className="grow" />
         {n.pendingActions!.includes('annulla') && <button className="btn ghost danger" disabled={busy} onClick={() => act('annulla')}><X />{t('actions.annulla.label')}</button>}

@@ -1,5 +1,6 @@
 // Tipi condivisi tra server e interfaccia.
 import type { Msg } from './i18n.ts';
+import type { PermissionLevel } from './permissions.ts';
 export type { Msg } from './i18n.ts';
 
 export type PhaseKind = 'analisi' | 'implementazione' | 'test' | 'revisione' | 'approvazione' | 'server' | 'personalizzata';
@@ -292,6 +293,27 @@ export interface DeclaredOutcome {
   esito: 'ok' | 'ko' | 'bloccato';
   sintesi: string;
   decisioni: string[];
+  /** Solo revisioni: modifiche concrete proposte, una per voce, da scegliere nell'approvazione. */
+  punti?: string[];
+  /** Punti oltre il limite: non vanno nella checklist, sono riportati in un evento. */
+  puntiOmessi?: string[];
+  /** Fase ferma per un permesso che non ha: cosa le servirebbe. */
+  permesso?: PermissionLevel;
+}
+
+/** Punti proposti da una fase a monte, mostrati come checklist nell'approvazione. */
+export interface ReviewPoints {
+  nodeId: string;
+  label: string;
+  items: string[];
+  /** Punti oltre il limite, non mostrati. */
+  omitted?: number;
+}
+
+/** Punto scelto da chi approva: indice in ReviewPoints.items della fase indicata. */
+export interface PointRef {
+  nodeId: string;
+  index: number;
 }
 
 export interface Attempt {
@@ -341,6 +363,10 @@ export interface NodeRunState {
   /** Motivo dell'intervento, localizzabile (pendingReason resta come testo di riserva). */
   pendingMsg?: Msg;
   feedbackRounds: number;
+  /** Solo approvazioni in attesa: punti proposti dalle fasi che un respingi farebbe rieseguire. */
+  reviewPoints?: ReviewPoints[];
+  /** Fase ferma: il permesso chiesto dall'agente, concedibile con l'azione "consenti". */
+  missingPermission?: PermissionLevel;
   /** Solo fase "server": processo gestito da Regia. */
   service?: ServiceState;
   /** Fase agente fermata a metà (sospensione o chiusura di Regia): da dove riprenderla. */
@@ -373,7 +399,7 @@ export interface ResumeCheck {
   headChanged: boolean;
 }
 
-export type HumanAction = 'approva' | 'respingi' | 'riprova' | 'riprendi' | 'salta' | 'annulla' | 'installa_node' | 'installa_dipendenze';
+export type HumanAction = 'approva' | 'respingi' | 'consenti' | 'riprova' | 'riprendi' | 'salta' | 'annulla' | 'installa_node' | 'installa_dipendenze';
 
 export type EventKind =
   | 'run'

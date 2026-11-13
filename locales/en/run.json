@@ -37,10 +37,19 @@
     "continuedFrom": "Continues from run {id}.",
     "intervention": {
       "needComment": "Write a comment with the corrections to make.",
+      "needPointOrComment": "Choose at least one point or write a comment with the corrections to make.",
       "awaitingApproval": "Waiting for your approval",
       "outcome": "outcome {esito}",
       "noOutput": "No result.",
+      "pointsTitle": "Points reported",
+      "pointsHint": "Tick the ones to correct and reject: they go to the phase that wrote the code, along with your comment.",
+      "pointsOmitted": {
+        "one": "One more point over the limit, not shown here: you will find it in the Events tab.",
+        "other": "{count} more points over the limit, not shown here: you will find them in the Events tab."
+      },
+      "approveWithPoints": "You selected points to correct ({count}). Approve without applying them?",
       "commentPlaceholder": "Comment: required to reject, optional to approve",
+      "commentPlaceholderPoints": "Additional instructions (optional if you selected points)",
       "messagePlaceholder": "Message for the agent (for \"Resume session\")",
       "resumeToAct": "Resume the run to act."
     },
@@ -104,6 +113,13 @@
     "installa_dipendenze": {
       "label": "Install dependencies and retry",
       "help": "Runs the install command shown above."
+    },
+    "consenti": {
+      "label": {
+        "modifica": "Allow changes and resume",
+        "internet": "Allow internet and resume"
+      },
+      "help": "The phase resumes the same session with the new permission. The saved workflow is updated, so next time it starts that way."
     }
   },
   "events": {
@@ -332,6 +348,46 @@
       "haiku": "Fast and cheap: tests, checks, simple tasks",
       "sonnet": "Balanced: the right choice for most phases",
       "opus": "Most capable: hard tasks, long reasoning"
+    },
+    "permissions": {
+      "title": "What it can do",
+      "lettura": "Read only",
+      "modifica": "Change the project",
+      "internet": "Also internet",
+      "hint": {
+        "lettura": "Reads and searches the project files without changing anything.",
+        "modifica": "Creates and edits files and runs commands in the project folder: tests, builds, git, scripts.",
+        "internet": "Like \"Change the project\", plus web searches and pages."
+      },
+      "custom": "Tools picked individually: see Advanced."
+    },
+    "advanced": {
+      "title": "Advanced",
+      "defaults": "recommended values",
+      "reset": "Back to recommended values",
+      "diff": {
+        "tools": {
+          "one": "1 tool picked individually",
+          "other": "{count} tools picked individually"
+        },
+        "skills": {
+          "one": "1 skill",
+          "other": "{count} skills"
+        },
+        "skillsAll": "all skills",
+        "turns": {
+          "one": "1 turn",
+          "other": "{count} turns"
+        },
+        "noTurns": "no turn limit",
+        "context": {
+          "sintesi": "gets the summary",
+          "completo": "gets the full text",
+          "nessuno": "gets nothing"
+        },
+        "reuseOn": "reuses the result",
+        "reuseOff": "does not reuse the result"
+      }
     },
     "tools": {
       "title": "Tools",

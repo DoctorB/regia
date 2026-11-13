@@ -61,6 +61,19 @@
     "agentBlocked": "{label}: the agent reports being blocked — {summary}",
     "agentKo": "{label}: negative outcome — {summary}",
     "noOutcomeBlock": "{label}: the agent did not return the expected outcome block; using the final text as the result.",
+    "pointsOmitted": {
+      "one": "{label}: one point over the limit of {max}, not included in the checklist:\n{points}",
+      "other": "{label}: {count} points over the limit of {max}, not included in the checklist:\n{points}"
+    },
+    "permissionAsked": {
+      "modifica": "{label}: to continue, the phase asks to be allowed to change the project.",
+      "internet": "{label}: to continue, the phase asks to be allowed to use the internet."
+    },
+    "permissionGranted": {
+      "modifica": "{label}: allowed to change the project ({tools}).",
+      "internet": "{label}: allowed to use the internet ({tools})."
+    },
+    "permissionSaved": "{label}: the saved workflow was updated too, so the next run starts with this permission.",
     "phaseCompleted": "{label}: completed — {summary}",
     "awaitingApproval": "{label}: waiting for your approval.",
     "humanAction": "Action on {label}: {action}",
@@ -169,16 +182,28 @@
     }
   },
   "agent": {
-    "protocol": "# Response protocol\n- When you make a significant decision (what to read, what to change, how to verify), write a line that starts with \"DECISION:\" followed by a short explanation in a single sentence.\n- Work only inside the project folder and only with the tools available to you.\n- ALWAYS end your response with this block, as valid JSON (keep the keys and the outcome values exactly as shown):\n```regia\n{\"esito\": \"ok\" | \"ko\" | \"bloccato\", \"sintesi\": \"result in 1-3 sentences, useful to the next phase\", \"decisioni\": [\"main decision and reason\", \"...\"]}\n```\n\"esito\" is the outcome, \"sintesi\" the summary, \"decisioni\" the list of decisions. Use \"ko\" if the task did not succeed (e.g. failing tests), \"bloccato\" if you cannot proceed without human intervention (explain what is needed in \"sintesi\").",
+    "protocol": "# Response protocol\n- When you make a significant decision (what to read, what to change, how to verify), write a line that starts with \"DECISION:\" followed by a short explanation in a single sentence.\n- Work only inside the project folder and only with the tools available to you.\n- ALWAYS end your response with this block, as valid JSON (keep the keys and the outcome values exactly as shown):\n```regia\n{\"esito\": \"ok\" | \"ko\" | \"bloccato\", \"sintesi\": \"result in 1-3 sentences, useful to the next phase\", \"decisioni\": [\"main decision and reason\", \"...\"]}\n```\n\"esito\" is the outcome, \"sintesi\" the summary, \"decisioni\" the list of decisions. Use \"ko\" if the task did not succeed (e.g. failing tests), \"bloccato\" if you cannot proceed without human intervention (explain what is needed in \"sintesi\").\nIf you stop because you lack the tools to do it, add \"permesso\" (permission) to the block: \"modifica\" if you need to edit files or run commands, \"internet\" if you need to use the web: the person supervising can grant it with one click.",
+    "protocolPoints": "- You are in a review phase: if you find concrete changes to make, add the \"punti\" key (the list of points) to the block, with the proposed corrections, one per item (file or function, problem and fix), ordered from most to least important, at most {max}: if you find more, merge similar ones. The person approving will choose which ones to apply. Finding points does not make the task unsuccessful: still use \"ok\". With nothing to report, leave the key out.",
     "goal": "# Workflow goal\n{goal}",
     "task": "# Your task: {label}\n{instructions}",
     "previousResults": "# Results of the previous phases\n{results}",
     "skippedPhase": "(phase skipped)",
     "feedback": "Feedback from the person supervising the workflow:\n{feedback}\n\nTake this feedback into account and complete the task \"{label}\" again.\n\n{protocol}",
+    "chosenPoints": "Points reported by \"{label}\" to correct:\n{points}",
+    "extraComment": "Additional instructions:\n{comment}",
     "continue": "Continue from where you left off.",
+    "permissionGranted": {
+      "modifica": "You can now edit files and run commands in the project folder. Resume the task from where you stopped.",
+      "internet": "You can now also use the web, in addition to editing files and running commands. Resume the task from where you stopped."
+    },
     "role": "Your role in this workflow: {role}",
     "output": {
       "decisions": "Decisions:",
+      "points": "Points to correct:",
+      "pointsOmitted": {
+        "one": "(one more point over the limit, not included)",
+        "other": "({count} more points over the limit, not included)"
+      },
       "approved": "Approved by the reviewer.",
       "approvedWith": "Approved by the reviewer: {feedback}",
       "skipped": "(phase skipped by the reviewer)",
@@ -207,6 +232,7 @@
       "implEnd": "DECISION: The tests pass, I am not adding further changes.",
       "test": "DECISION: I consider the suite passed because all 5 tests pass.",
       "review": "DECISION: The change is minimal and covered by tests; I am not reporting any blocking issues.",
+      "reviewPoints": "DECISION: I am reporting two points to fix; neither blocks the rest of the change.",
       "generic": "DECISION: I completed the requested task with the fewest steps."
     },
     "fileContent": "…file contents…",
@@ -218,7 +244,13 @@
     "summary": {
       "blocked": "Simulated block: human confirmation is needed before proceeding.",
       "resumed": "Feedback applied with a targeted change.",
-      "done": "Phase \"{label}\" completed in simulation."
+      "done": "Phase \"{label}\" completed in simulation.",
+      "needsPermission": "I cannot create the requested file: this phase can only read, I need to be able to write and run commands."
+    },
+    "points": {
+      "first": "src/modulo.js, totale(): no check for an empty cart, return 0 instead of NaN.",
+      "second": "test/modulo.test.js: add a test for discounts larger than the total.",
+      "numbered": "Simulated point number {n}."
     },
     "finalDecision": "Outcome {outcome} declared at the end of phase {label}.",
     "workDone": "Work completed.",
@@ -246,7 +278,7 @@
     "unexpected": "{message}",
     "phaseNotFound": "Phase not found",
     "actionUnavailable": "Action \"{action}\" is not available for this phase",
-    "rejectNeedsComment": "To reject, add a comment describing the corrections needed",
+    "rejectNeedsComment": "To reject, choose at least one point or add a comment describing the corrections needed",
     "noSession": "No session to resume",
     "serverOnly": "Action available only for Run app phases",
     "notServer": "The phase is not a Run app phase",

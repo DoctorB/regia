@@ -10,9 +10,9 @@ Regia is a local app for designing development workflows as a diagram, running t
 
 ## What it does
 
-- **Visual editor**: analysis, implementation, test, review, human approval, run app and publishing phases, connected into a flow. Start from ready-made presets.
+- **Visual editor**: analysis, implementation, test, review, human approval, run app and publishing phases, connected into a flow. Start from ready-made presets. Each agent phase says in plain words what it can do (read only, change the project, also internet); individual tools, skills, turn limit and context are tucked away under Advanced, with recommended values per phase type.
 - **Live execution**: the state of every phase on the diagram, plus events, results, errors and the decisions declared by the agents.
-- **Interventions**: approve, reject with a comment (the agent resumes its own session), retry, skip, cancel. A short sound tells you when a phase needs you and when the run ends.
+- **Interventions**: approve, reject with a comment (the agent resumes its own session), retry, skip, cancel. Review phases list the fixes they propose as points: at approval you tick the ones to apply and add your own instructions. A phase that stops because it lacks a permission can be granted it with one click, and the saved workflow is updated too. A short sound tells you when a phase needs you and when the run ends.
 - **See the result on phone, browser or desktop**: ready-made phases detect the project and show it with nothing to configure: they install the APK or iOS app on the connected phone, start the site (with its backend) and open it in Chrome or another browser, or launch the desktop app.
 - **Check the app before approving**: web, desktop or mobile, iOS included on a Mac. Regia runs the project's own command (npm, dotnet, flutter, gradle, msbuild…) and waits for an address, an output line, an open window or a successful exit; it can also just check a site already served by IIS. For Node projects it also picks the right Node version.
 - **Usage tracking**: tokens, cache, model and estimated cost per run, phase and agent, with no double counting across subagents and resumed sessions.
@@ -52,7 +52,7 @@ Open <http://127.0.0.1:4317>, create a workflow from a preset and press **Prova*
 
 - Costs shown are **estimates** computed by the SDK, not billing data. With an API key, the actual cost is in the Console; with a claude.ai login, usage counts against your plan limits.
 - Everything stays on your machine, in the `data/` folder (excluded from git). Regia never reads or stores credentials and listens on 127.0.0.1 only.
-- Agents can edit files and run commands in the project folder, limited to the tools you grant each phase. Use a clean git repository so you can review and undo their work.
+- Agents can edit files and run commands in the project folder, limited to what you allow each phase. Use a clean git repository so you can review and undo their work.
 
 ## Development
 

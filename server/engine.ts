@@ -4,7 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { query } from '@anthropic-ai/claude-agent-sdk';
 import type {
-  Attempt, ContinuationPlan, LaunchPlan, RunReference, ServiceState, DeclaredOutcome, EventKind, HumanAction, InterruptedWork, NodeRunState, ReadyCheck, Run, RunEvent, RunMode, ShowTarget, Workflow, WorkflowNode,
+  Attempt, ContinuationPlan, LaunchPlan, PointRef, ReviewPoints, RunReference, ServiceState, DeclaredOutcome, EventKind, HumanAction, InterruptedWork, NodeRunState, ReadyCheck, Run, RunEvent, RunMode, ShowTarget, Workflow, WorkflowNode,
 } from '../shared/types.ts';
 import { emptyTotals, isAgentKind, RESUMABLE } from '../shared/types.ts';
 import { msg, type Msg, type Params, type Translate } from '../shared/i18n.ts';
@@ -15,7 +15,8 @@ import { buildSkillBundle, discoverSkills, phaseSkills, PLUGIN_NAME, removeSkill
 import { rulesPrompt, snapshotRules } from './rules.ts';
 import { activePrinciples, principlesText } from '../shared/principles.ts';
 import { runReport } from '../shared/report.ts';
-import { getRun, readReuseCache, saveRun, writeReuseEntry } from './store.ts';
+import { grantLevel, lacksLevel, type PermissionLevel } from '../shared/permissions.ts';
+import { getRun, getWorkflow, readReuseCache, saveRun, saveWorkflow, writeReuseEntry } from './store.ts';
 import { gitState } from './folder.ts';
 import { cacheTtlMs, interruptedSummary, interruptNodes, isInterruptedNote } from './resume.ts';
 import { AttemptAccounting, sumTotals, type SessionSnapshot } from './usage.ts';
@@ -26,6 +27,8 @@ import { openBrowser, planLaunch } from './launch.ts';
 
 const MAX_EVENTS = 6000;
 const MAX_FEEDBACK_ROUNDS = 3;
+/** Punti proposti al massimo da una revisione. */
+const MAX_POINTS = 25;
 const DONE = new Set(['completata', 'saltata', 'riusata']);
 
 export type Broadcast = (msg: unknown) => void;
@@ -340,7 +343,7 @@ export class RunEngine {
     const p = { label: n.data.label, minutes: Math.max(0, Math.round(idle / 60000)) };
     if (intr.sessionId && idle < cacheTtlMs()) {
       this.say('fase', msg('events.interrupted.session', p), { nodeId: n.id });
-      const prompt = this.t('agent.interrupted.session', { label: n.data.label, protocol: agentProtocol(this.lang) });
+      const prompt = this.t('agent.interrupted.session', { label: n.data.label, protocol: agentProtocol(this.lang, n.data.kind) });
       return this.runAgent(n, 'ripresa_dopo_interruzione', { sessionId: intr.sessionId, feedback: intr.feedback ?? '', prompt }, { feedback: intr.feedback, fallback: intr });
     }
     this.say('fase', msg(intr.sessionId ? 'events.interrupted.summary' : 'events.interrupted.noSession', p), { nodeId: n.id });
@@ -419,7 +422,7 @@ export class RunEngine {
       this.t('agent.task', { label: n.data.label, instructions: n.data.instructions }),
       ctx,
       extra,
-      agentProtocol(this.lang),
+      agentProtocol(this.lang, n.data.kind),
     ].filter(Boolean).join('\n\n');
   }
 
@@ -462,7 +465,7 @@ export class RunEngine {
     const st = this.run.nodes[n.id];
     const d = n.data;
     const prompt = resume
-      ? resume.prompt ?? this.t('agent.feedback', { feedback: resume.feedback, label: d.label, protocol: agentProtocol(this.lang) })
+      ? resume.prompt ?? this.t('agent.feedback', { feedback: resume.feedback, label: d.label, protocol: agentProtocol(this.lang, d.kind) })
       : this.buildPrompt(n, opts.extra);
 
     let key: string | undefined;
@@ -679,23 +682,37 @@ export class RunEngine {
       this.setPending(st, errorMsg, a.error);
       st.pendingActions = a.sessionId ? ['riprova', 'riprendi', 'salta', 'annulla'] : ['riprova', 'salta', 'annulla'];
       this.say('errore', msg('events.phaseFailed', { label: d.label, error: a.error }), where);
-    } else if (declared?.esito === 'bloccato') {
-      st.status = 'bloccata';
-      // La sintesi è testo dell'agente: nessun messaggio localizzabile.
-      this.setPending(st, undefined, declared.sintesi);
-      st.pendingActions = ['riprendi', 'riprova', 'salta', 'annulla'];
-      this.say('intervento', msg('events.agentBlocked', { label: d.label, summary: declared.sintesi }), where);
-    } else if (declared?.esito === 'ko') {
-      st.status = 'fallita';
-      this.setPending(st, msg('interventions.declaredKo', { summary: declared.sintesi }));
-      st.pendingActions = ['riprendi', 'riprova', 'salta', 'annulla'];
-      this.say('errore', msg('events.agentKo', { label: d.label, summary: declared.sintesi }), where);
+    } else if (declared?.esito === 'bloccato' || declared?.esito === 'ko') {
+      // Se l'agente si è fermato per un permesso che la fase davvero non ha, lo si concede con un clic.
+      const ask = declared.permesso && lacksLevel(d.allowedTools, declared.permesso) ? declared.permesso : undefined;
+      st.missingPermission = ask;
+      const actions: HumanAction[] = ['riprendi', 'riprova', 'salta', 'annulla'];
+      st.pendingActions = ask ? ['consenti', ...actions] : actions;
+      if (declared.esito === 'bloccato') {
+        st.status = 'bloccata';
+        // La sintesi è testo dell'agente: nessun messaggio localizzabile.
+        this.setPending(st, undefined, declared.sintesi);
+        this.say('intervento', msg('events.agentBlocked', { label: d.label, summary: declared.sintesi }), where);
+      } else {
+        st.status = 'fallita';
+        this.setPending(st, msg('interventions.declaredKo', { summary: declared.sintesi }));
+        this.say('errore', msg('events.agentKo', { label: d.label, summary: declared.sintesi }), where);
+      }
+      if (ask) this.say('intervento', msg(`events.permissionAsked.${ask}`, { label: d.label }), where);
     } else {
       st.status = 'completata';
+      // I punti restano anche nel testo per le fasi successive (ad esempio un rapporto che unisce le revisioni).
       st.output = declared
         ? `${declared.sintesi}${declared.decisioni.length ? `\n${this.t('agent.output.decisions')} ${declared.decisioni.map((x) => `- ${x}`).join('\n')}` : ''}`
+          + (declared.punti?.length ? `\n${this.t('agent.output.points')}\n${declared.punti.map((x) => `- ${x}`).join('\n')}` : '')
+          + (declared.puntiOmessi?.length ? `\n${this.t('agent.output.pointsOmitted', { count: declared.puntiOmessi.length })}` : '')
         : clip(a.resultText ?? '', 3000);
       if (!declared) this.say('fase', msg('events.noOutcomeBlock', { label: d.label }), where);
+      // I punti scartati non compaiono altrove: il blocco di esito è tolto dal testo mostrato negli eventi.
+      if (declared?.puntiOmessi?.length) {
+        const points = declared.puntiOmessi.map((x) => `- ${x}`).join('\n');
+        this.say('fase', msg('events.pointsOmitted', { label: d.label, count: declared.puntiOmessi.length, max: MAX_POINTS, points }), where);
+      }
       for (const dec of declared?.decisioni ?? []) this.decision(n.id, a.id, dec, 'dichiarata', false);
       this.say('risultato', msg('events.phaseCompleted', { label: d.label, summary: declared?.sintesi ?? clip(a.resultText ?? '', 300) }), where);
       if (key) writeReuseEntry(key, { runId: this.run.id, attemptId: a.id, output: st.output, declared, resultText: a.resultText, savedAt: new Date().toISOString() });
@@ -1155,6 +1172,34 @@ export class RunEngine {
     return [...down].filter((x) => up.has(x) && x !== approvalId && !targets.includes(x));
   }
 
+  /**
+   * Punti proposti dalle fasi che un respingi farebbe rieseguire (tipicamente le revisioni tra
+   * l'implementazione e l'approvazione, anche se non collegate direttamente), più le fasi collegate
+   * direttamente. Conta l'ultimo tentativo di ciascuna; ordine del workflow.
+   */
+  private reviewPointsFor(approvalId: string): ReviewPoints[] {
+    const ids = new Set([...this.nodesBetween(this.reworkTargets(approvalId), approvalId), ...this.preds(approvalId)]);
+    return this.wf.nodes
+      .filter((x) => ids.has(x.id) && x.data.kind !== 'approvazione' && this.run.nodes[x.id]?.status === 'completata')
+      .map((x) => {
+        const declared = this.run.nodes[x.id].attempts.at(-1)?.declared;
+        return { nodeId: x.id, label: x.data.label, items: declared?.punti ?? [], ...(declared?.puntiOmessi?.length ? { omitted: declared.puntiOmessi.length } : {}) };
+      })
+      .filter((p) => p.items.length);
+  }
+
+  /** Feedback per la fase da correggere: i punti scelti, raggruppati per fase, e il commento libero. */
+  private composeFeedback(st: NodeRunState, refs: PointRef[], comment: string): string {
+    const parts: string[] = [];
+    for (const group of st.reviewPoints ?? []) {
+      const chosen = [...new Set(refs.filter((r) => r.nodeId === group.nodeId).map((r) => r.index))]
+        .sort((a, b) => a - b).map((i) => group.items[i]).filter(Boolean);
+      if (chosen.length) parts.push(this.t('agent.chosenPoints', { label: group.label, points: chosen.map((x) => `- ${x}`).join('\n') }));
+    }
+    if (comment) parts.push(parts.length ? this.t('agent.extraComment', { comment }) : comment);
+    return parts.join('\n\n');
+  }
+
   private requestApproval(n: WorkflowNode) {
     const st = this.run.nodes[n.id];
     st.status = 'attesa_intervento';
@@ -1163,22 +1208,61 @@ export class RunEngine {
     // Con dei principi attivi si aggiunge la checklist per chi approva.
     const checklist = principlesText(this.wf.settings.principles, 'approvazione', this.t);
     this.setPending(st, undefined, [n.data.instructions, checklist].filter(Boolean).join('\n\n'));
+    const points = this.reviewPointsFor(n.id);
+    st.reviewPoints = points.length ? points : undefined;
     this.say('intervento', msg('events.awaitingApproval', { label: n.data.label }), { nodeId: n.id });
     this.nodeChanged(n.id);
   }
 
-  async human(nodeId: string, action: HumanAction, feedback = '') {
+  /**
+   * Concede un permesso alla fase: aggiorna la copia del workflow dell'esecuzione (resta nel registro)
+   * e il workflow salvato, così la volta successiva la fase parte già con quel permesso.
+   */
+  private grantPermission(n: WorkflowNode, level: PermissionLevel) {
+    const before = n.data.allowedTools;
+    n.data.allowedTools = grantLevel(before, level);
+    const added = n.data.allowedTools.filter((x) => !before.includes(x));
+    this.say('intervento', msg(`events.permissionGranted.${level}`, { label: n.data.label, tools: added.join(', ') }), { nodeId: n.id });
+    const saved = getWorkflow(this.run.workflowId);
+    const sn = saved?.nodes.find((x) => x.id === n.id);
+    if (saved && sn) {
+      sn.data.allowedTools = grantLevel(sn.data.allowedTools, level);
+      saveWorkflow(saved);
+      this.say('intervento', msg('events.permissionSaved', { label: n.data.label }), { nodeId: n.id });
+    }
+    this.runChanged();
+  }
+
+  async human(nodeId: string, action: HumanAction, feedback = '', points: PointRef[] = []) {
     const st = this.run.nodes[nodeId];
     const n = this.node(nodeId);
     if (!st || !n) throw this.fail(msg('api.phaseNotFound'));
     if (action === 'annulla') return this.cancel();
     if (!st.pendingActions?.includes(action)) throw this.fail(msg('api.actionUnavailable', { action }));
-    const fb = redact(feedback.trim());
+    // Respingendo, i punti scelti tra quelli proposti diventano parte del feedback per la fase da correggere.
+    const fb = action === 'respingi' && n.data.kind === 'approvazione'
+      ? this.composeFeedback(st, points, redact(feedback.trim()))
+      : redact(feedback.trim());
+    if (n.data.kind === 'approvazione' && (action === 'approva' || (action === 'respingi' && fb))) st.reviewPoints = undefined;
     this.say('intervento', fb
       ? msg('events.humanActionFeedback', { label: n.data.label, action, feedback: clip(fb, 300) })
       : msg('events.humanAction', { label: n.data.label, action }), { nodeId });
     st.pendingActions = undefined;
     this.setPending(st, undefined);
+    const granted = st.missingPermission;
+    st.missingPermission = undefined;
+
+    if (action === 'consenti') {
+      if (!granted) throw this.fail(msg('api.actionUnavailable', { action }));
+      this.grantPermission(n, granted);
+      // Stessa sessione, ora con gli strumenti nuovi: l'agente riparte da dove si era fermato.
+      const sess = [...st.attempts].reverse().find((x) => x.sessionId)?.sessionId;
+      st.status = 'in_attesa';
+      this.nodeChanged(nodeId);
+      if (sess) void this.runAgent(n, 'ripresa_con_feedback', { sessionId: sess, feedback: this.t(`agent.permissionGranted.${granted}`) });
+      else void this.startNode(n, 'riprova');
+      return;
+    }
 
     if (n.data.kind === 'approvazione') {
       if (action === 'approva') {
@@ -1276,9 +1360,10 @@ type StopReason = 'completed' | 'restart' | 'startFailed' | 'manual' | 'cancelle
  * Le parti lette da Regia restano invariate in ogni lingua: il blocco ```regia, le chiavi esito/sintesi/decisioni
  * e i valori ok/ko/bloccato. Le righe di decisione iniziano con "DECISIONE:" (it) o "DECISION:" (en).
  */
-export function agentProtocol(lang = 'it'): string {
+export function agentProtocol(lang = 'it', kind?: WorkflowNode['data']['kind']): string {
   const t = serverT(lang);
-  return t('agent.protocol');
+  // Le revisioni elencano a parte le modifiche proposte: chi approva sceglie quali far applicare.
+  return kind === 'revisione' ? `${t('agent.protocol')}\n${t('agent.protocolPoints', { max: MAX_POINTS })}` : t('agent.protocol');
 }
 
 /** Riga di decisione dichiarata dall'agente: "DECISIONE:" o "DECISION:", in qualsiasi lingua, anche in grassetto. */
@@ -1298,10 +1383,20 @@ export function parseDeclared(text: unknown): DeclaredOutcome | undefined {
   try {
     const j = JSON.parse(last);
     const esito = ['ok', 'ko', 'bloccato'].includes(j.esito) ? j.esito : 'ok';
+    // Oltre il limite si tengono i primi (il protocollo chiede l'ordine per importanza); gli altri vanno nel registro.
+    const all: string[] = Array.isArray(j.punti)
+      ? j.punti.map((x: unknown) => redact(String(x ?? '')).trim().slice(0, 500)).filter(Boolean)
+      : [];
+    const punti = all.slice(0, MAX_POINTS);
+    const puntiOmessi = all.slice(MAX_POINTS, 100);
     return {
       esito,
       sintesi: redact(String(j.sintesi ?? '')).slice(0, 2000),
       decisioni: Array.isArray(j.decisioni) ? j.decisioni.slice(0, 10).map((x: unknown) => redact(String(x)).slice(0, 300)) : [],
+      ...(punti.length ? { punti } : {}),
+      ...(puntiOmessi.length ? { puntiOmessi } : {}),
+      // Il permesso conta solo se la fase si è fermata.
+      ...(esito !== 'ok' && (j.permesso === 'modifica' || j.permesso === 'internet') ? { permesso: j.permesso as PermissionLevel } : {}),
     };
   } catch {
     return undefined;
