@@ -121,7 +121,7 @@ Hook, plugin e impostazioni personali di `~/.claude` non vengono caricati; le re
 
 ## Modalità di prova
 
-"Prova" esegue il workflow con agenti simulati: nessuna chiamata di rete e nessun costo, tariffe fittizie. I messaggi simulati hanno la stessa forma di quelli del SDK (ID duplicati per strumenti in parallelo, subagenti, sessioni riprese con totali ripristinati, crash con valori azzerati), quindi la contabilità segue lo stesso percorso del codice reale. Nelle istruzioni di una fase si può scrivere `[simula-errore]` o `[simula-blocco]` per provare gli interventi. La fase Avvio app è simulata e nessun comando viene eseguito.
+"Prova" esegue il workflow con agenti simulati: nessuna chiamata di rete e nessun costo, tariffe fittizie. I messaggi simulati hanno la stessa forma di quelli del SDK (ID duplicati per strumenti in parallelo, subagenti, sessioni riprese con totali ripristinati, crash con valori azzerati), quindi la contabilità segue lo stesso percorso del codice reale. Nelle istruzioni di una fase si può scrivere `[simula-errore]` o `[simula-blocco]` per provare gli interventi, `[simula-permesso]` (una fase che può solo leggere chiede di modificare il progetto) o `[simula-cartella]` (la fase chiede una cartella accanto al progetto) per provare le concessioni con un clic, `[simula-molti-punti]` per una revisione con più punti del limite. La fase Avvio app è simulata e nessun comando viene eseguito.
 
 ## Lingue
 

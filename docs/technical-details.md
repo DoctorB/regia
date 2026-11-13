@@ -121,7 +121,7 @@ Hooks, plugins and personal settings from `~/.claude` are not loaded; personal r
 
 ## Trial mode
 
-"Prova" (trial run) runs the workflow with simulated agents: no network calls and no cost, fictitious rates. Simulated messages have the same shape as the SDK's (duplicate IDs for parallel tool calls, subagents, resumed sessions with restored totals, crashes with zeroed values), so usage accounting follows the same code path as real runs. In a phase's instructions you can write `[simula-errore]` or `[simula-blocco]` to try the interventions (error, block). The Run app phase is simulated and no command runs.
+"Prova" (trial run) runs the workflow with simulated agents: no network calls and no cost, fictitious rates. Simulated messages have the same shape as the SDK's (duplicate IDs for parallel tool calls, subagents, resumed sessions with restored totals, crashes with zeroed values), so usage accounting follows the same code path as real runs. In a phase's instructions you can write `[simula-errore]` or `[simula-blocco]` to try the interventions (error, block), `[simula-permesso]` (a read-only phase asks to change the project) or `[simula-cartella]` (the phase asks for a folder next to the project) to try the one-click grants, and `[simula-molti-punti]` for a review with more points than the limit. The Run app phase is simulated and no command runs.
 
 ## Languages
 
