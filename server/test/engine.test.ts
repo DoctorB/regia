@@ -486,6 +486,56 @@ test('fase ferma per un permesso mancante: si concede con un clic, anche nel wor
   eng2.cancel();
 });
 
+test('domande nell\'approvazione: risponde la fase in una copia della sua sessione, senza rieseguire nulla', async () => {
+  const eng = startRun(bugWf(), 'prova');
+  const run = eng.run;
+  await waitFor(() => run.nodes.approvazione.status === 'attesa_intervento');
+  const ap = run.nodes.approvazione;
+  // Si può chiedere alle fasi con agente esaminate dall'approvazione; la revisione viene prima.
+  const targets = ap.askable!.map((x) => x.nodeId);
+  assert.equal(targets[0], 'revisione');
+  assert.ok(targets.includes('correzione'));
+  const reviewSession = run.nodes.revisione.attempts.at(-1)!.sessionId;
+  const reviewAttempts = run.nodes.revisione.attempts.length;
+  const costBefore = run.totals.costUsd ?? 0;
+
+  assert.throws(() => eng.ask('approvazione', 'revisione', '   '));
+  assert.throws(() => eng.ask('approvazione', 'inesistente', 'Perché?'));
+  const q1 = eng.ask('approvazione', 'revisione', 'Cosa intendi con il secondo punto?');
+  assert.equal(q1.status, 'in_corso');
+  // Una domanda alla volta.
+  assert.throws(() => eng.ask('approvazione', 'revisione', 'E il primo?'));
+  await waitFor(() => q1.status === 'risposta');
+  assert.match(q1.answer!, /Risposta simulata/);
+  // Copia della sessione: la revisione resta com'era, l'approvazione aspetta ancora.
+  assert.notEqual(q1.sessionId, reviewSession);
+  assert.equal(run.nodes.revisione.attempts.length, reviewAttempts);
+  assert.equal(run.nodes.revisione.attempts.at(-1)!.sessionId, reviewSession);
+  assert.equal(ap.status, 'attesa_intervento');
+  assert.deepEqual(ap.pendingActions, ['approva', 'respingi', 'annulla']);
+  // La risposta conta nei consumi dell'esecuzione.
+  assert.ok((q1.attempt.usage.costUsd ?? 0) > 0);
+  assert.ok((run.totals.costUsd ?? 0) > costBefore);
+  assert.ok(run.events.some((e) => e.msg?.key === 'events.questionAsked' && e.text.endsWith('domanda a Revisione — Cosa intendi con il secondo punto?')));
+  assert.ok(run.events.some((e) => e.msg?.key === 'events.questionAnswered'));
+
+  // La domanda successiva alla stessa fase continua la stessa conversazione.
+  const q2 = eng.ask('approvazione', 'revisione', 'E il primo?');
+  await waitFor(() => q2.status === 'risposta');
+  assert.equal(q2.sessionId, q1.sessionId);
+
+  // Decidendo mentre una domanda è in corso, la domanda si interrompe.
+  const q3 = eng.ask('approvazione', 'correzione', 'Hai toccato altri file?');
+  await eng.human('approvazione', 'approva');
+  await waitFor(() => q3.status === 'errore');
+  assert.match(q3.error!, /hai già deciso/);
+  await waitFor(() => run.status === 'completata');
+  assert.throws(() => eng.ask('approvazione', 'revisione', 'Ancora?'));
+  // Il resoconto riporta domande e risposte sotto l'approvazione.
+  const report = runReport(run, serverT('it'), 'it-IT');
+  assert.ok(report.includes('**Domande e risposte**\n\n- **Revisione** — Cosa intendi con il secondo punto?\n  Risposta simulata'));
+});
+
 test('cartelle aggiuntive: nel prompt, controllate dalla validazione, concesse con un clic quando una fase si ferma', async () => {
   const { extraDirs, isInsideDir, parseDeclared, agentProtocol } = await import('../engine.ts');
   const shared = path.join(tmp, 'condivisa');

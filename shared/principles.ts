@@ -17,6 +17,8 @@ export function principlesText(ids: readonly string[] | undefined, kind: PhaseKi
   const list = activePrinciples(ids);
   if (!list.length || kind === 'server') return '';
   if (kind === 'approvazione') return [t('principles.prompt.approvalHeader'), ...list.map((p) => `- ${t(`principles.${p}.checklist`)}`)].join('\n');
-  const parts = list.map((p) => `## ${t(`principles.${p}.name`)}\n${t(`principles.${p}.summary`)}\n${t(`principles.${p}.${kind}`)}`);
+  // Il collaudo verifica il comportamento come i test: stesse indicazioni.
+  const k = kind === 'collaudo' ? 'test' : kind;
+  const parts = list.map((p) => `## ${t(`principles.${p}.name`)}\n${t(`principles.${p}.summary`)}\n${t(`principles.${p}.${k}`)}`);
   return `${t('principles.prompt.header')}\n\n${parts.join('\n\n')}`;
 }

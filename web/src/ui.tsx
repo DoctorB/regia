@@ -1,6 +1,7 @@
 // Elementi visivi condivisi: icone e colori per tipo di fase e stato, notifiche, piccoli componenti.
 import { useEffect, useState, type ReactNode } from 'react';
 import {
+  ScanSearch,
   Ban, CircleCheck, CircleDashed, CircleX, Eye, FlaskConical, Globe, Hand, Info, Loader2, OctagonPause, Recycle, Rocket, Search, Sparkles,
   TriangleAlert, Wrench, X, type LucideIcon,
 } from 'lucide-react';
@@ -34,6 +35,7 @@ export const KIND_META = withLabels<PhaseKind, { icon: LucideIcon }>({
   implementazione: { icon: Wrench },
   test: { icon: FlaskConical },
   revisione: { icon: Eye },
+  collaudo: { icon: ScanSearch },
   approvazione: { icon: Hand },
   server: { icon: Globe },
   personalizzata: { icon: Sparkles },

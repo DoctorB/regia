@@ -26,6 +26,18 @@ I log scritti in JSON (Astro, Vite e altri quando non sono collegati a un termin
 
 L'app viene fermata (insieme ai processi figli) quando l'esecuzione termina o viene annullata, e quando Regia si chiude. Dopo una correzione chiesta in un'approvazione successiva viene riavviato, così si verifica la versione aggiornata; con "Continua" viene sempre riavviato. In modalità di prova è simulata e nessun comando viene eseguito. Prima di un'esecuzione reale il dialogo di conferma elenca i comandi che verranno avviati e gli indirizzi che verranno verificati.
 
+## Collaudo sul telefono
+
+Fase di tipo `collaudo`, in due passi nella stessa fase:
+
+- **Build e installazione**: lo stesso rilevamento di "Mostra sul telefono" (progetto, dispositivo, comando, criterio `exit`). È registrato come tentativo con `step: 'build'`, a costo zero, e non conta tra i tentativi della fase.
+- **Collaudo**: un agente (predefiniti Sonnet, Read/Glob/Grep/Bash, 80 turni) riceve nel prompt dispositivo, applicationId, percorso di `adb`, la cartella delle prove e il file del log, con i comandi utili (`uiautomator dump`, `input tap/text/swipe/keyevent`, `screencap`) e le regole: niente modifiche al codice, niente azioni irreversibili, niente pulizia di logcat. Su Windows i percorsi sono passati con `/` e l'agente antepone `MSYS_NO_PATHCONV=1` ai comandi con percorsi del dispositivo.
+- **Prove**: `data/uat/<esecuzione>/<fase>/<giro>/`, con gli screenshot e `app-log.txt`. La cartella è passata come `additionalDirectories`; l'interfaccia mostra le miniature dell'ultimo giro e il link al log.
+- **Log dell'app** (solo Android, esecuzioni reali): Regia pulisce il buffer (`logcat -c`), segue `logcat -v threadtime *:W` e tiene le righe dei processi dell'app (PID aggiornati ogni 3 secondi con `pidof`), più crash (`FATAL EXCEPTION` con `Process: <app>`) e ANR (`ANR in <app>`). Ogni crash o ANR distinto genera subito un evento e, a fine collaudo, si aggiunge ai punti. Senza applicationId rilevato tiene tutti gli errori del dispositivo.
+- **Esito**: il protocollo chiede le anomalie nella chiave `punti` (al massimo 25, per gravità) e gli scenari non automatizzabili in `manuali`. Le anomalie non fanno fallire la fase: arrivano all'approvazione come i punti della revisione. `ko` solo se non si riesce a collaudare.
+- **applicationId**: dal Gradle del modulo app (con `applicationIdSuffix` del flavor scelto), da `android/app/build.gradle(.kts)` per Flutter, React Native e Capacitor, da `app.json` per Expo.
+- **Limiti**: solo Android; iOS e app desktop non sono ancora supportati. La lettura dello schermo dipende dall'accessibilità dell'app (con viste disegnate a mano l'agente si affida agli screenshot).
+
 ## Interventi
 
 - **Approvazione umana**: approva, oppure respingi con un commento. La fase a monte più vicina che può modificare file riprende la propria sessione con il commento; le fasi intermedie (test, revisione) vengono rieseguite e l'approvazione viene richiesta di nuovo. Al massimo 3 cicli.
@@ -33,6 +45,7 @@ L'app viene fermata (insieme ai processi figli) quando l'esecuzione termina o vi
 - **Fase fallita o bloccata**: l'agente può dichiarare un esito `ko` o `bloccato`. Le scelte sono riprova da capo, riprendi la sessione con un messaggio, salta oppure annulla l'esecuzione.
 - **Permesso mancante**: il protocollo chiede all'agente che si ferma per mancanza di strumenti di indicare nel blocco di esito `permesso`: `modifica` o `internet`. Se alla fase mancano davvero gli strumenti di quel livello (`modifica`: Read, Glob, Grep, Edit, Write, Bash; `internet`: in più WebFetch e WebSearch), compare l'azione **Consenti**: gli strumenti mancanti vengono aggiunti, senza toglierne nessuno, alla copia del workflow dell'esecuzione e al workflow salvato, se la fase esiste ancora; la fase riprende la stessa sessione. Gli eventi registrano cosa è stato concesso.
 - **Cartella mancante**: allo stesso modo l'agente che si ferma perché deve lavorare fuori dalle cartelle consentite indica `cartella` con un percorso assoluto. Se non è dentro la cartella del progetto né tra le cartelle aggiuntive, compare **Consenti la cartella**: viene aggiunta alle cartelle aggiuntive della copia del workflow dell'esecuzione e del workflow salvato, e la fase riprende la stessa sessione.
+- **Domande nell'approvazione**: mentre un'approvazione aspetta si può fare una domanda alle fasi con agente che esamina (quelle che un respingi rifarebbe e quelle collegate direttamente), se sono completate e hanno una sessione. La fase risponde in una copia della sua sessione (`forkSession`), con i soli strumenti Read, Glob e Grep e al massimo 10 turni: la sessione originale e il registro dei tentativi restano invariati. Le domande successive alla stessa fase, nello stesso giro di approvazione, continuano quella copia. Una domanda alla volta; decidendo sull'approvazione, una domanda in corso si interrompe. I consumi delle risposte entrano nei totali dell'esecuzione, non in quelli della fase.
 - **Suono**: generato dal browser (Web Audio, nessun file audio) per l'esecuzione aperta nella pagina, quando una fase comincia ad aspettare un intervento e quando l'esecuzione termina (non quando la annulli tu). Con la pagina chiusa non suona. La scelta attivo/disattivo è ricordata nel browser.
 
 ## Sospensione e ripresa
@@ -113,7 +126,7 @@ Hook, plugin e impostazioni personali di `~/.claude` non vengono caricati; le re
 
 ## Dati e riservatezza
 
-- Tutto resta in locale in `data/`, che è escluso dal controllo di versione: workflow, esecuzioni, regole di Regia e cache di riuso. La cartella si può spostare con `REGIA_DATA_DIR`.
+- Tutto resta in locale in `data/`, che è escluso dal controllo di versione: workflow, esecuzioni, regole di Regia, cache di riuso e prove dei collaudi (screenshot e log dell'app, che possono contenere i dati mostrati dall'app, ad esempio quelli dell'account collegato). La cartella si può spostare con `REGIA_DATA_DIR`.
 - Regia non legge né salva credenziali. Dello stato di autenticazione espone solo metodo, provider e tipo di piano, senza email né organizzazione.
 - I testi prodotti dagli agenti passano da un filtro che oscura pattern comuni di segreti (chiavi API, token, chiavi private, assegnazioni `*_TOKEN=`/`*_SECRET=`/`PASSWORD=`) prima di essere salvati o mostrati. Il filtro è euristico e non sostituisce l'attenzione a cosa si fa leggere agli agenti.
 - Le API rifiutano richieste da origini diverse da localhost.
@@ -121,7 +134,7 @@ Hook, plugin e impostazioni personali di `~/.claude` non vengono caricati; le re
 
 ## Modalità di prova
 
-"Prova" esegue il workflow con agenti simulati: nessuna chiamata di rete e nessun costo, tariffe fittizie. I messaggi simulati hanno la stessa forma di quelli del SDK (ID duplicati per strumenti in parallelo, subagenti, sessioni riprese con totali ripristinati, crash con valori azzerati), quindi la contabilità segue lo stesso percorso del codice reale. Nelle istruzioni di una fase si può scrivere `[simula-errore]` o `[simula-blocco]` per provare gli interventi, `[simula-permesso]` (una fase che può solo leggere chiede di modificare il progetto) o `[simula-cartella]` (la fase chiede una cartella accanto al progetto) per provare le concessioni con un clic, `[simula-molti-punti]` per una revisione con più punti del limite. La fase Avvio app è simulata e nessun comando viene eseguito.
+"Prova" esegue il workflow con agenti simulati: nessuna chiamata di rete e nessun costo, tariffe fittizie. I messaggi simulati hanno la stessa forma di quelli del SDK (ID duplicati per strumenti in parallelo, subagenti, sessioni riprese con totali ripristinati, crash con valori azzerati), quindi la contabilità segue lo stesso percorso del codice reale. Nelle istruzioni di una fase si può scrivere `[simula-errore]` o `[simula-blocco]` per provare gli interventi, `[simula-permesso]` (una fase che può solo leggere chiede di modificare il progetto) o `[simula-cartella]` (la fase chiede una cartella accanto al progetto) per provare le concessioni con un clic, `[simula-molti-punti]` per una revisione con più punti del limite. La fase Avvio app è simulata e nessun comando viene eseguito; il Collaudo simula build e installazione, poi un collaudo con due anomalie e uno scenario da provare a mano.
 
 ## Lingue
 
@@ -164,7 +177,8 @@ server/            API Express + SSE, motore di esecuzione, contabilità, simula
   resume.ts        sospensione e ripresa: stato riprendibile, riassunto del lavoro interrotto
   service.ts       processi della fase Avvio app (avvio, indirizzo, raggiungibilità, arresto)
   launch.ts        fasi "mostra" (telefono, browser, desktop): riconoscimento del progetto, comando, apertura del browser
-  mobile.ts        telefono: progetto mobile, dispositivi collegati, comando di build e installazione
+  mobile.ts        telefono: progetto mobile, dispositivi collegati, comando di build e installazione (Gradle con `.\gradlew.bat` su Windows e variante dei product flavor)
+  uat.ts           collaudo: log dell'app da logcat, crash e ANR
   nodeenv.ts       versione di Node richiesta dal progetto, installazioni, diagnosi degli errori
   skills.ts        ricerca delle skill e plugin temporaneo per fase
   version.ts       versione in uso e controllo di quella pubblicata su GitHub
@@ -184,4 +198,4 @@ templates/         preset di partenza (JSON)
 - Il riuso confronta configurazione, input e un'impronta dei file del progetto (percorso, dimensione, data di modifica). Non rileva cambiamenti esterni alla cartella.
 - Un'esecuzione non prosegue mentre Regia è chiuso: risulta interrotta e si riprende con Riprendi. Della fase interrotta resta ciò che era già registrato (passi, decisioni, file modificati); il consumo del tentativo interrotto è parziale e il suo costo non è noto.
 - La durata reale della cache del prompt dipende dall'account (di norma 5 minuti, in alcuni casi 1 ora) e Regia non la può leggere: usa 5 minuti, modificabili con `REGIA_CACHE_TTL_SEC`.
-- I contatori live dei subagenti non sono mostrati durante la fase: i loro consumi arrivano con il result.
+- I contatori live dei subagenti non sono mostrati durante la fase: i loro consumi arrivano con il result. Contano come subagenti solo i task di tipo `local_agent`: i comandi Bash lunghi, che Claude Code segnala anch'essi come task, restano comandi.

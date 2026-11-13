@@ -41,6 +41,7 @@ export const api = {
   insights: (id: string) => req<Insight[]>('GET', `/api/runs/${id}/insights`),
   startRun: (workflowId: string, mode: RunMode, confirmReal = false, continueFrom?: string, referenceRunId?: string) => req<{ id: string }>('POST', '/api/runs', { workflowId, mode, confirmReal, continueFrom, referenceRunId }),
   continuation: (runId: string, workflowId: string) => req<ContinuationPlan & { mode: RunMode }>('GET', `/api/runs/${runId}/continuation?workflowId=${workflowId}`),
+  ask: (runId: string, nodeId: string, targetId: string, question: string) => req<{ ok: boolean; id: string }>('POST', `/api/runs/${runId}/question`, { nodeId, targetId, question }),
   action: (runId: string, nodeId: string, action: HumanAction, feedback?: string, points?: PointRef[]) => req<{ ok: boolean }>('POST', `/api/runs/${runId}/action`, { nodeId, action, feedback, points }),
   serviceAction: (runId: string, nodeId: string, action: 'ferma' | 'riavvia') => req<{ ok: boolean }>('POST', `/api/runs/${runId}/service/${nodeId}`, { action }),
   cancel: (runId: string) => req<{ ok: boolean }>('POST', `/api/runs/${runId}/cancel`),

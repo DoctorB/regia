@@ -74,6 +74,23 @@ test('riconosce Flutter, React Native, Expo, Capacitor e Android con Gradle', ()
   assert.equal(findMobileProject(project('web', { 'package.json': JSON.stringify({ dependencies: { react: '18' } }) })), null);
 });
 
+test('Android con product flavor: si installa la variante predefinita, con il suo applicationId', async () => {
+  const { gradleFlavors } = await import('../mobile.ts');
+  // Kotlin: isDefault sceglie global anche se dichiarato prima o dopo; il suffisso entra nell'applicationId.
+  const kts = 'android {\n  defaultConfig { applicationId = "it.example.app" }\n  flavorDimensions += "region"\n  productFlavors {\n    create("china") {\n      dimension = "region"\n      applicationIdSuffix = ".cn"\n    }\n    create("global") {\n      dimension = "region"\n      isDefault = true\n      if (x) { signingConfig = y }\n    }\n  }\n}';
+  assert.deepEqual(gradleFlavors(kts), { chosen: ['global'], others: ['china'], appIdSuffix: undefined, appId: undefined });
+  // Groovy, due dimensioni nell'ordine di flavorDimensions, senza isDefault: il primo di ciascuna.
+  const groovy = 'android {\n  flavorDimensions "tier", "env"\n  productFlavors {\n    prod { dimension "env" }\n    free { dimension "tier"\n applicationIdSuffix ".free" }\n    staging { dimension "env" }\n    paid { dimension "tier" }\n  }\n}';
+  assert.deepEqual(gradleFlavors(groovy), { chosen: ['free', 'prod'], others: ['staging', 'paid'], appIdSuffix: '.free', appId: undefined });
+  assert.equal(gradleFlavors('android { defaultConfig { } }'), undefined);
+
+  const dir = project('flavors', { gradlew: '', 'app/build.gradle.kts': `plugins { id("com.android.application") }\n${kts}` });
+  const p = findMobileProject(dir)!;
+  const cmd = mobileCommand(p, 'android', phone, 'debug');
+  assert.match(cmd.command, /:app:installGlobalDebug && .* -p it\.example\.app /);
+  assert.ok(cmd.notes.some((n) => n.key === 'mobile.note.flavor' && n.params?.variant === 'GlobalDebug' && n.params?.others === 'china'));
+});
+
 test('comandi: compilano, installano e aprono l\'app sul dispositivo scelto', () => {
   const flutter = findMobileProject(path.join(tmp, 'flutter'))!;
   assert.equal(mobileCommand(flutter, 'android', phone, 'release').command, 'flutter run -d R58N123 --release --no-resident');
@@ -92,7 +109,7 @@ test('comandi: compilano, installano e aprono l\'app sul dispositivo scelto', ()
   assert.equal(mobileCommand(cap, 'android', phone, 'debug').command, 'npm run build && npx cap sync android && npx cap run android --target R58N123');
 
   const native = mobileCommand(findMobileProject(path.join(tmp, 'native'))!, 'android', phone, 'debug');
-  assert.match(native.command, /^(gradlew\.bat|\.\/gradlew) :app:installDebug && \(.*adb(\.exe)?"? -s R58N123 shell monkey -p it\.example\.app .* \|\| exit 0\)$/);
+  assert.match(native.command, /^(\.\\gradlew\.bat|\.\/gradlew) :app:installDebug && \(.*adb(\.exe)?"? -s R58N123 shell monkey -p it\.example\.app .* \|\| exit 0\)$/);
   assert.deepEqual(native.env, { ANDROID_SERIAL: 'R58N123' });
 });
 

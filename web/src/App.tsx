@@ -463,8 +463,9 @@ export function App() {
                   onClick={() => addPhase(s.data.kind, s.data)} title={s.hint}>
                   {s.data.kind === 'server'
                     ? <span className="kind-tile kind-server" aria-hidden>{s.id === 'app-desktop' ? <Monitor /> : s.id === 'app-mobile' ? <Smartphone /> : <Globe />}</span>
+                    : s.data.kind === 'collaudo' ? <span className="kind-tile kind-collaudo" aria-hidden><Smartphone /></span>
                     : <span className="kind-tile kind-publish" aria-hidden><Rocket /></span>}
-                  <span className="pal-text"><span>{s.label}</span><small>{s.data.kind === 'server' ? s.hint : t('palette.publishSub')}</small></span>
+                  <span className="pal-text"><span>{s.label}</span><small>{s.id === 'pubblicazione' ? t('palette.publishSub') : s.hint}</small></span>
                 </button>
               ))}
             </div>

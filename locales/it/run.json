@@ -51,7 +51,20 @@
       "commentPlaceholder": "Commento: obbligatorio per respingere, facoltativo per approvare",
       "commentPlaceholderPoints": "Indicazioni aggiuntive (facoltative se hai selezionato dei punti)",
       "messagePlaceholder": "Messaggio per l'agente (per \"Riprendi la sessione\")",
-      "resumeToAct": "Riprendi l'esecuzione per intervenire."
+      "resumeToAct": "Riprendi l'esecuzione per intervenire.",
+      "ask": {
+        "title": "Fai una domanda",
+        "hint": "Chiedi un chiarimento a una fase precedente: risponde senza modificare nulla e l'approvazione resta in attesa. Ogni domanda costa un breve turno dell'agente.",
+        "target": "A chi",
+        "placeholder": "Es. cosa intendi con il secondo punto? Quale file andrebbe toccato?",
+        "send": "Chiedi",
+        "answering": "{label} sta rispondendo…",
+        "failed": "Nessuna risposta: {error}",
+        "count": {
+          "one": "{count} domanda",
+          "other": "{count} domande"
+        }
+      }
     },
     "service": {
       "stop": "Ferma",
@@ -81,6 +94,19 @@
     },
     "reference": {
       "title": "Esecuzione di riferimento"
+    },
+    "uat": {
+      "log": "Log dell'app: {lines} righe, {errors} errori.",
+      "crashes": {
+        "one": "1 crash o blocco.",
+        "other": "{count} crash o blocchi."
+      },
+      "openLog": "Apri il log",
+      "manual": "Da provare a mano:",
+      "anomalies": {
+        "one": "1 anomalia",
+        "other": "{count} anomalie"
+      }
     }
   },
   "actions": {
@@ -363,7 +389,8 @@
         "modifica": "Crea e modifica file ed esegue comandi nella cartella del progetto: test, build, git, script.",
         "internet": "Come \"Modificare il progetto\", più ricerche e pagine web."
       },
-      "custom": "Strumenti scelti su misura: li trovi in Avanzate."
+      "custom": "Strumenti scelti su misura: li trovi in Avanzate.",
+      "collaudo": "Usa il telefono con adb (comandi da Bash) e legge il progetto per capire cosa è cambiato. Non modifica il codice: lo vietano le sue istruzioni."
     },
     "advanced": {
       "title": "Avanzate",
@@ -541,7 +568,8 @@
       "hint": {
         "dispositivo": "Quando la fase parte Regia riconosce il progetto (Flutter, React Native, Expo, Capacitor, Android con Gradle) e il telefono collegato, poi compila, installa e apre l'app. Le scelte qui sopra sono facoltative.",
         "browser": "Quando la fase parte Regia riconosce il progetto web (Vite, Next.js, Angular, Astro, ASP.NET Core, Django, Laravel, pagina statica…), lo avvia e apre la pagina nel browser appena risponde. Il sito resta attivo fino a fine esecuzione.",
-        "desktop": "Quando la fase parte Regia riconosce l'app (Electron, Tauri, WPF, Windows Forms, WinUI, Avalonia, MAUI, Flutter, Compose Desktop) e la avvia. La finestra resta aperta finché non approvi."
+        "desktop": "Quando la fase parte Regia riconosce l'app (Electron, Tauri, WPF, Windows Forms, WinUI, Avalonia, MAUI, Flutter, Compose Desktop) e la avvia. La finestra resta aperta finché non approvi.",
+        "uat": "Il collaudo usa questa build: Regia compila, installa e apre l'app, poi l'agente la prova sugli scenari del cambiamento mentre Regia segue il log dell'app. Crash e blocchi diventano anomalie anche se l'agente non li nota."
       },
       "backend": "Backend",
       "backendOff": "non avviato",
@@ -632,6 +660,11 @@
     "noInterventions": "Nessun intervento.",
     "notes": "Note",
     "footer": "Generato da Regia il {date}. Costi stimati, non dati di fatturazione.",
-    "reusedFrom": "ripresa da {id}"
+    "reusedFrom": "ripresa da {id}",
+    "questions": "Domande e risposte",
+    "action": {
+      "consenti": "Consenti il permesso",
+      "consenti_cartella": "Consenti la cartella"
+    }
   }
 }

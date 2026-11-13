@@ -13,6 +13,11 @@ export const MOBILE_FRAMEWORK_NAMES: Record<MobileFramework, string> = {
 };
 
 const WIN = process.platform === 'win32';
+/**
+ * Gradle wrapper su Windows, con il percorso relativo esplicito: se l'ambiente imposta NoDefaultCurrentDirectoryInExePath
+ * (lo fa ad esempio Claude Code), cmd non cerca i programmi nella cartella corrente e "gradlew.bat" da solo non si trova.
+ */
+export const GRADLEW_WIN = '.\\gradlew.bat';
 const MAC = process.platform === 'darwin';
 
 interface Project {
@@ -23,6 +28,8 @@ interface Project {
   /** Solo Android nativo: modulo dell'app e applicationId (per aprirla dopo l'installazione). */
   module?: string;
   appId?: string;
+  /** Solo Android nativo con product flavor: la variante da installare. */
+  flavors?: GradleFlavors;
 }
 
 export function readText(file: string): string | null {
@@ -59,8 +66,74 @@ export function gradleAppId(gradle: string): string | undefined {
   return viaVar ?? gradle.match(/namespace\s*=?\s*["']([\w.]+)["']/)?.[1];
 }
 
+/** Contenuto del blocco `nome { … }` (prima occorrenza), con le graffe bilanciate. */
+function gradleBlock(text: string, name: string): string | undefined {
+  const m = new RegExp(`\\b${name}\\s*\\{`).exec(text);
+  return m ? braceBody(text, m.index + m[0].length - 1) : undefined;
+}
+
+/** Testo tra la graffa aperta in `open` e quella che la chiude. */
+function braceBody(text: string, open: number): string | undefined {
+  let depth = 0;
+  for (let i = open; i < text.length; i++) {
+    if (text[i] === '{') depth++;
+    else if (text[i] === '}' && --depth === 0) return text.slice(open + 1, i);
+  }
+  return undefined;
+}
+
+export interface GradleFlavors {
+  /** Flavor scelti, uno per dimensione, nell'ordine di flavorDimensions: formano il nome della variante. */
+  chosen: string[];
+  /** Gli altri flavor dichiarati, per la nota. */
+  others: string[];
+  /** Suffisso dell'applicationId del flavor scelto (per aprire l'app installata). */
+  appIdSuffix?: string;
+  appId?: string;
+}
+
+/**
+ * Product flavor del modulo: con dei flavor "installDebug" è ambiguo e serve il nome della variante (es. installGlobalDebug).
+ * Per ogni dimensione si sceglie il flavor con isDefault, altrimenti il primo dichiarato.
+ */
+export function gradleFlavors(gradle: string): GradleFlavors | undefined {
+  const block = gradleBlock(gradle, 'productFlavors');
+  if (!block) return undefined;
+  const flavors: { name: string; dimension: string; isDefault: boolean; suffix?: string; appId?: string }[] = [];
+  // Voci di primo livello: create("x") / register("x") / maybeCreate("x") in Kotlin, x { … } in Groovy.
+  const entry = /(?:\b(?:create|register|maybeCreate)\s*\(\s*["'](\w+)["']\s*\)|^\s*(\w+))\s*\{/gm;
+  let m: RegExpExecArray | null;
+  while ((m = entry.exec(block))) {
+    const name = m[1] ?? m[2];
+    const body = braceBody(block, m.index + m[0].length - 1) ?? '';
+    entry.lastIndex = m.index + m[0].length + body.length;
+    if (!m[1] && ['all', 'configureEach', 'named', 'getByName'].includes(name)) continue;
+    flavors.push({
+      name,
+      dimension: body.match(/dimension\s*=?\s*["'](\w+)["']/)?.[1] ?? '',
+      isDefault: /isDefault\s*(?:=\s*true|\.set\(\s*true\s*\))|\bisDefault\s+true/.test(body),
+      suffix: body.match(/applicationIdSuffix\s*=?\s*["']([\w.]+)["']/)?.[1],
+      appId: body.match(/applicationId\s*=?\s*["']([\w.]+)["']/)?.[1],
+    });
+  }
+  if (!flavors.length) return undefined;
+  const declared = [...gradle.matchAll(/flavorDimensions\s*(?:\+=|=|\(|\s)\s*(?:listOf\()?([^\n)]*)/g)]
+    .flatMap((x) => [...x[1].matchAll(/["'](\w+)["']/g)].map((y) => y[1]));
+  const dims = [...new Set([...declared, ...flavors.map((f) => f.dimension)])];
+  const chosen = dims.map((dim) => {
+    const inDim = flavors.filter((f) => f.dimension === dim);
+    return inDim.find((f) => f.isDefault) ?? inDim[0];
+  }).filter(Boolean);
+  return {
+    chosen: chosen.map((f) => f.name),
+    others: flavors.filter((f) => !chosen.includes(f)).map((f) => f.name),
+    appIdSuffix: chosen.map((f) => f.suffix ?? '').join('') || undefined,
+    appId: chosen.find((f) => f.appId)?.appId,
+  };
+}
+
 /** Modulo Android con il plugin dell'applicazione: quelli di settings.gradle, altrimenti "app" e le altre sottocartelle. */
-function androidApp(abs: string): { module: string; appId?: string } | null {
+function androidApp(abs: string): { module: string; appId?: string; flavors?: GradleFlavors } | null {
   const settings = readText(path.join(abs, 'settings.gradle.kts')) ?? readText(path.join(abs, 'settings.gradle'));
   let mods = settings ? gradleModules(settings) : [];
   if (!mods.length) {
@@ -71,7 +144,11 @@ function androidApp(abs: string): { module: string; appId?: string } | null {
     const gradle = readText(path.join(abs, m, 'build.gradle.kts')) ?? readText(path.join(abs, m, 'build.gradle'));
     // "apply false" dichiara il plugin senza applicarlo (tipico del build file principale).
     const applied = gradle?.split(/\r?\n/).filter((l) => !/apply\s+false/.test(l)).join('\n');
-    if (applied && APP_PLUGIN.test(applied)) return { module: m.replace(/\//g, ':'), appId: gradleAppId(gradle!) };
+    if (applied && APP_PLUGIN.test(applied)) {
+      const flavors = gradleFlavors(gradle!);
+      const base = flavors?.appId ?? gradleAppId(gradle!);
+      return { module: m.replace(/\//g, ':'), appId: base && `${base}${flavors?.appIdSuffix ?? ''}`, flavors };
+    }
   }
   return null;
 }
@@ -123,6 +200,17 @@ function run(cmd: string, args: string[], timeoutMs: number): Promise<{ ok: bool
       resolve({ ok: !err, out: String(stdout ?? '') });
     });
   });
+}
+
+/** applicationId dell'app Android: Gradle nativo, android/app dei framework (Flutter, React Native, Capacitor), app.json di Expo. */
+function androidAppId(p: Project): string | undefined {
+  if (p.appId) return p.appId;
+  for (const f of ['android/app/build.gradle.kts', 'android/app/build.gradle']) {
+    const g = readText(path.join(p.abs, f));
+    const id = g ? gradleAppId(g) : undefined;
+    if (id) return id;
+  }
+  return readJson<{ expo?: { android?: { package?: string } } }>(path.join(p.abs, 'app.json'))?.expo?.android?.package;
 }
 
 /** adb dell'Android SDK (ANDROID_HOME, ANDROID_SDK_ROOT o la cartella predefinita di Android Studio), altrimenti dal PATH. */
@@ -268,8 +356,11 @@ export function mobileCommand(p: Project, platform: MobilePlatform, device: Mobi
     }
     case 'android': {
       if (build === 'release') notes.push(msg('mobile.note.releaseSigning'));
-      const gradle = WIN ? 'gradlew.bat' : './gradlew';
-      let command = `${gradle} :${p.module ?? 'app'}:install${cap(build)}`;
+      const gradle = WIN ? GRADLEW_WIN : './gradlew';
+      // Con dei product flavor il task va scritto per intero (es. installGlobalDebug), altrimenti è ambiguo.
+      const variant = (p.flavors?.chosen ?? []).map(cap).join('');
+      if (p.flavors?.chosen.length) notes.push(msg('mobile.note.flavor', { variant: `${variant}${cap(build)}`, others: p.flavors.others.join(', ') || '—' }));
+      let command = `${gradle} :${p.module ?? 'app'}:install${variant}${cap(build)}`;
       // L'apertura non deve far fallire la fase: l'installazione è già riuscita.
       if (p.appId) command += ` && (${q(adbPath())} -s ${id} shell monkey -p ${p.appId} -c android.intent.category.LAUNCHER 1 || exit 0)`;
       else notes.push(msg('mobile.note.noLaunch'));
@@ -305,6 +396,7 @@ export async function planMobile(base: string, opts: Partial<ShowConfig> = {}, {
     const device: MobileDevice = { id: 'simulato', name: 'simulato', platform: wanted[0], emulator: true };
     plan.platform = device.platform;
     Object.assign(plan, mobileCommand(p, device.platform, device, plan.build), { notes: [] });
+    if (device.platform === 'android') plan.appId = androidAppId(p);
     return plan;
   }
 
@@ -334,6 +426,7 @@ export async function planMobile(base: string, opts: Partial<ShowConfig> = {}, {
   }
   plan.device = device;
   plan.platform = device.platform;
+  if (device.platform === 'android') plan.appId = androidAppId(p);
   if (!opts.device && candidates.length > 1) plan.notes.push(msg('mobile.note.manyDevices', { count: candidates.length, device: device.name }));
   const c = mobileCommand(p, device.platform, device, plan.build);
   plan.command = c.command;

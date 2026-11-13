@@ -72,7 +72,7 @@ test('app desktop: Electron, Tauri, WPF, MAUI, Flutter, Compose Desktop', () => 
     gradlew: '', 'settings.gradle.kts': 'include(":composeApp")', 'composeApp/build.gradle.kts': 'compose.desktop {\n  application { mainClass = "MainKt" }\n}',
   }))!;
   assert.equal(compose.project, 'Compose Desktop');
-  assert.match(compose.command!, /(gradlew\.bat|\.\/gradlew) :composeApp:run$/);
+  assert.match(compose.command!, /(\.\\gradlew\.bat|\.\/gradlew) :composeApp:run$/);
   assert.equal(compose.readyPattern, '> Task :composeApp:run');
 
   // Un sito non è un'app desktop.

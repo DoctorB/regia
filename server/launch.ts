@@ -6,7 +6,7 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { msg } from '../shared/i18n.ts';
 import type { BrowserChoice, LaunchPlan, ReadyCheck, ShowConfig } from '../shared/types.ts';
-import { gradleModules, planMobile, readJson, readText } from './mobile.ts';
+import { GRADLEW_WIN, gradleModules, planMobile, readJson, readText } from './mobile.ts';
 
 const WIN = process.platform === 'win32';
 const MAC = process.platform === 'darwin';
@@ -134,7 +134,7 @@ export function detectDesktop(abs: string): Found | null {
       if (/compose\.desktop/.test(gradle)) {
         const task = `:${m.replace(/\//g, ':')}:run`;
         // Gradle compila a lungo prima di aprire la finestra: pronto quando parte il task run.
-        return { abs, project: 'Compose Desktop', command: `${WIN ? 'gradlew.bat' : './gradlew'} ${task}`, check: 'output', readyPattern: `> Task ${task}` };
+        return { abs, project: 'Compose Desktop', command: `${WIN ? GRADLEW_WIN : './gradlew'} ${task}`, check: 'output', readyPattern: `> Task ${task}` };
       }
     }
   }

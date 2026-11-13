@@ -10,6 +10,8 @@ const BASE: Record<PhaseKind, Base> = {
   implementazione: { kind: 'implementazione', model: 'sonnet', allowedTools: ['Read', 'Glob', 'Grep', 'Edit', 'Write', 'Bash'], maxTurns: 30, contextMode: 'sintesi', reuseResult: false },
   test: { kind: 'test', model: 'sonnet', allowedTools: ['Read', 'Glob', 'Grep', 'Bash'], maxTurns: 10, contextMode: 'sintesi', reuseResult: false },
   revisione: { kind: 'revisione', model: 'sonnet', allowedTools: ['Read', 'Glob', 'Grep'], maxTurns: 15, contextMode: 'sintesi', reuseResult: false },
+  // Collaudo: Regia compila, installa e apre l'app; poi l'agente la usa sul dispositivo (adb da Bash, screenshot letti con Read).
+  collaudo: { kind: 'collaudo', model: 'sonnet', allowedTools: ['Read', 'Glob', 'Grep', 'Bash'], maxTurns: 80, contextMode: 'sintesi', reuseResult: false, show: { target: 'dispositivo' } },
   approvazione: { kind: 'approvazione', model: '', allowedTools: [], contextMode: 'sintesi', reuseResult: false },
   server: { kind: 'server', model: '', allowedTools: [], contextMode: 'nessuno', reuseResult: false, command: 'npm run dev', url: '', subdir: '', readyTimeoutSec: 90 },
   // Una fase personalizzata di solito deve fare qualcosa: parte potendo modificare il progetto.
@@ -37,6 +39,7 @@ const SNIPPETS: { id: string; base: Base }[] = [
   { id: 'app-mobile', base: { ...APP, show: { target: 'dispositivo' } } },
   { id: 'app-web', base: { ...APP, show: { target: 'browser' } } },
   { id: 'app-desktop', base: { ...APP, show: { target: 'desktop' } } },
+  { id: 'collaudo-mobile', base: { kind: 'collaudo', model: 'sonnet', allowedTools: ['Read', 'Glob', 'Grep', 'Bash'], maxTurns: 80, contextMode: 'sintesi', reuseResult: false, show: { target: 'dispositivo' } } },
   {
     id: 'pubblicazione',
     base: { kind: 'personalizzata', model: 'sonnet', allowedTools: ['Read', 'Glob', 'Grep', 'Bash'], maxTurns: 15, contextMode: 'sintesi', reuseResult: false },

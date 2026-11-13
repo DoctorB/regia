@@ -36,6 +36,10 @@
     "personalizzata": {
       "label": "Personalizzata",
       "hint": "Agente con istruzioni libere"
+    },
+    "collaudo": {
+      "label": "Collaudo",
+      "hint": "Compila, installa e prova l'app sul dispositivo"
     }
   },
   "status": {
@@ -149,7 +153,8 @@
     "permission": {
       "lettura": "solo lettura",
       "modifica": "modifica il progetto",
-      "internet": "anche internet"
+      "internet": "anche internet",
+      "collaudo": "prova l'app sul telefono"
     },
     "reuse": "riuso",
     "noCommand": "nessun comando",

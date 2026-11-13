@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Activity, Bot, CircleAlert, FolderPlus, CircleCheck, Clock, Coins, Copy, CornerDownRight, Download, ExternalLink, FileText, Flag, Gauge, Globe, Hand, Info, Lightbulb, ListTree,
+  Activity, Bot, CircleAlert, FolderPlus, Loader2, MessageCircleQuestion, SendHorizontal, CircleCheck, Clock, Coins, Copy, CornerDownRight, Download, ExternalLink, FileText, Flag, Gauge, Globe, Hand, Info, Lightbulb, ListTree,
   MessageSquareText, OctagonX, Pause, Play, Recycle, RotateCcw, ShieldCheck, SkipForward, Square, Terminal, TriangleAlert, Undo2, Workflow as WorkflowIcon, X,
   type LucideIcon,
 } from 'lucide-react';
@@ -184,6 +184,9 @@ function StatusTab({ run, ordered, label, selectedNode, onSelectNode, onGranted 
     .filter((n) => !run.snapshot.edges.some((e) => e.source === n.nodeId && run.nodes[e.target]?.pendingActions?.includes('approva')));
   const resumable = RESUMABLE.includes(run.status);
   const interrupted = ordered.filter((id) => run.nodes[id]?.interrupted).map(label);
+  const uats = ordered.map((id) => run.nodes[id])
+    .filter((n) => n?.uat && !n.pendingActions?.length)
+    .filter((n) => !run.snapshot.edges.some((e) => e.source === n.nodeId && run.nodes[e.target]?.pendingActions?.includes('approva')));
   return (
     <div className="stack">
       {resumable && (
@@ -195,8 +198,9 @@ function StatusTab({ run, ordered, label, selectedNode, onSelectNode, onGranted 
           </span>
         </div>
       )}
-      {pending.map((n) => <InterventionCard key={n.nodeId} run={run} nodeId={n.nodeId} label={label(n.nodeId)} readOnly={resumable} onGranted={onGranted} />)}
+      {pending.map((n) => <InterventionCard key={`${run.id}:${n.nodeId}`} run={run} nodeId={n.nodeId} label={label(n.nodeId)} readOnly={resumable} onGranted={onGranted} />)}
       {services.map((n) => <ServiceCard key={n.nodeId} run={run} nodeId={n.nodeId} />)}
+      {uats.map((n) => <UatCard key={n.nodeId} run={run} nodeId={n.nodeId} label={label(n.nodeId)} />)}
       {run.notes.map((n, i) => <div key={i} className="callout tone-warn"><TriangleAlert /><span>{n}</span></div>)}
       {run.rateLimit && run.rateLimit.status !== 'allowed' && (
         <div className="callout tone-warn"><Gauge /><span>{t('run.rateLimit', { status: run.rateLimit.status })}{run.rateLimit.type ? ` (${run.rateLimit.type})` : ''}{run.rateLimit.utilization !== undefined ? t('run.rateLimitUsage', { pct: Math.round(run.rateLimit.utilization * 100) }) : ''}.</span></div>
@@ -211,7 +215,7 @@ function StatusTab({ run, ordered, label, selectedNode, onSelectNode, onGranted 
               <KindTile kind={n.data.kind} size="sm" />
               <span className="phase-row-main">
                 <span className="phase-row-title">{n.data.label}</span>
-                {s.activity ? <span className="phase-row-sub">{s.activity}</span> : s.attempts.length > 1 ? <span className="phase-row-sub">{t('run.attempts', { count: s.attempts.length })}</span> : null}
+                {s.activity ? <span className="phase-row-sub">{s.activity}</span> : s.attempts.filter((a) => !a.step).length > 1 ? <span className="phase-row-sub">{t('run.attempts', { count: s.attempts.filter((a) => !a.step).length })}</span> : null}
               </span>
               <StatusPill status={s.status} />
               <span className="phase-row-cost num">{isAgentKind(n.data.kind) && s.attempts.length ? fmtUsd(c, 3) : ''}</span>
@@ -228,6 +232,67 @@ function StatusTab({ run, ordered, label, selectedNode, onSelectNode, onGranted 
       <AppliedRulesView rules={run.rules} />
       {run.continuedFrom && <p className="muted small">{t('run.continuedFrom', { id: run.continuedFrom })}</p>}
     </div>
+  );
+}
+
+/**
+ * Domande di chiarimento alle fasi precedenti, mentre l'approvazione aspetta. Mostra quelle del giro corrente con le
+ * risposte; il campo resta disponibile finché si può approvare.
+ */
+function AskBox({ run, nodeId, readOnly }: { run: Run; nodeId: string; readOnly: boolean }) {
+  const { t } = useI18n();
+  const n = run.nodes[nodeId];
+  const targets = n.askable ?? [];
+  const asked = (n.questions ?? []).filter((q) => q.round === n.feedbackRounds);
+  const [target, setTarget] = useState('');
+  const [text, setText] = useState('');
+  const [busy, setBusy] = useState(false);
+  const canAsk = !readOnly && n.status === 'attesa_intervento' && Boolean(n.pendingActions?.includes('approva')) && targets.length > 0;
+  if (!canAsk && !asked.length) return null;
+  const label = (id: string) => run.snapshot.nodes.find((x) => x.id === id)?.data.label ?? id;
+  const waiting = asked.some((q) => q.status === 'in_corso');
+  const to = targets.some((x) => x.nodeId === target) ? target : targets[0]?.nodeId ?? '';
+  const send = async () => {
+    if (!text.trim() || !to) return;
+    setBusy(true);
+    try { await api.ask(run.id, nodeId, to, text.trim()); setText(''); } catch (e) { toast((e as Error).message, 'bad'); } finally { setBusy(false); }
+  };
+  return (
+    <details className="ask" open={asked.length > 0}>
+      <summary>
+        <MessageCircleQuestion /><strong>{t('run.intervention.ask.title')}</strong>
+        {asked.length > 0 && <span className="muted small">{t('run.intervention.ask.count', { count: asked.length })}</span>}
+      </summary>
+      {asked.length > 0 && (
+        <ol className="ask-thread">
+          {asked.map((q) => (
+            <li key={q.id}>
+              <p className="ask-q"><span className="tag">{label(q.targetId)}</span>{q.question}</p>
+              {q.status === 'in_corso' ? <p className="ask-a muted"><Loader2 className="spin" />{t('run.intervention.ask.answering', { label: label(q.targetId) })}</p>
+                : q.status === 'errore' ? <p className="ask-a tone-bad">{t('run.intervention.ask.failed', { error: q.error ?? '' })}</p>
+                : <p className="ask-a pre">{q.answer}</p>}
+            </li>
+          ))}
+        </ol>
+      )}
+      {canAsk && (
+        <div className="ask-form">
+          <p className="hint">{t('run.intervention.ask.hint')}</p>
+          {targets.length > 1 && (
+            <label className="ask-target"><span>{t('run.intervention.ask.target')}</span>
+              <select value={to} onChange={(e) => setTarget(e.target.value)}>
+                {targets.map((x) => <option key={x.nodeId} value={x.nodeId}>{x.label}</option>)}
+              </select>
+            </label>
+          )}
+          <div className="ask-row">
+            <textarea rows={2} value={text} placeholder={t('run.intervention.ask.placeholder')} onChange={(e) => setText(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) void send(); }} />
+            <button className="btn" disabled={busy || waiting || !text.trim()} onClick={() => void send()}><SendHorizontal />{t('run.intervention.ask.send')}</button>
+          </div>
+        </div>
+      )}
+    </details>
   );
 }
 
@@ -289,6 +354,10 @@ function InterventionCard({ run, nodeId, label, readOnly = false, onGranted }: {
             </summary>
             {/* Con dei punti da scegliere qui sotto, la sintesi basta: i punti non si ripetono. */}
             <p className="pre">{(points.some((g) => g.nodeId === p.nodeId) ? last?.declared?.sintesi : p.output) ?? t('run.intervention.noOutput')}</p>
+            {points.some((g) => g.nodeId === p.nodeId) && last?.declared?.manuali?.length ? (
+              <p className="pre">{`${t('run.uat.manual')}\n${last.declared.manuali.map((x) => `- ${x}`).join('\n')}`}</p>
+            ) : null}
+            <UatEvidence run={run} nodeId={p.nodeId} />
           </details>
         );
       })}
@@ -312,6 +381,7 @@ function InterventionCard({ run, nodeId, label, readOnly = false, onGranted }: {
           ))}
         </div>
       )}
+      {isApproval && <AskBox run={run} nodeId={nodeId} readOnly={readOnly} />}
       {readOnly && <p className="muted small">{t('run.intervention.resumeToAct')}</p>}
       {needsText && !readOnly && (
         <textarea rows={3} placeholder={isApproval ? t(points.length ? 'run.intervention.commentPlaceholderPoints' : 'run.intervention.commentPlaceholder') : t('run.intervention.messagePlaceholder')} value={fb} onChange={(e) => setFb(e.target.value)} />
@@ -330,6 +400,54 @@ function InterventionCard({ run, nodeId, label, readOnly = false, onGranted }: {
 }
 
 /** Server locale avviato da Regia: link, stato, azioni e ultime righe di output. */
+/** Prove del collaudo: dispositivo, log dell'app (errori, crash) e screenshot dell'ultimo giro. */
+function UatEvidence({ run, nodeId, findings = false }: { run: Run; nodeId: string; findings?: boolean }) {
+  const { t } = useI18n();
+  const u = run.nodes[nodeId]?.uat;
+  if (!u) return null;
+  // Fuori dall'approvazione la card mostra anche anomalie e scenari da provare a mano.
+  const declared = findings ? run.nodes[nodeId].attempts.filter((a) => !a.step).at(-1)?.declared : undefined;
+  const src = (f: string) => `/api/runs/${run.id}/uat/${nodeId}/${u.round}/${encodeURIComponent(f)}`;
+  return (
+    <div className="uat">
+      {(u.device || u.appId) && <p className="muted small">{[u.device, u.appId].filter(Boolean).join(' · ')}</p>}
+      {declared?.punti?.length ? <div><strong className="small">{t('run.uat.anomalies', { count: declared.punti.length })}</strong><ul className="uat-list">{declared.punti.map((p, i) => <li key={i}>{p}</li>)}</ul></div> : null}
+      {declared?.manuali?.length ? <div><strong className="small">{t('run.uat.manual')}</strong><ul className="uat-list">{declared.manuali.map((p, i) => <li key={i}>{p}</li>)}</ul></div> : null}
+      {u.log && (
+        <p className={`small ${u.log.crashes.length ? 'tone-bad' : 'muted'}`}>
+          {t('run.uat.log', { lines: u.log.lines, errors: u.log.errors })}
+          {u.log.crashes.length ? ` ${t('run.uat.crashes', { count: u.log.crashes.length })}` : ''}
+          {u.log.lines > 0 && <> · <a href={src('app-log.txt')} target="_blank" rel="noreferrer">{t('run.uat.openLog')}</a></>}
+        </p>
+      )}
+      {u.screenshots.length > 0 && (
+        <div className="uat-shots">
+          {u.screenshots.map((f) => (
+            <a key={f} href={src(f)} target="_blank" rel="noreferrer" title={f}>
+              <img src={src(f)} alt={f} loading="lazy" />
+              <span>{f.replace(/\.(png|jpe?g)$/i, '')}</span>
+            </a>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function UatCard({ run, nodeId, label }: { run: Run; nodeId: string; label: string }) {
+  const n = run.nodes[nodeId];
+  const kind = run.snapshot.nodes.find((x) => x.id === nodeId)?.data.kind ?? 'collaudo';
+  return (
+    <div className="card uat-card">
+      <div className="card-head">
+        <KindTile kind={kind} />
+        <div className="grow"><div className="card-title">{label}</div><div className="card-sub">{n.activity ?? statusLabel(n.status)}</div></div>
+      </div>
+      <UatEvidence run={run} nodeId={nodeId} findings />
+    </div>
+  );
+}
+
 function ServiceCard({ run, nodeId, embedded = false }: { run: Run; nodeId: string; embedded?: boolean }) {
   const { t } = useI18n();
   const svc = run.nodes[nodeId].service!;

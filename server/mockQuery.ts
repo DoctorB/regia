@@ -44,6 +44,10 @@ export interface MockOptions {
   /** Cartella del progetto e cartelle aggiuntive: [simula-cartella] chiede una cartella accanto al progetto. */
   projectDir?: string;
   extraDirs?: string[];
+  /** Domanda di chiarimento: la prova risponde con un testo simulato, in un solo passaggio. */
+  question?: string;
+  /** Con resume: risponde in una copia della sessione (nuovo id, stessi totali di partenza). */
+  fork?: boolean;
 }
 
 type Step =
@@ -94,6 +98,15 @@ function script(p: PhaseConfig, resumed: boolean, t: Translate, withPoints: bool
         ] },
         { kind: 'text', text: t(withPoints ? 'mock.decisions.reviewPoints' : 'mock.decisions.review') },
       ];
+    case 'collaudo':
+      // Collaudo simulato: legge il cambiamento, usa l'app con adb e salva gli screenshot.
+      return [
+        { kind: 'tools', calls: [{ name: 'Bash', input: { command: 'git diff --stat' }, result: ' src/modulo.js | 12 ++++++----' }] },
+        { kind: 'tools', calls: [{ name: 'Bash', input: { command: 'adb -s simulato shell uiautomator dump /sdcard/regia-ui.xml' }, result: 'UI hierchary dumped to: /sdcard/regia-ui.xml' }] },
+        { kind: 'tools', calls: [{ name: 'Bash', input: { command: 'adb -s simulato shell input tap 540 1200' }, result: '' }] },
+        { kind: 'tools', calls: [{ name: 'Bash', input: { command: 'adb -s simulato exec-out screencap -p > 02-filtro.png' }, result: '' }] },
+        { kind: 'text', text: t(withPoints ? 'mock.decisions.uat' : 'mock.decisions.test') },
+      ];
     default:
       return [
         { kind: 'tools', calls: [{ name: p.allowedTools[0] ?? 'Read', input: { file_path: 'README.md' }, result: '…' }] },
@@ -117,7 +130,7 @@ export async function* mockQuery(o: MockOptions): AsyncGenerator<Record<string, 
   const alias = tier(p.model || 'sonnet');
   const model = `sim-${alias}`;
   const subModel = 'sim-haiku';
-  const sessionId = o.resume ?? randomUUID();
+  const sessionId = o.resume && !o.fork ? o.resume : randomUUID();
   const prev = o.resume ? sessions.get(o.resume) : undefined;
   const mu: Record<string, MU> = {};
   const stepMs = o.stepMs ?? Number(process.env.REGIA_MOCK_SPEED ?? 600);
@@ -130,7 +143,8 @@ export async function* mockQuery(o: MockOptions): AsyncGenerator<Record<string, 
   const needsDir = p.instructions.includes('[simula-cartella]') && Boolean(outside) && !(o.extraDirs ?? []).some((d) => path.resolve(d).toLowerCase() === outside.toLowerCase());
   const blockFirst = (p.instructions.includes('[simula-blocco]') && o.attemptIndex === 0) || needsEdit || needsDir;
   // La prima revisione propone dei punti da correggere; quella rifatta dopo la correzione non ne trova.
-  const withPoints = p.kind === 'revisione' && o.attemptIndex === 0 && !o.resume && !blockFirst;
+  const withPoints = (p.kind === 'revisione' || p.kind === 'collaudo') && o.attemptIndex === 0 && !o.resume && !blockFirst;
+  const uat = p.kind === 'collaudo';
   const manyPoints = p.instructions.includes('[simula-molti-punti]');
   // Le fasi di implementazione hanno un contesto più ampio, così da produrre dati interessanti.
   const ctxBase = p.kind === 'implementazione' ? 26000 : p.kind === 'analisi' ? 14000 : 9000;
@@ -167,6 +181,18 @@ export async function* mockQuery(o: MockOptions): AsyncGenerator<Record<string, 
 
   yield { type: 'system', subtype: 'init', apiKeySource: 'none', model, session_id: sessionId, tools: p.allowedTools, cwd: '(simulato)', permissionMode: 'dontAsk' };
   await sleep(stepMs / 2, o.signal);
+
+  if (o.question) {
+    await sleep(stepMs, o.signal);
+    turns++;
+    const text = t('mock.answer');
+    const usage = { input_tokens: 15, output_tokens: 1, cache_creation_input_tokens: 300, cache_read_input_tokens: ctxBase };
+    mainInput += 15; mainCC += 300; mainCR += ctxBase; mainOutput += 140;
+    charge(model, 15, 140, 300, ctxBase);
+    yield { type: 'assistant', parent_tool_use_id: null, session_id: sessionId, uuid: randomUUID(), message: { id: `msg_sim_${randomUUID().slice(0, 12)}`, model, role: 'assistant', content: [{ type: 'text', text }], usage } };
+    yield result('success', text);
+    return;
+  }
 
   const steps = script(p, resumed, t, withPoints);
   if (!resumed && o.skills?.length) {
@@ -231,7 +257,7 @@ export async function* mockQuery(o: MockOptions): AsyncGenerator<Record<string, 
   const decisione = t('mock.finalDecision', { outcome: esito, label: p.label });
   const finalText = `${t('mock.workDone')}\n\n\`\`\`regia\n${JSON.stringify({ esito, sintesi, decisioni: [decisione], ...(needsEdit ? { permesso: 'modifica' } : {}), ...(needsDir && !needsEdit ? { cartella: outside } : {}), ...(withPoints ? { punti: manyPoints
     ? Array.from({ length: 27 }, (_, i) => t('mock.points.numbered', { n: i + 1 }))
-    : [t('mock.points.first'), t('mock.points.second')] } : {}) }, null, 1)}\n\`\`\``;
+    : uat ? [t('mock.uat.point1'), t('mock.uat.point2')] : [t('mock.points.first'), t('mock.points.second')] } : {}), ...(uat && !blockFirst ? { manuali: [t('mock.uat.manual')] } : {}) }, null, 1)}\n\`\`\``;
   const fid = `msg_sim_${randomUUID().slice(0, 12)}`;
   const usage = { input_tokens: 20, output_tokens: 1, cache_creation_input_tokens: 400, cache_read_input_tokens: ctx };
   mainInput += 20; mainCC += 400; mainCR += ctx; mainOutput += 260;

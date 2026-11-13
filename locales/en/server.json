@@ -159,7 +159,16 @@
     "extraDirs": "Additional folders allowed: {dirs}.",
     "dirAsked": "{label}: asks to work in the folder {path}, outside the project.",
     "dirGranted": "{label}: allowed to work in the folder {path}.",
-    "dirSaved": "Folder {path} added to the saved workflow: the next run can already use it."
+    "dirSaved": "Folder {path} added to the saved workflow: the next run can already use it.",
+    "questionAsked": "{label}: question to {target} — {question}",
+    "questionAnswered": "{target} answered: {answer}",
+    "questionFailed": "{target}: no answer to the question — {error}",
+    "uat": {
+      "installed": "{label}: app installed and opened, the acceptance test starts.",
+      "logStarted": "{label}: Regia follows the log of the app {app} (warnings, errors, crashes and ANRs).",
+      "logStartedAll": "{label}: Regia follows the device errors (the app's applicationId was not detected).",
+      "crash": "{label}: app crash or freeze in the log — {what}"
+    }
   },
   "interventions": {
     "declaredKo": "Negative outcome declared: {summary}",
@@ -217,7 +226,8 @@
         "done": "Command completed: {command}",
         "activeUrl": "App running: {url}\nCommand: {command}",
         "active": "App launched and open for review.\nCommand: {command}"
-      }
+      },
+      "manual": "To try by hand:"
     },
     "interrupted": {
       "session": "Work on the task \"{label}\" was interrupted and is now resuming. Some file changes may be half done: check the current state of the files you were changing, then complete the task without redoing work already done.\n\n{protocol}",
@@ -227,7 +237,20 @@
     },
     "reference": "## Reference run\nThis work starts from the result of an earlier run, \"{name}\" of {date}. Use it to understand what that work was meant to do and which choices were made; what is actually in the project is given by the current state of the files.\n\n{report}",
     "extraDirs": "Additional folders: besides the project folder you may read and modify files in these folders (this also applies to the general rules):\n{dirs}",
-    "dirGranted": "You may now also work in the folder {path}. Resume the task from where you stopped."
+    "dirGranted": "You may now also work in the folder {path}. Resume the task from where you stopped.",
+    "question": "Question from the person who has to approve the work, after this phase: {question}\n\nAnswer clearly and concisely. This is only a request for clarification: do not modify files and do not redo the work; reread files if needed. Do not add the regia block.",
+    "noAnswer": "The phase did not write an answer.",
+    "questionInterrupted": "Question interrupted before the answer (run suspended or Regia closed): you can ask it again.",
+    "questionCancelled": "Question interrupted: you already decided on the approval.",
+    "protocolUat": "- This is an acceptance test phase: list in the \"punti\" key every anomaly found, one per item: scenario, steps to reproduce, expected and actual result, screenshot name. Ordered by severity, at most {max}. In the \"manuali\" key list the scenarios you cannot verify automatically (Bluetooth, NFC, biometrics, external devices, payments), with what to try by hand. Anomalies do not make the task fail: use \"ok\" and let the approver decide. Use \"ko\" only if you cannot test at all (the app does not start or crashes at startup) and \"bloccato\" if you need something (test credentials, a device to unlock). With no anomalies omit \"punti\".",
+    "uat": {
+      "context": "# Acceptance test on the device\nRegia has already built, installed and opened the app.\n- Device: {device}\n- App (applicationId): {app}\n- adb: \"{adb}\" (always use -s {serial})\n- Folder for screenshots: {dir}\n- App log, recorded by Regia (the app's warnings, errors, crashes and ANRs): {log}\n\n## How to proceed\n1. Understand what changed: goal, previous phases and `git diff` (if the changes are already committed, `git show --stat HEAD`). Pick 3 to 8 scenarios focused on the change, plus a quick check that the app starts and its main screen works.\n2. For each scenario: read the screen, act, check the expected result. Save a screenshot at the key moment and look at it with Read when a visual check is needed. After each scenario reread the last lines of the app log (tail) and link errors to the actions just performed.\n3. Report anomalies and the scenarios to try by hand in the final block.\n\n## Useful commands\n- Screen as text: `\"{adb}\" -s {serial} shell uiautomator dump /sdcard/regia-ui.xml` then `\"{adb}\" -s {serial} exec-out cat /sdcard/regia-ui.xml` (texts, resource-id and bounds [x1,y1][x2,y2]: tap the center).\n- Tap, text, swipe, keys: `shell input tap X Y`, `shell input text \"word%sword\"` (%s is a space), `shell input swipe X1 Y1 X2 Y2 300`, `shell input keyevent 4` (back) or `66` (enter).\n- Screenshot: `\"{adb}\" -s {serial} exec-out screencap -p > \"{dir}/01-name.png\"` (progressive number and short scenario name).\n- Clean app restart: `shell am force-stop {app}` then `shell monkey -p {app} -c android.intent.category.LAUNCHER 1`.\n{windows}\n## Rules\n- Do not modify the project code and do not commit.\n- No irreversible actions or actions with real effects: purchases, payments, sending real messages or emails, deleting data or accounts, changing device settings.\n- Do not clear the logcat buffer: Regia is following it.\n- If credentials are needed use only those given in the phase instructions; otherwise stop with outcome \"bloccato\" explaining what is needed.\n- Be efficient: read the screen as text and use screenshots only where needed, they cost more.",
+      "windows": "- On Windows prefix adb commands that contain device paths (e.g. /sdcard/...) with `MSYS_NO_PATHCONV=1 `, otherwise the shell turns them into Windows paths.\n",
+      "noDevice": "none (simulated run)",
+      "unknownApp": "not detected: find it with `shell dumpsys window | grep mCurrentFocus`",
+      "noLog": "not available",
+      "crashPoint": "The app log records a crash or freeze during the test: {what}"
+    }
   },
   "mock": {
     "decisions": {
@@ -239,7 +262,8 @@
       "test": "DECISION: I consider the suite passed because all 5 tests pass.",
       "review": "DECISION: The change is minimal and covered by tests; I am not reporting any blocking issues.",
       "reviewPoints": "DECISION: I am reporting two points to fix; neither blocks the rest of the change.",
-      "generic": "DECISION: I completed the requested task with the fewest steps."
+      "generic": "DECISION: I completed the requested task with the fewest steps.",
+      "uat": "DECISION: I test 3 scenarios related to the filter, plus startup; two anomalies to fix, no crash in the log."
     },
     "fileContent": "…file contents…",
     "fileUpdated": "File updated",
@@ -261,7 +285,13 @@
     },
     "finalDecision": "Outcome {outcome} declared at the end of phase {label}.",
     "workDone": "Work completed.",
-    "skillLoaded": "Instructions of the skill {skill} loaded (simulation)."
+    "skillLoaded": "Instructions of the skill {skill} loaded (simulation).",
+    "answer": "Simulated answer: the first point is about the changed function receiving empty input. Today it returns an error; the proposed fix returns a neutral value. The second point adds the test that covers exactly this case, so it does not come back.",
+    "uat": {
+      "point1": "Category filter: picking a category with no products leaves the list empty with no message. Steps: open the filter, pick \"Accessories\". Expected: a \"No products\" message. Actual: blank screen (02-empty-filter.png).",
+      "point2": "Screen rotation: the chosen filter is lost. Steps: pick a category and rotate the phone. Expected: the filter stays. Actual: back to \"All\" (03-rotation.png).",
+      "manual": "Bluetooth pairing with a real device: check by hand that the filter does not interfere with device discovery."
+    }
   },
   "api": {
     "originForbidden": "Origin not allowed",
@@ -297,7 +327,11 @@
     "notSuspendable": "Only a running execution can be suspended.",
     "notResumable": "Only a suspended or interrupted run can be resumed.",
     "referenceNotFound": "Reference run not found",
-    "invalidTarget": "Invalid target."
+    "invalidTarget": "Invalid target.",
+    "questionUnavailable": "Questions can be asked only while the approval is waiting.",
+    "questionEmpty": "Write the question.",
+    "questionBusy": "Wait for the answer to the previous question.",
+    "questionTarget": "This phase cannot receive questions: it must be an agent phase already completed in this run."
   },
   "nodeenv": {
     "source": {
@@ -362,7 +396,8 @@
       "manyDevices": {
         "one": "{count} device connected, using {device}.",
         "other": "{count} devices connected, using {device}. You can pick another one in the phase."
-      }
+      },
+      "flavor": "the project has product flavors: installing the {variant} variant (other flavors: {others})."
     }
   },
   "launch": {

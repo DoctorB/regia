@@ -28,6 +28,8 @@ function PhaseNode({ data, selected }: NodeProps<Node<PhaseData>>) {
   const status = run?.status;
   const tone = status ? STATUS_META[status].tone : 'idle';
   const attempts = run?.attempts ?? [];
+  // Il passo di build del collaudo non è un tentativo dell'agente.
+  const tries = attempts.filter((a) => !a.step).length;
   const cost = attempts.reduce((s, a) => s + (a.usage.costUsd ?? 0), 0);
   const active = attempts.find((a) => a.status === 'attiva');
   const liveTok = active ? active.live.inputTokens + active.live.cacheCreationInputTokens + active.live.cacheReadInputTokens : 0;
@@ -55,7 +57,7 @@ function PhaseNode({ data, selected }: NodeProps<Node<PhaseData>>) {
 
       {!live && (
         <div className="node-foot">
-          {agent && <><span>{t(`canvas.permission.${permissionLevel(cfg.allowedTools)}`)}</span>{cfg.skills === 'all' ? <span>{t('canvas.skillsAll')}</span> : cfg.skills?.length ? <span>{t('canvas.skills', { count: cfg.skills.length })}</span> : null}{cfg.reuseResult && <span>{t('canvas.reuse')}</span>}</>}
+          {agent && <><span>{cfg.kind === 'collaudo' ? t('canvas.permission.collaudo') : t(`canvas.permission.${permissionLevel(cfg.allowedTools)}`)}</span>{cfg.skills === 'all' ? <span>{t('canvas.skillsAll')}</span> : cfg.skills?.length ? <span>{t('canvas.skills', { count: cfg.skills.length })}</span> : null}{cfg.reuseResult && <span>{t('canvas.reuse')}</span>}</>}
           {cfg.kind === 'server' && (cfg.show
             ? <span>{t(`canvas.show.${cfg.show.target}`)}</span>
             : <code className="node-cmd">{cfg.command?.trim() || cfg.url?.trim() || t('canvas.noCommand')}</code>)}
@@ -75,11 +77,11 @@ function PhaseNode({ data, selected }: NodeProps<Node<PhaseData>>) {
             </div>
           )}
           {run?.lastDecision && status !== 'in_attesa' && <div className="node-decision" title={run.lastDecision}>{run.lastDecision}</div>}
-          {(agent && attempts.length > 0) || attempts.length > 1 ? (
+          {(agent && attempts.length > 0) || tries > 1 ? (
             <div className="node-foot">
               {agent && attempts.length > 0 && <span className="num">{fmtUsd(cost, 3)}</span>}
               {active && <span className="num">{t('canvas.tokens', { n: fmtTok(liveTok) })}</span>}
-              {attempts.length > 1 && <span>{t('canvas.attempts', { count: attempts.length })}</span>}
+              {tries > 1 && <span>{t('canvas.attempts', { count: tries })}</span>}
             </div>
           ) : null}
         </div>

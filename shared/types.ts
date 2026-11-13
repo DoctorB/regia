@@ -3,7 +3,7 @@ import type { Msg } from './i18n.ts';
 import type { PermissionLevel } from './permissions.ts';
 export type { Msg } from './i18n.ts';
 
-export type PhaseKind = 'analisi' | 'implementazione' | 'test' | 'revisione' | 'approvazione' | 'server' | 'personalizzata';
+export type PhaseKind = 'analisi' | 'implementazione' | 'test' | 'revisione' | 'collaudo' | 'approvazione' | 'server' | 'personalizzata';
 
 /** Fasi eseguite da un agente (le altre sono gestite da Regia: approvazione umana, server locale). */
 export const isAgentKind = (k: PhaseKind) => k !== 'approvazione' && k !== 'server';
@@ -105,6 +105,8 @@ export interface LaunchPlan {
   devices?: MobileDevice[];
   device?: MobileDevice;
   platform?: MobilePlatform;
+  /** Android: applicationId dell'app, se rilevato. */
+  appId?: string;
   build?: MobileBuild;
 }
 
@@ -303,6 +305,8 @@ export interface DeclaredOutcome {
   permesso?: PermissionLevel;
   /** Fase ferma perché deve lavorare fuori dalle cartelle consentite: la cartella che le servirebbe. */
   cartella?: string;
+  /** Solo collaudi: scenari che non si possono verificare in automatico (hardware, biometria…), da provare a mano. */
+  manuali?: string[];
 }
 
 /** Punti proposti da una fase a monte, mostrati come checklist nell'approvazione. */
@@ -324,7 +328,7 @@ export interface Attempt {
   id: string;
   nodeId: string;
   index: number;
-  reason: 'iniziale' | 'riprova' | 'ripresa_con_feedback' | 'dopo_correzione' | 'riuso' | 'ripresa_dopo_interruzione';
+  reason: 'iniziale' | 'riprova' | 'ripresa_con_feedback' | 'dopo_correzione' | 'riuso' | 'ripresa_dopo_interruzione' | 'domanda';
   startedAt: string;
   endedAt?: string;
   /** interrotta: fermato da una sospensione o dalla chiusura di Regia; la fase riparte con Riprendi. */
@@ -351,6 +355,37 @@ export interface Attempt {
   /** Totali cumulativi della sessione dopo questo tentativo (per contare solo la differenza se viene ripresa). */
   sessionCumulative?: { costUsd: number; byModel: Record<string, ModelUsageEntry> };
   apiKeySource?: string;
+  /** Solo collaudi: il passo di build e installazione, gestito da Regia senza agente (non conta come tentativo). */
+  step?: 'build';
+}
+
+/** Domanda di chiarimento fatta da chi approva a una fase già completata: risponde senza modificare nulla. */
+export interface PhaseQuestion {
+  id: string;
+  /** Fase a cui è rivolta. */
+  targetId: string;
+  question: string;
+  answer?: string;
+  status: 'in_corso' | 'risposta' | 'errore';
+  error?: string;
+  askedAt: string;
+  /** Giro di approvazione (feedbackRounds) in cui è stata fatta: la card mostra solo quelle del giro corrente. */
+  round: number;
+  /** Sessione della conversazione (copia di quella della fase): le domande successive la continuano. */
+  sessionId?: string;
+  /** Consumi della risposta, contati nei totali dell'esecuzione. */
+  attempt: Attempt;
+}
+
+/** Collaudo in corso o concluso: cartella delle prove, screenshot e quanto emerso dal log dell'app. */
+export interface UatState {
+  /** Giro di collaudo (1, 2… dopo ogni correzione): le prove di ogni giro restano separate. */
+  round: number;
+  device?: string;
+  appId?: string;
+  screenshots: string[];
+  /** Log dell'app registrato da Regia durante il collaudo (solo Android). */
+  log?: { lines: number; errors: number; crashes: string[] };
 }
 
 export interface NodeRunState {
@@ -373,6 +408,12 @@ export interface NodeRunState {
   missingPermission?: PermissionLevel;
   /** Fase ferma: la cartella esterna chiesta dall'agente, concedibile con l'azione "consenti_cartella". */
   missingDir?: string;
+  /** Solo approvazioni in attesa: fasi a cui si può fare una domanda (con agente, completate, con una sessione). */
+  askable?: { nodeId: string; label: string }[];
+  /** Solo approvazioni: domande di chiarimento fatte alle fasi precedenti, con le risposte. */
+  questions?: PhaseQuestion[];
+  /** Solo collaudi: screenshot e log dell'app dell'ultimo giro. */
+  uat?: UatState;
   /** Solo fase "server": processo gestito da Regia. */
   service?: ServiceState;
   /** Fase agente fermata a metà (sospensione o chiusura di Regia): da dove riprenderla. */

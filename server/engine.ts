@@ -4,7 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { query } from '@anthropic-ai/claude-agent-sdk';
 import type {
-  Attempt, ContinuationPlan, LaunchPlan, PointRef, ReviewPoints, RunReference, ServiceState, DeclaredOutcome, EventKind, HumanAction, InterruptedWork, NodeRunState, ReadyCheck, Run, RunEvent, RunMode, ShowTarget, Workflow, WorkflowNode, WorkflowSettings,
+  Attempt, ContinuationPlan, LaunchPlan, PointRef, ReviewPoints, RunReference, ServiceState, DeclaredOutcome, EventKind, HumanAction, InterruptedWork, NodeRunState, ReadyCheck, Run, RunEvent, RunMode, ShowTarget, Workflow, WorkflowNode, WorkflowSettings, PhaseQuestion,
 } from '../shared/types.ts';
 import { emptyTotals, isAgentKind, RESUMABLE } from '../shared/types.ts';
 import { msg, type Msg, type Params, type Translate } from '../shared/i18n.ts';
@@ -16,7 +16,9 @@ import { rulesPrompt, snapshotRules } from './rules.ts';
 import { activePrinciples, principlesText } from '../shared/principles.ts';
 import { runReport } from '../shared/report.ts';
 import { grantLevel, lacksLevel, type PermissionLevel } from '../shared/permissions.ts';
-import { getRun, getWorkflow, readReuseCache, saveRun, saveWorkflow, writeReuseEntry } from './store.ts';
+import { DATA_DIR, getRun, getWorkflow, readReuseCache, saveRun, saveWorkflow, writeReuseEntry } from './store.ts';
+import { adbPath } from './mobile.ts';
+import { watchAppLog, type AppLogWatcher } from './uat.ts';
 import { gitState } from './folder.ts';
 import { cacheTtlMs, interruptedSummary, interruptNodes, isInterruptedNote } from './resume.ts';
 import { AttemptAccounting, sumTotals, type SessionSnapshot } from './usage.ts';
@@ -29,6 +31,8 @@ const MAX_EVENTS = 6000;
 const MAX_FEEDBACK_ROUNDS = 3;
 /** Punti proposti al massimo da una revisione. */
 const MAX_POINTS = 25;
+/** Turni massimi per rispondere a una domanda (può rileggere qualche file). */
+const QUESTION_TURNS = 10;
 const DONE = new Set(['completata', 'saltata', 'riusata']);
 
 export type Broadcast = (msg: unknown) => void;
@@ -177,6 +181,11 @@ export class RunEngine {
     this.lang = workflowLang(run.snapshot);
     this.t = serverT(this.lang);
     for (const n of Object.values(run.nodes)) for (const a of n.attempts) if (a.sessionId && a.sessionCumulative) this.sessions.set(a.sessionId, a.sessionCumulative);
+    // Domande rimaste a metà (sospensione o chiusura di Regia): restano senza risposta, si possono rifare.
+    for (const n of Object.values(run.nodes)) for (const q of n.questions ?? []) {
+      if (q.sessionId && q.attempt.sessionCumulative) this.sessions.set(q.sessionId, q.attempt.sessionCumulative);
+      if (q.status === 'in_corso') { q.status = 'errore'; q.error = this.t('agent.questionInterrupted'); q.attempt.status = 'interrotta'; }
+    }
   }
 
   subscribe(fn: Broadcast) {
@@ -239,7 +248,7 @@ export class RunEngine {
   }
 
   private runChanged() {
-    const all = Object.values(this.run.nodes).flatMap((n) => n.attempts.map((a) => a.usage));
+    const all = Object.values(this.run.nodes).flatMap((n) => [...n.attempts, ...(n.questions ?? []).map((q) => q.attempt)].map((a) => a.usage));
     const s = sumTotals(all);
     const { unknownCost, ...totals } = s;
     this.run.totals = totals;
@@ -453,12 +462,7 @@ export class RunEngine {
 
   private newAttempt(nodeId: string, reason: Attempt['reason']): Attempt {
     const st = this.run.nodes[nodeId];
-    const a: Attempt = {
-      id: `${nodeId}#${st.attempts.length + 1}`, nodeId, index: st.attempts.length, reason, startedAt: new Date().toISOString(), status: 'attiva',
-      models: [], usage: emptyTotals(), usageSource: 'nessuno',
-      live: { inputTokens: 0, cacheCreationInputTokens: 0, cacheReadInputTokens: 0, steps: 0, duplicatesSkipped: 0, subagentMessages: 0 },
-      toolCalls: [], subagents: 0,
-    };
+    const a = blankAttempt(`${nodeId}#${st.attempts.length + 1}`, nodeId, st.attempts.length, reason);
     st.attempts.push(a);
     return a;
   }
@@ -468,7 +472,7 @@ export class RunEngine {
    * una sessione nuova; opts.feedback: correzione in corso da ricordare se la fase viene interrotta;
    * opts.fallback: se la sessione non si può riprendere, la fase riparte con il riassunto.
    */
-  private async runAgent(n: WorkflowNode, reason: Attempt['reason'], resume?: { sessionId: string; feedback: string; prompt?: string }, opts: { extra?: string; feedback?: string; fallback?: InterruptedWork } = {}) {
+  private async runAgent(n: WorkflowNode, reason: Attempt['reason'], resume?: { sessionId: string; feedback: string; prompt?: string }, opts: { extra?: string; feedback?: string; fallback?: InterruptedWork; uat?: { dir: string; watcher?: AppLogWatcher } } = {}) {
     if (this.run.status === 'sospesa') return;
     const st = this.run.nodes[n.id];
     const d = n.data;
@@ -539,17 +543,20 @@ export class RunEngine {
     const toolNames = new Map<string, string>();
     let gotResult = false;
     let lastLive = 0;
+    /** Task dei subagenti avviati in questo tentativo (gli altri task, ad esempio Bash, non sono subagenti). */
+    const agentTasks = new Set<string>();
     /** Messaggio localizzabile dell'errore, quando la causa è riconosciuta da Regia. */
     let errorMsg: Msg | undefined;
     try {
       const stream = this.run.mode === 'prova'
-        ? mockQuery({ phase: d, attemptIndex: a.index, resume: resume?.sessionId, signal: ctrl.signal, lang: this.lang, skills: bundle ? Object.values(bundle.byId) : [], projectDir: this.wf.settings.projectDir, extraDirs: extraDirs(this.wf.settings) })
+        ? mockQuery({ phase: d, attemptIndex: st.attempts.filter((x) => !x.step).indexOf(a), resume: resume?.sessionId, signal: ctrl.signal, lang: this.lang, skills: bundle ? Object.values(bundle.byId) : [], projectDir: this.wf.settings.projectDir, extraDirs: extraDirs(this.wf.settings) })
         : query({
           prompt,
           options: {
             cwd: this.wf.settings.projectDir,
             // Senza richieste di permesso, Claude Code nega le scritture fuori dalle cartelle di lavoro: queste le ampliano.
-            ...(existingExtraDirs(this.wf.settings).length ? { additionalDirectories: existingExtraDirs(this.wf.settings) } : {}),
+            // Il collaudo salva gli screenshot nella cartella delle prove, fuori dal progetto.
+            ...(existingExtraDirs(this.wf.settings).length || opts.uat ? { additionalDirectories: [...existingExtraDirs(this.wf.settings), ...(opts.uat ? [opts.uat.dir] : [])] } : {}),
             model: d.model || undefined,
             tools,
             allowedTools: tools,
@@ -609,10 +616,14 @@ export class RunEngine {
             else this.say('esito_strumento', msg('events.toolNoOutput', { name }), where);
           }
         } else if (sm.type === 'system' && sm.subtype === 'task_started') {
+          // Anche i comandi Bash lunghi sono "task": contano come subagenti solo quelli di tipo local_agent (o senza tipo, CLI meno recenti).
+          if (sm.task_type && sm.task_type !== 'local_agent') continue;
+          if (sm.task_id) agentTasks.add(sm.task_id);
           a.subagents++;
           this.say('subagente', msg('events.subagentStarted', { description: sm.description ?? '' }), { nodeId: n.id, attemptId: a.id, subagent: true });
           this.decision(n.id, a.id, msg('events.decisions.delegated', { description: sm.description ?? '' }), 'osservata', false);
         } else if (sm.type === 'system' && sm.subtype === 'task_notification') {
+          if (sm.task_id && !agentTasks.has(sm.task_id)) continue;
           const tokens: number | undefined = sm.usage?.total_tokens || undefined;
           const status = sm.status === 'completed' ? 'completed' : 'other';
           const p = { status: sm.status, summary: sm.summary ?? '', count: tokens };
@@ -658,6 +669,7 @@ export class RunEngine {
       this.running.delete(n.id);
       this.controllers.delete(n.id);
       if (bundle) removeSkillBundles(`${this.run.id}_${a.id}`);
+      if (opts.uat) this.closeUat(st, a, opts.uat.dir, opts.uat.watcher);
     }
 
     a.endedAt = new Date().toISOString();
@@ -720,6 +732,7 @@ export class RunEngine {
         ? `${declared.sintesi}${declared.decisioni.length ? `\n${this.t('agent.output.decisions')} ${declared.decisioni.map((x) => `- ${x}`).join('\n')}` : ''}`
           + (declared.punti?.length ? `\n${this.t('agent.output.points')}\n${declared.punti.map((x) => `- ${x}`).join('\n')}` : '')
           + (declared.puntiOmessi?.length ? `\n${this.t('agent.output.pointsOmitted', { count: declared.puntiOmessi.length })}` : '')
+          + (declared.manuali?.length ? `\n${this.t('agent.output.manual')}\n${declared.manuali.map((x) => `- ${x}`).join('\n')}` : '')
         : clip(a.resultText ?? '', 3000);
       if (!declared) this.say('fase', msg('events.noOutcomeBlock', { label: d.label }), where);
       // I punti scartati non compaiono altrove: il blocco di esito è tolto dal testo mostrato negli eventi.
@@ -751,7 +764,56 @@ export class RunEngine {
 
   private startNode(n: WorkflowNode, reason: Attempt['reason']) {
     if (this.run.status === 'sospesa') return Promise.resolve();
+    if (n.data.kind === 'collaudo') return this.runCollaudo(n, reason);
     return n.data.kind === 'server' ? this.runService(n, reason) : this.runAgent(n, reason);
+  }
+
+  /** Collaudo: build, installazione e avvio come "Mostra sul telefono", poi l'agente prova l'app mentre Regia ne segue il log. */
+  private runCollaudo(n: WorkflowNode, reason: Attempt['reason']) {
+    return this.runService(n, reason, (plan) => { void this.runUat(n, reason, plan); });
+  }
+
+  private async runUat(n: WorkflowNode, reason: Attempt['reason'], plan: LaunchPlan | undefined) {
+    const st = this.run.nodes[n.id];
+    const round = (st.uat?.round ?? 0) + 1;
+    const dir = path.join(DATA_DIR, 'uat', this.run.id, n.id, String(round));
+    fs.mkdirSync(dir, { recursive: true });
+    const device = plan?.device;
+    const appId = plan?.appId;
+    st.uat = { round, device: device?.name, appId, screenshots: [] };
+    const logFile = path.join(dir, 'app-log.txt');
+    const where = { nodeId: n.id };
+    let watcher: AppLogWatcher | undefined;
+    // Il log si registra solo con un dispositivo Android vero (in prova non c'è).
+    if (this.run.mode === 'reale' && device && plan?.platform === 'android') {
+      watcher = watchAppLog(adbPath(), device.id, appId, logFile, (what) => {
+        this.say('errore', msg('events.uat.crash', { label: n.data.label, what: clip(what, 300) }), where);
+      });
+      this.say('fase', msg(appId ? 'events.uat.logStarted' : 'events.uat.logStartedAll', { label: n.data.label, app: appId ?? '' }), where);
+    }
+    const extra = this.t('agent.uat.context', {
+      device: device ? `${device.name} (${device.id})` : this.t('agent.uat.noDevice'),
+      serial: device?.id ?? '',
+      adb: slash(adbPath()),
+      app: appId ?? this.t('agent.uat.unknownApp'),
+      dir: slash(dir),
+      log: watcher ? slash(logFile) : this.t('agent.uat.noLog'),
+      windows: process.platform === 'win32' ? this.t('agent.uat.windows') : '',
+    });
+    await this.runAgent(n, reason, undefined, { extra, uat: { dir, watcher } });
+  }
+
+  /** Fine del giro di collaudo: chiude il log, raccoglie gli screenshot e aggiunge crash e ANR alle anomalie. */
+  private closeUat(st: NodeRunState, a: Attempt, dir: string, watcher: AppLogWatcher | undefined) {
+    const log = watcher?.stop();
+    if (!st.uat) return;
+    try { st.uat.screenshots = fs.readdirSync(dir).filter((x) => /\.(png|jpe?g)$/i.test(x)).sort(); } catch { /* cartella assente */ }
+    if (!log) return;
+    st.uat.log = log;
+    if (log.crashes.length && a.declared) {
+      const found = log.crashes.map((c) => this.t('agent.uat.crashPoint', { what: c }));
+      a.declared.punti = [...(a.declared.punti ?? []), ...found].slice(0, MAX_POINTS);
+    }
   }
 
   /**
@@ -759,9 +821,10 @@ export class RunEngine {
    * e lo tiene attivo fino alla fine dell'esecuzione. In caso di errore legge l'output, riconosce le cause comuni,
    * ritenta da solo quando può e altrimenti propone l'intervento adatto.
    */
-  private async runService(n: WorkflowNode, reason: Attempt['reason']): Promise<void> {
+  private async runService(n: WorkflowNode, reason: Attempt['reason'], then?: (plan: LaunchPlan | undefined) => void): Promise<void> {
     const st = this.run.nodes[n.id];
-    const d = n.data;
+    // Il collaudo è sempre su un dispositivo, anche se la fase è stata creata cambiando tipo.
+    const d = n.data.kind === 'collaudo' && !n.data.show ? { ...n.data, show: { target: 'dispositivo' as const } } : n.data;
     this.stopService(n.id, 'restart');
     const baseCwd = d.subdir?.trim() ? path.resolve(this.wf.settings.projectDir, d.subdir.trim()) : this.wf.settings.projectDir;
     let cwd = baseCwd;
@@ -779,6 +842,8 @@ export class RunEngine {
     this.serviceFixes.set(n.id, fix);
     const a = this.newAttempt(n.id, reason);
     a.usage.costUsd = 0;
+    if (then) a.step = 'build';
+    let launched: LaunchPlan | undefined;
     st.status = 'attiva';
     st.pendingActions = undefined;
     this.setPending(st, undefined);
@@ -798,6 +863,15 @@ export class RunEngine {
       st.activity = undefined;
       if (this.run.status === 'annullata') { a.status = 'annullata'; this.nodeChanged(n.id); return; }
       if (this.run.status === 'sospesa') { a.status = 'interrotta'; this.nodeChanged(n.id); return; }
+      // Collaudo: app installata e aperta, ora tocca all'agente (stessa fase, nessun completamento qui).
+      if (ok && then) {
+        a.status = 'ok';
+        st.service = undefined;
+        ev(msg('events.uat.installed'));
+        this.nodeChanged(n.id);
+        then(launched);
+        return;
+      }
       if (ok) {
         a.status = 'ok';
         st.status = 'completata';
@@ -842,6 +916,7 @@ export class RunEngine {
       st.activity = this.t(show.target === 'dispositivo' ? 'events.activity.detectingDevice' : 'events.activity.detectingProject');
       this.nodeChanged(n.id);
       const plan = await planLaunch(baseCwd, show, d.url ?? '', { simulate: sim });
+      launched = plan;
       if (this.run.status === 'annullata' || this.run.status === 'sospesa') return finish(false, msg('interventions.service.cancelled'));
       cwd = path.join(baseCwd, plan.dir);
       svc.cwd = cwd;
@@ -1202,6 +1277,125 @@ export class RunEngine {
       .filter((p) => p.items.length);
   }
 
+  /** Ultima sessione della fase, da cui riprendere una conversazione. */
+  private lastSession(nodeId: string) {
+    return [...(this.run.nodes[nodeId]?.attempts ?? [])].reverse().find((a) => a.sessionId)?.sessionId;
+  }
+
+  /**
+   * Fasi a cui chi approva può fare una domanda: quelle che l'approvazione esamina, con un agente, completate e con
+   * una sessione da riprendere. Prima le revisioni, che di solito sono quelle da interrogare.
+   */
+  private askableFor(approvalId: string): { nodeId: string; label: string }[] {
+    const targets = this.reworkTargets(approvalId);
+    const ids = new Set([...targets, ...this.nodesBetween(targets, approvalId), ...this.preds(approvalId)]);
+    return this.wf.nodes
+      .filter((x) => ids.has(x.id) && isAgentKind(x.data.kind) && this.run.nodes[x.id]?.status === 'completata' && this.lastSession(x.id))
+      .sort((a, b) => Number(b.data.kind === 'revisione') - Number(a.data.kind === 'revisione'))
+      .map((x) => ({ nodeId: x.id, label: x.data.label }));
+  }
+
+  /**
+   * Domanda di chiarimento a una fase già completata, mentre l'approvazione aspetta. La fase risponde in una copia della
+   * sua sessione (quella originale resta intatta), può solo leggere, e niente viene rieseguito.
+   */
+  ask(approvalId: string, targetId: string, question: string): PhaseQuestion {
+    const st = this.run.nodes[approvalId];
+    const n = this.node(approvalId);
+    if (!st || !n || n.data.kind !== 'approvazione') throw this.fail(msg('api.phaseNotFound'));
+    if (st.status !== 'attesa_intervento' || !st.pendingActions?.includes('approva')) throw this.fail(msg('api.questionUnavailable'));
+    const text = redact(question.trim()).slice(0, 2000);
+    if (!text) throw this.fail(msg('api.questionEmpty'));
+    if (st.questions?.some((x) => x.status === 'in_corso')) throw this.fail(msg('api.questionBusy'));
+    const target = this.node(targetId);
+    if (!target || !(st.askable ?? []).some((x) => x.nodeId === targetId)) throw this.fail(msg('api.questionTarget'));
+    // Le domande successive alla stessa fase, nello stesso giro, continuano la conversazione già aperta.
+    const prev = [...(st.questions ?? [])].reverse().find((x) => x.targetId === targetId && x.round === st.feedbackRounds && x.sessionId && x.status === 'risposta');
+    const from = prev?.sessionId ?? this.lastSession(targetId);
+    if (!from) throw this.fail(msg('api.questionTarget'));
+    const qs = (st.questions ??= []);
+    const id = `q${qs.length + 1}`;
+    const entry: PhaseQuestion = {
+      id, targetId, question: text, status: 'in_corso', askedAt: new Date().toISOString(), round: st.feedbackRounds,
+      attempt: blankAttempt(`${approvalId}?${id}`, targetId, 0, 'domanda'),
+    };
+    qs.push(entry);
+    this.say('intervento', msg('events.questionAsked', { label: n.data.label, target: target.data.label, question: clip(text, 300) }), { nodeId: approvalId });
+    this.nodeChanged(approvalId);
+    void this.answer(approvalId, target, entry, from, !prev);
+    return entry;
+  }
+
+  private async answer(approvalId: string, target: WorkflowNode, q: PhaseQuestion, from: string, fork: boolean) {
+    const d = target.data;
+    const a = q.attempt;
+    const ctrl = new AbortController();
+    const key = a.id;
+    this.controllers.set(key, ctrl);
+    const acc = new AttemptAccounting(a, this.sessions.get(from), this.run.mode === 'prova' ? 'simulato' : undefined);
+    const tools = ['Read', 'Glob', 'Grep'];
+    const dirs = existingExtraDirs(this.wf.settings);
+    let text = '';
+    let gotResult = false;
+    try {
+      const stream = this.run.mode === 'prova'
+        ? mockQuery({ phase: d, attemptIndex: 0, resume: from, fork, question: q.question, signal: ctrl.signal, lang: this.lang })
+        : query({
+          prompt: this.t('agent.question', { question: q.question }),
+          options: {
+            cwd: this.wf.settings.projectDir,
+            ...(dirs.length ? { additionalDirectories: dirs } : {}),
+            model: d.model || undefined,
+            tools,
+            allowedTools: tools,
+            permissionMode: 'dontAsk',
+            systemPrompt: { type: 'preset', preset: 'claude_code', append: this.systemAppend(d) || undefined },
+            maxTurns: QUESTION_TURNS,
+            abortController: ctrl,
+            resume: from,
+            forkSession: fork,
+            settingSources: this.wf.settings.loadProjectSettings ? ['project'] : [],
+          },
+        });
+      for await (const sm of stream as AsyncIterable<Record<string, any>>) {
+        if (sm.type === 'system' && sm.subtype === 'init') {
+          q.sessionId = sm.session_id;
+          a.sessionId = sm.session_id;
+          if (sm.model && !a.models.includes(sm.model)) a.models.push(sm.model);
+        } else if (sm.type === 'assistant') {
+          acc.onAssistant(sm);
+          if (!sm.parent_tool_use_id) for (const b of sm.message?.content ?? []) if (b.type === 'text' && b.text?.trim()) text = b.text;
+        } else if (sm.type === 'result') {
+          gotResult = true;
+          const snap = acc.onResult(sm);
+          if (snap) a.sessionCumulative = snap;
+          if (snap && sm.session_id) this.sessions.set(sm.session_id, snap);
+          q.sessionId = sm.session_id ?? q.sessionId;
+          if (typeof sm.result === 'string' && sm.result.trim()) text = sm.result;
+        }
+      }
+      if (!gotResult) acc.applyPartial();
+      const answer = redact(text.replace(/```regia[\s\S]*?```/g, '').trim()).slice(0, 8000);
+      if (!answer) throw new Error(this.t('agent.noAnswer'));
+      q.answer = answer;
+      q.status = 'risposta';
+      a.status = 'ok';
+      this.say('testo', msg('events.questionAnswered', { target: d.label, answer: clip(answer, 300) }), { nodeId: approvalId });
+    } catch (err) {
+      if (!gotResult) acc.applyPartial();
+      q.status = 'errore';
+      a.status = ctrl.signal.aborted ? 'annullata' : 'errore';
+      q.error = ctrl.signal.aborted ? this.t('agent.questionCancelled') : redact((err as Error).message).slice(0, 500);
+      this.say('errore', msg('events.questionFailed', { target: d.label, error: q.error }), { nodeId: approvalId });
+    } finally {
+      a.endedAt = new Date().toISOString();
+      this.controllers.delete(key);
+    }
+    if (this.frozen) return;
+    this.nodeChanged(approvalId);
+    this.runChanged();
+  }
+
   /** Feedback per la fase da correggere: i punti scelti, raggruppati per fase, e il commento libero. */
   private composeFeedback(st: NodeRunState, refs: PointRef[], comment: string): string {
     const parts: string[] = [];
@@ -1224,6 +1418,8 @@ export class RunEngine {
     this.setPending(st, undefined, [n.data.instructions, checklist].filter(Boolean).join('\n\n'));
     const points = this.reviewPointsFor(n.id);
     st.reviewPoints = points.length ? points : undefined;
+    const askable = this.askableFor(n.id);
+    st.askable = askable.length ? askable : undefined;
     this.say('intervento', msg('events.awaitingApproval', { label: n.data.label }), { nodeId: n.id });
     this.nodeChanged(n.id);
   }
@@ -1274,6 +1470,7 @@ export class RunEngine {
     if (!st || !n) throw this.fail(msg('api.phaseNotFound'));
     if (action === 'annulla') return this.cancel();
     if (!st.pendingActions?.includes(action)) throw this.fail(msg('api.actionUnavailable', { action }));
+    for (const q of st.questions ?? []) if (q.status === 'in_corso') this.controllers.get(q.attempt.id)?.abort();
     // Respingendo, i punti scelti tra quelli proposti diventano parte del feedback per la fase da correggere.
     const fb = action === 'respingi' && n.data.kind === 'approvazione'
       ? this.composeFeedback(st, points, redact(feedback.trim()))
@@ -1408,7 +1605,10 @@ type StopReason = 'completed' | 'restart' | 'startFailed' | 'manual' | 'cancelle
 export function agentProtocol(lang = 'it', kind?: WorkflowNode['data']['kind']): string {
   const t = serverT(lang);
   // Le revisioni elencano a parte le modifiche proposte: chi approva sceglie quali far applicare.
-  return kind === 'revisione' ? `${t('agent.protocol')}\n${t('agent.protocolPoints', { max: MAX_POINTS })}` : t('agent.protocol');
+  if (kind === 'revisione') return `${t('agent.protocol')}\n${t('agent.protocolPoints', { max: MAX_POINTS })}`;
+  // Il collaudo usa gli stessi punti per le anomalie, più gli scenari da provare a mano.
+  if (kind === 'collaudo') return `${t('agent.protocol')}\n${t('agent.protocolUat', { max: MAX_POINTS })}`;
+  return t('agent.protocol');
 }
 
 /** Riga di decisione dichiarata dall'agente: "DECISIONE:" o "DECISION:", in qualsiasi lingua, anche in grassetto. */
@@ -1418,6 +1618,19 @@ export function parseDecisionLine(line: string): string | null {
   const m = line.match(DECISION_LINE);
   const text = m?.[1].trim();
   return text ? text : null;
+}
+
+/** Percorso con le barre "/": la shell degli agenti su Windows è bash, dove le barre rovesciate sono caratteri di escape. */
+const slash = (p: string) => p.replace(/\\/g, '/');
+
+/** Tentativo vuoto, con i contatori azzerati. */
+function blankAttempt(id: string, nodeId: string, index: number, reason: Attempt['reason']): Attempt {
+  return {
+    id, nodeId, index, reason, startedAt: new Date().toISOString(), status: 'attiva',
+    models: [], usage: emptyTotals(), usageSource: 'nessuno',
+    live: { inputTokens: 0, cacheCreationInputTokens: 0, cacheReadInputTokens: 0, steps: 0, duplicatesSkipped: 0, subagentMessages: 0 },
+    toolCalls: [], subagents: 0,
+  };
 }
 
 /** Cartelle aggiuntive valide del workflow: percorsi assoluti, normalizzati, senza doppioni. */
@@ -1453,6 +1666,9 @@ export function parseDeclared(text: unknown): DeclaredOutcome | undefined {
       ? j.punti.map((x: unknown) => redact(String(x ?? '')).trim().slice(0, 500)).filter(Boolean)
       : [];
     const punti = all.slice(0, MAX_POINTS);
+    const manuali: string[] = Array.isArray(j.manuali)
+      ? j.manuali.map((x: unknown) => redact(String(x ?? '')).trim().slice(0, 500)).filter(Boolean).slice(0, MAX_POINTS)
+      : [];
     const puntiOmessi = all.slice(MAX_POINTS, 100);
     return {
       esito,
@@ -1460,6 +1676,7 @@ export function parseDeclared(text: unknown): DeclaredOutcome | undefined {
       decisioni: Array.isArray(j.decisioni) ? j.decisioni.slice(0, 10).map((x: unknown) => redact(String(x)).slice(0, 300)) : [],
       ...(punti.length ? { punti } : {}),
       ...(puntiOmessi.length ? { puntiOmessi } : {}),
+      ...(manuali.length ? { manuali } : {}),
       // Il permesso conta solo se la fase si è fermata.
       ...(esito !== 'ok' && (j.permesso === 'modifica' || j.permesso === 'internet') ? { permesso: j.permesso as PermissionLevel } : {}),
       ...(esito !== 'ok' && typeof j.cartella === 'string' && path.isAbsolute(j.cartella.trim()) ? { cartella: j.cartella.trim().slice(0, 500) } : {}),

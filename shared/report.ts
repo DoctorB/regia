@@ -63,7 +63,7 @@ export function runReport(run: Run, t: Translate, locale: string, opts: { compac
     out.push(`### ${i + 1}. ${n.data.label}`, '');
     const all = st?.attempts ?? [];
     // I tentativi riusati non sono stati eseguiti qui: si indica da dove vengono, senza durata né costo.
-    const attempts = all.filter((a) => a.reason !== 'riuso');
+    const attempts = all.filter((a) => a.reason !== 'riuso' && !a.step);
     const reused = all.find((a) => a.reusedFrom)?.reusedFrom;
     const facts = [`${t(`kinds.${n.data.kind}.label`)}`, t(`status.${status}`)];
     if (reused) facts.push(t('report.reusedFrom', { id: `\`${reused.runId}\`` }));
@@ -89,6 +89,10 @@ export function runReport(run: Run, t: Translate, locale: string, opts: { compac
 
     const files = [...new Set(events.filter((e) => e.kind === 'strumento').map((e) => FILE_TOOL.exec(e.text)?.[1]).filter((f): f is string => Boolean(f)))];
     if (files.length) out.push(`**${t('report.files')}**`, '', ...files.map((f) => `- \`${f}\``), '');
+
+    // Domande di chiarimento fatte in un'approvazione, con le risposte.
+    const questions = (st?.questions ?? []).filter((q) => q.status === 'risposta' && q.answer);
+    if (questions.length) out.push(`**${t('report.questions')}**`, '', ...questions.map((q) => `- **${cell(label(q.targetId))}** — ${cell(q.question)}\n  ${cell(q.answer!)}`), '');
   });
 
   const human = run.events.filter((e) => e.kind === 'intervento' && e.msg && HUMAN_ACTION.test(e.msg.key));
@@ -96,7 +100,8 @@ export function runReport(run: Run, t: Translate, locale: string, opts: { compac
   if (!human.length) out.push(t('report.noInterventions'), '');
   for (const e of human) {
     const p = e.msg!.params ?? {};
-    const action = t(`actions.${p.action}.label`);
+    // Le concessioni hanno un'etichetta con parametri: nel resoconto basta il nome dell'azione.
+    const action = p.action === 'consenti' || p.action === 'consenti_cartella' ? t(`report.action.${p.action}`) : t(`actions.${p.action}.label`);
     const fb = p.feedback ? ` — "${cell(String(p.feedback))}"` : '';
     out.push(`- ${date(e.ts)} · **${cell(label(e.nodeId))}**: ${action}${fb}`);
   }

@@ -78,6 +78,7 @@ then restart with `npm start`. The check only reads the published version number
 | Analysis, Implementation, Test, Review, Custom | Work done by an agent |
 | **Human approval** | The workflow waits until you approve or reject |
 | **Run app** | Regia starts the app so you can check it: web, desktop, mobile, or it checks a site already served by IIS |
+| **Acceptance test on phone** (ready-made phase) | Builds and installs the app on the phone, tries it on the change's scenarios while following the log and reports anomalies |
 | **Publishing** (ready-made phase) | Commit, push and any releases or GitHub Actions. Place it after an approval |
 
 ---
@@ -101,6 +102,10 @@ When the workflow stops, the **Status** tab shows what is needed:
 
 - **Approval**: read the summaries of the previous phases and check the project (`git diff`), then **Approve** or **Reject with comment**: the phase that produced the work resumes where it left off with your comment, and tests and review run again.
   When a review finds something to fix it still turns green: its task was to check. The points it proposes appear in the approval as **Points reported**, one per checkbox. Tick the ones to correct, optionally add your own instructions for refinements the review cannot judge, and reject: the chosen points and your comment go together to the phase that wrote the code. If you approve with points ticked, Regia asks you to confirm.
+  If something is unclear, open **Ask a question** in the same card: pick the phase to ask (usually the review) and write the question. The phase answers right there, without changing files, while the approval keeps waiting; you can ask follow-up questions and the conversation continues. Then decide whether to approve or reject. Each question costs a short agent turn, included in the usage; questions and answers go into the run report.
+
+  ![A question to the review during approval](img/18-domanda.png)
+
 - **Failed or blocked phase**: **Retry from scratch**, **Resume session** (with a message for the agent), **Skip phase** or **Cancel run**.
   If the phase stopped because it lacked permission for what it needed (for example running a script or creating a file in a read-only phase), **Allow changes and resume** also appears: the phase resumes the same session with the new permission, and the saved workflow is updated so the next run starts that way.
   Likewise, if the phase stopped because it had to work in a folder outside the project, **Allow <folder> and resume** appears: the folder is added to the workflow's additional folders, the saved workflow included, and the phase resumes the same session.
@@ -158,12 +163,28 @@ The phase panel shows right away what was detected (project, device, command) an
 
 Under **More options** you can set a subfolder, change the maximum wait or switch to a **custom command**, starting from the detected one.
 
+### Acceptance test on phone
+
+**Acceptance test on phone**, among the ready-made phases, does in a single node what you would do to try a change on the phone:
+
+1. **Builds, installs and opens the app** like **Show on phone**, with the same device and build choices. This part uses no agent and costs nothing.
+2. **Follows the app log** for the whole test (on Android, with `logcat`): the app's warnings, errors, crashes and ANRs. A crash shows up in the events right away and becomes an anomaly even if the agent misses it.
+3. **Tests**: an agent derives the scenarios from the goal, the previous phases and `git diff`, runs them on the app like a user (reads the screen, taps, types, scrolls), saves screenshots at the key moments and rereads the log after each scenario.
+4. **Reports the anomalies**: each with steps, expected and actual result and screenshot. Scenarios that cannot be tried automatically (Bluetooth, NFC, biometrics, payments) go under **To try by hand**.
+
+![Acceptance test on phone](img/19-collaudo.png)
+
+The anomalies reach the next approval as **Points reported**, like the review's: tick the ones to fix and reject, the phase that wrote the code fixes them and the test runs again, build included. In the **Status** tab the test card shows device, anomalies, log summary (with the full file) and thumbnails of the screenshots of each round.
+
+The agent does not change the code and performs no irreversible actions (purchases, real sends, deleting data). If test credentials are needed, write them in the phase instructions; for now the automated test is for Android.
+
 ### iOS apps on a Mac
 
 On a Mac with **Xcode** (and its command line tools: `xcode-select --install`) Regia also orchestrates iOS apps: Regia is installed and started just as on Windows.
 
 - **Agents**: they build and run tests with `xcodebuild` through Bash: set the phases that need it to **Change the project**. Builds are slow: raise the maximum turns of those phases.
 - **Show on phone** also works with a connected iPhone and with a simulator already booted, for Flutter, React Native, Expo and Capacitor.
+- For an Android project with **product flavors** (for example global and china) the default variant is installed: the one marked `isDefault`, otherwise the first declared. The phase says which one it chose.
 - **Native Xcode project**: use a **Run app** phase with the "The command succeeds" criterion, for example `xcodebuild -scheme App -destination 'platform=iOS Simulator,name=iPhone 16' -derivedDataPath build build && xcrun simctl install booted build/Build/Products/Debug-iphonesimulator/App.app && xcrun simctl launch booted com.example.App` (adjust scheme, app name and bundle id).
 - **After the phase** add an **Approval**: check the app and decide.
 - **Physical device, TestFlight, App Store**: you need an Apple Developer account, certificates and profiles already set up on the Mac; Regia and the agents use the existing ones and don't create them. The first time, macOS may ask for permissions for Xcode or the simulator: accept them by hand.

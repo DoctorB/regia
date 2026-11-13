@@ -18,7 +18,7 @@ import { killAllServices } from './service.ts';
 import { languages, mergedDict, serverT, systemLanguage } from './i18n.ts';
 import { ensureRegiaRules, getRules, saveRegiaRules } from './rules.ts';
 import {
-  ROOT, deleteRunsOf, deleteWorkflow, getRun, getWorkflow, initStore, listRuns, listTemplates, listWorkflows, saveRun, saveWorkflow,
+  DATA_DIR, ROOT, deleteRunsOf, deleteWorkflow, getRun, getWorkflow, initStore, listRuns, listTemplates, listWorkflows, saveRun, saveWorkflow,
 } from './store.ts';
 import { validateWorkflow } from './validate.ts';
 import { discoverSkills, personalSkillsDir, removeSkillBundles } from './skills.ts';
@@ -186,6 +186,15 @@ function cleanGroup(g: unknown): string | undefined {
 app.post('/api/validate', (req, res) => res.json(validateWorkflow(req.body.workflow as Workflow, req.body.mode)));
 
 app.get('/api/runs', (req, res) => res.json(listRuns(req.query.workflowId as string | undefined)));
+// Prove del collaudo (screenshot e log dell'app), salvate da Regia in data/uat/<esecuzione>/<fase>/<giro>/.
+app.get('/api/runs/:id/uat/:nodeId/:round/:file', (req, res) => {
+  const { id, nodeId, round, file } = req.params;
+  if (!/^run_[\w-]+$/.test(id) || !/^[\w-]+$/.test(nodeId) || !/^\d+$/.test(round) || !/^[\w.-]+\.(png|jpe?g|txt)$/i.test(file)) return void sendError(res, 400, msg('api.invalidAction'));
+  const p = path.join(DATA_DIR, 'uat', id, nodeId, round, file);
+  if (!fs.existsSync(p)) return void sendError(res, 404, msg('api.phaseNotFound'));
+  res.sendFile(p);
+});
+
 app.get('/api/runs/:id', (req, res) => {
   const run = getEngine(req.params.id)?.run ?? getRun(req.params.id);
   if (!run) return void sendError(res, 404, msg('api.runNotFound'));
@@ -303,6 +312,19 @@ app.post('/api/runs/:id/action', h(async (req, res) => {
   if (early instanceof Error) return void sendThrown(res, 400, early);
   p.catch(() => undefined);
   res.json({ ok: true });
+}));
+
+// Domanda di chiarimento a una fase precedente, mentre un'approvazione aspetta: la risposta arriva via stream.
+app.post('/api/runs/:id/question', h(async (req, res) => {
+  const eng = getEngine(req.params.id);
+  if (!eng) return void sendError(res, 409, msg('api.runNotActive'));
+  const { nodeId, targetId, question } = req.body as { nodeId?: unknown; targetId?: unknown; question?: unknown };
+  if (typeof nodeId !== 'string' || typeof targetId !== 'string' || typeof question !== 'string') return void sendError(res, 400, msg('api.questionEmpty'));
+  try {
+    res.json({ ok: true, id: eng.ask(nodeId, targetId, question).id });
+  } catch (e) {
+    sendThrown(res, 400, e as Error);
+  }
 }));
 
 app.post('/api/runs/:id/service/:nodeId', h(async (req, res) => {

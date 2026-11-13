@@ -17,7 +17,7 @@ function metrics(run: Run, nodeId: string): PhaseM | null {
     input: s((x) => x.usage.inputTokens), output: s((x) => x.usage.outputTokens),
     cacheW: s((x) => x.usage.cacheCreationInputTokens), cacheR: s((x) => x.usage.cacheReadInputTokens),
     tokens: s((x) => x.usage.inputTokens + x.usage.outputTokens + x.usage.cacheCreationInputTokens + x.usage.cacheReadInputTokens),
-    durMs: s((x) => x.durationMs ?? 0), turns: s((x) => x.numTurns ?? 0), attempts: a.length,
+    durMs: s((x) => x.durationMs ?? 0), turns: s((x) => x.numTurns ?? 0), attempts: a.filter((x) => !x.step).length,
     esito: a.at(-1)?.declared?.esito ?? (st.status === 'completata' ? t('compare.okUndeclared') : '—'),
     status: statusLabel(st.status),
   };

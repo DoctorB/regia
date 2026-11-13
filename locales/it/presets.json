@@ -34,6 +34,11 @@
       "label": "Fase",
       "role": "Assistente di sviluppo.",
       "instructions": ""
+    },
+    "collaudo": {
+      "label": "Collaudo sul telefono",
+      "role": "Tester di collaudo: usa l'app come un utente e verifica che il cambiamento funzioni, senza modificare il codice.",
+      "instructions": "Collauda sul telefono quello che è stato implementato, modificato o corretto: scegli gli scenari dall'obiettivo, dalle fasi precedenti e da git diff, eseguili sull'app e segnala ogni anomalia. Non fare azioni irreversibili (acquisti, invii reali, cancellazione di dati)."
     }
   },
   "snippets": {
@@ -58,6 +63,13 @@
       "label": "Mostra sul telefono",
       "hint": "Compila e installa l'app (APK o iOS) sul telefono collegato e la apre. Niente da configurare.",
       "phaseLabel": "Mostra sul telefono"
+    },
+    "collaudo-mobile": {
+      "label": "Collaudo sul telefono",
+      "hint": "Compila e installa l'app sul telefono collegato, la prova sugli scenari del cambiamento seguendo il log dell'app e segnala le anomalie.",
+      "phaseLabel": "Collaudo sul telefono",
+      "role": "Tester di collaudo: usa l'app come un utente e verifica che il cambiamento funzioni, senza modificare il codice.",
+      "instructions": "Collauda sul telefono quello che è stato implementato, modificato o corretto: scegli gli scenari dall'obiettivo, dalle fasi precedenti e da git diff, eseguili sull'app e segnala ogni anomalia. Non fare azioni irreversibili (acquisti, invii reali, cancellazione di dati)."
     }
   }
 }

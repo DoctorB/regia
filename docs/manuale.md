@@ -80,6 +80,7 @@ poi riavvia con `npm start`. Il controllo legge solo il numero di versione pubbl
 | Analisi, Implementazione, Test, Revisione, Personalizzata | Lavoro svolto da un agente |
 | **Approvazione umana** | Il workflow si ferma finché non approvi o respingi |
 | **Avvio app** | Regia avvia l'app per fartela verificare: web, desktop, mobile, oppure controlla un sito già servito da IIS |
+| **Collaudo sul telefono** (fase pronta) | Compila e installa l'app sul telefono, la prova sugli scenari del cambiamento seguendo il log e segnala le anomalie |
 | **Pubblicazione** (fase pronta) | Commit, push ed eventuali pubblicazioni o GitHub Actions. Mettila dopo un'approvazione |
 
 ---
@@ -103,6 +104,10 @@ Quando il workflow si ferma, la scheda **Stato** mostra cosa serve:
 
 - **Approvazione**: leggi le sintesi delle fasi precedenti e controlla il progetto (`git diff`), poi **Approva** oppure **Respingi con commento**: la fase che ha prodotto il lavoro riprende da dove era con il tuo commento, e test e revisione vengono rifatti.
   Se una revisione ha trovato qualcosa da sistemare, resta comunque verde: il suo compito era controllare. I punti che propone compaiono nell'approvazione come **Punti segnalati**, uno per casella. Spunta quelli da correggere, aggiungi se vuoi le tue indicazioni per le rifiniture che la revisione non può valutare, e respingi: punti scelti e commento arrivano insieme alla fase che ha scritto il codice. Se approvi con dei punti spuntati, Regia ti chiede conferma.
+  Se qualcosa non è chiaro, apri **Fai una domanda** nella stessa card: scegli a quale fase chiedere (di solito la revisione) e scrivi la domanda. La fase risponde lì sotto, senza modificare file, mentre l'approvazione resta in attesa; puoi fare altre domande di seguito, e la conversazione prosegue. Poi decidi se approvare o respingere. Ogni domanda costa un breve turno dell'agente, incluso nei consumi; domande e risposte finiscono nel resoconto.
+
+  ![Una domanda alla revisione durante l'approvazione](img/18-domanda.png)
+
 - **Fase fallita o bloccata**: **Riprova da capo**, **Riprendi la sessione** (con un messaggio per l'agente), **Salta la fase** o **Annulla esecuzione**.
   Se la fase si è fermata perché non aveva il permesso di fare ciò che serviva (ad esempio eseguire uno script o creare un file in una fase che può solo leggere), compare anche **Consenti modifiche e riprendi**: la fase riparte dalla stessa sessione con il nuovo permesso, e il workflow salvato viene aggiornato, così la volta successiva parte già così.
   Allo stesso modo, se la fase si è fermata perché doveva lavorare in una cartella fuori dal progetto, compare **Consenti <cartella> e riprendi**: la cartella viene aggiunta alle cartelle aggiuntive del workflow, anche in quello salvato, e la fase riprende dalla stessa sessione.
@@ -160,12 +165,28 @@ Nel pannello della fase vedi subito cosa ha rilevato (progetto, dispositivo, com
 
 In **Altre opzioni** puoi indicare una sottocartella, cambiare l'attesa massima o passare a un **comando personalizzato**, che parte da quello rilevato.
 
+### Collaudo sul telefono
+
+**Collaudo sul telefono**, tra le fasi pronte, fa in un solo nodo quello che faresti tu per provare una modifica sul telefono:
+
+1. **Compila, installa e apre l'app** come **Mostra sul telefono**, con le stesse scelte di dispositivo e build. Questa parte non usa agenti e non costa.
+2. **Segue il log dell'app** per tutta la durata del collaudo (su Android, con `logcat`): avvisi, errori, crash e ANR dell'app. Un crash compare subito negli eventi e diventa un'anomalia anche se l'agente non se ne accorge.
+3. **Collauda**: un agente ricava gli scenari dall'obiettivo, dalle fasi precedenti e da `git diff`, li esegue sull'app come un utente (legge lo schermo, tocca, scrive, scorre), salva gli screenshot nei momenti chiave e, dopo ogni scenario, rilegge il log.
+4. **Riporta le anomalie**: ognuna con passi, risultato atteso e ottenuto e screenshot. Gli scenari che non si possono provare in automatico (Bluetooth, NFC, biometria, pagamenti) finiscono in **Da provare a mano**.
+
+![Collaudo sul telefono](img/19-collaudo.png)
+
+Le anomalie arrivano all'approvazione successiva come **Punti segnalati**, come quelli della revisione: spunti quelle da correggere e respingi, la fase che ha scritto il codice corregge e il collaudo si ripete, build compresa. Nella scheda **Stato** la card del collaudo mostra dispositivo, anomalie, riepilogo del log (con il file completo) e le miniature degli screenshot di ogni giro.
+
+L'agente non modifica il codice e non fa azioni irreversibili (acquisti, invii reali, cancellazione di dati). Se servono credenziali di prova, scrivile nelle istruzioni della fase; per ora il collaudo automatico è per Android.
+
 ### App iOS su Mac
 
 Su un Mac con **Xcode** (e i suoi strumenti da riga di comando: `xcode-select --install`) Regia orchestra anche le app iOS: Regia si installa e si avvia come su Windows.
 
 - **Agenti**: compilano e lanciano i test con `xcodebuild` tramite Bash: le fasi che devono farlo vanno impostate su **Modificare il progetto**. Le compilazioni sono lente: alza il numero massimo di turni delle fasi interessate.
 - **Mostra sul telefono** funziona anche con un iPhone collegato e con un simulatore già avviato, per Flutter, React Native, Expo e Capacitor.
+- Con un progetto Android che ha dei **product flavor** (ad esempio global e china) viene installata la variante predefinita: quella con `isDefault`, altrimenti la prima dichiarata. La fase indica quale ha scelto.
 - **Progetto Xcode nativo**: usa una fase **Avvio app** con criterio "Il comando termina con successo", ad esempio `xcodebuild -scheme App -destination 'platform=iOS Simulator,name=iPhone 16' -derivedDataPath build build && xcrun simctl install booted build/Build/Products/Debug-iphonesimulator/App.app && xcrun simctl launch booted com.example.App` (adatta schema, nome dell'app e bundle id).
 - **Dopo la fase** metti un'**Approvazione**: guardi l'app e decidi.
 - **Dispositivo fisico, TestFlight, App Store**: servono account Apple Developer, certificati e profili già configurati sul Mac; Regia e gli agenti usano quelli presenti, non li creano. La prima volta macOS può chiedere permessi per Xcode o per il simulatore: vanno accettati a mano.

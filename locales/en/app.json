@@ -36,6 +36,10 @@
     "personalizzata": {
       "label": "Custom",
       "hint": "Agent with free-form instructions"
+    },
+    "collaudo": {
+      "label": "Acceptance test",
+      "hint": "Builds, installs and tries the app on the device"
     }
   },
   "status": {
@@ -149,7 +153,8 @@
     "permission": {
       "lettura": "read only",
       "modifica": "changes the project",
-      "internet": "also internet"
+      "internet": "also internet",
+      "collaudo": "tries the app on the phone"
     },
     "reuse": "reuse",
     "noCommand": "no command",

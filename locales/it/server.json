@@ -159,7 +159,16 @@
     "extraDirs": "Cartelle aggiuntive consentite: {dirs}.",
     "dirAsked": "{label}: chiede di poter lavorare nella cartella {path}, fuori dal progetto.",
     "dirGranted": "{label}: concesso di lavorare nella cartella {path}.",
-    "dirSaved": "Cartella {path} aggiunta al workflow salvato: la prossima esecuzione potrà già usarla."
+    "dirSaved": "Cartella {path} aggiunta al workflow salvato: la prossima esecuzione potrà già usarla.",
+    "questionAsked": "{label}: domanda a {target} — {question}",
+    "questionAnswered": "{target} ha risposto: {answer}",
+    "questionFailed": "{target}: nessuna risposta alla domanda — {error}",
+    "uat": {
+      "installed": "{label}: app installata e aperta, inizia il collaudo.",
+      "logStarted": "{label}: Regia segue il log dell'app {app} (avvisi, errori, crash e ANR).",
+      "logStartedAll": "{label}: Regia segue gli errori del dispositivo (applicationId dell'app non rilevato).",
+      "crash": "{label}: crash o blocco dell'app nel log — {what}"
+    }
   },
   "interventions": {
     "declaredKo": "Esito negativo dichiarato: {summary}",
@@ -217,7 +226,8 @@
         "done": "Comando completato: {command}",
         "activeUrl": "App attiva: {url}\nComando: {command}",
         "active": "App avviata e aperta per la verifica.\nComando: {command}"
-      }
+      },
+      "manual": "Da provare a mano:"
     },
     "interrupted": {
       "session": "Il lavoro sul compito \"{label}\" è stato interrotto e ora riprende. Alcune modifiche ai file potrebbero essere rimaste a metà: controlla lo stato attuale dei file che stavi modificando, poi completa il compito senza rifare il lavoro già fatto.\n\n{protocol}",
@@ -227,7 +237,20 @@
     },
     "reference": "## Esecuzione di riferimento\nQuesto lavoro parte dal risultato di un'esecuzione precedente, \"{name}\" del {date}. Usala per capire cosa doveva fare quel lavoro e quali scelte sono state fatte; per sapere cosa c'è davvero nel progetto conta lo stato attuale dei file.\n\n{report}",
     "extraDirs": "Cartelle aggiuntive: oltre alla cartella del progetto puoi leggere e modificare file in queste cartelle (vale anche per le regole generali):\n{dirs}",
-    "dirGranted": "Ora puoi lavorare anche nella cartella {path}. Riprendi il compito dal punto in cui ti eri fermato."
+    "dirGranted": "Ora puoi lavorare anche nella cartella {path}. Riprendi il compito dal punto in cui ti eri fermato.",
+    "question": "Domanda di chi deve approvare il lavoro, dopo questa fase: {question}\n\nRispondi in modo chiaro e conciso. È solo una richiesta di chiarimento: non modificare file e non rifare il lavoro; se serve, rileggi i file. Non aggiungere il blocco regia.",
+    "noAnswer": "La fase non ha scritto una risposta.",
+    "questionInterrupted": "Domanda interrotta prima della risposta (esecuzione sospesa o Regia chiuso): puoi farla di nuovo.",
+    "questionCancelled": "Domanda interrotta: hai già deciso sull'approvazione.",
+    "protocolUat": "- Sei in una fase di collaudo: elenca nella chiave \"punti\" ogni anomalia trovata, una per voce: scenario, passi per riprodurla, risultato atteso e ottenuto, nome dello screenshot. In ordine di gravità, al massimo {max}. Nella chiave \"manuali\" elenca gli scenari che non puoi verificare in automatico (Bluetooth, NFC, biometria, dispositivi esterni, pagamenti), con cosa provare a mano. Le anomalie non rendono il compito non riuscito: usa \"ok\" e lascia decidere a chi approva. Usa \"ko\" solo se non riesci a collaudare (l'app non si avvia o va in crash all'avvio) e \"bloccato\" se ti serve qualcosa (credenziali di prova, dispositivo da sbloccare). Senza anomalie ometti \"punti\".",
+    "uat": {
+      "context": "# Collaudo sul dispositivo\nRegia ha già compilato, installato e aperto l'app.\n- Dispositivo: {device}\n- App (applicationId): {app}\n- adb: \"{adb}\" (usa sempre -s {serial})\n- Cartella per gli screenshot: {dir}\n- Log dell'app, registrato da Regia (avvisi, errori, crash e ANR dell'app): {log}\n\n## Come procedere\n1. Capisci cosa è cambiato: obiettivo, fasi precedenti e `git diff` (se le modifiche sono già in un commit, `git show --stat HEAD`). Scegli da 3 a 8 scenari mirati al cambiamento, più un controllo rapido che l'app si avvii e la schermata principale funzioni.\n2. Per ogni scenario: leggi lo schermo, agisci, verifica il risultato atteso. Salva uno screenshot nel momento chiave e guardalo con Read quando serve un controllo visivo. Dopo ogni scenario rileggi le ultime righe del log dell'app (tail) e collega gli errori alle azioni appena fatte.\n3. Riporta anomalie e scenari da provare a mano nel blocco finale.\n\n## Comandi utili\n- Schermo come testo: `\"{adb}\" -s {serial} shell uiautomator dump /sdcard/regia-ui.xml` e poi `\"{adb}\" -s {serial} exec-out cat /sdcard/regia-ui.xml` (testi, resource-id e bounds [x1,y1][x2,y2]: tocca al centro).\n- Tocco, testo, scorrimento, tasti: `shell input tap X Y`, `shell input text \"parola%sparola\"` (%s è lo spazio), `shell input swipe X1 Y1 X2 Y2 300`, `shell input keyevent 4` (indietro) o `66` (invio).\n- Screenshot: `\"{adb}\" -s {serial} exec-out screencap -p > \"{dir}/01-nome.png\"` (numero progressivo e nome breve dello scenario).\n- Riavvio pulito dell'app: `shell am force-stop {app}` e poi `shell monkey -p {app} -c android.intent.category.LAUNCHER 1`.\n{windows}\n## Regole\n- Non modificare il codice del progetto e non fare commit.\n- Niente azioni irreversibili o con effetti reali: acquisti, pagamenti, invio di messaggi o email reali, cancellazione di dati o account, modifiche alle impostazioni del dispositivo.\n- Non cancellare il buffer di logcat: lo segue Regia.\n- Se servono credenziali usa solo quelle indicate nelle istruzioni della fase; altrimenti fermati con esito \"bloccato\" spiegando cosa serve.\n- Sii efficiente: leggi lo schermo come testo e usa gli screenshot solo dove servono, costano di più.",
+      "windows": "- Su Windows anteponi `MSYS_NO_PATHCONV=1 ` ai comandi adb con percorsi del dispositivo (es. /sdcard/...), altrimenti la shell li trasforma in percorsi di Windows.\n",
+      "noDevice": "nessuno (prova simulata)",
+      "unknownApp": "non rilevato: ricavalo con `shell dumpsys window | grep mCurrentFocus`",
+      "noLog": "non disponibile",
+      "crashPoint": "Il log dell'app registra un crash o un blocco durante il collaudo: {what}"
+    }
   },
   "mock": {
     "decisions": {
@@ -239,7 +262,8 @@
       "test": "DECISIONE: Considero la suite superata perché tutti i 5 test passano.",
       "review": "DECISIONE: La modifica è minima e coperta dai test; non segnalo problemi bloccanti.",
       "reviewPoints": "DECISIONE: Segnalo due punti da sistemare; nessuno blocca il resto della modifica.",
-      "generic": "DECISIONE: Ho svolto il compito richiesto con il minimo di passaggi."
+      "generic": "DECISIONE: Ho svolto il compito richiesto con il minimo di passaggi.",
+      "uat": "DECISIONE: Collaudo 3 scenari legati al filtro, più l'avvio; due anomalie da sistemare, nessun crash nel log."
     },
     "fileContent": "…contenuto del file…",
     "fileUpdated": "File aggiornato",
@@ -261,7 +285,13 @@
     },
     "finalDecision": "Esito {outcome} dichiarato al termine della fase {label}.",
     "workDone": "Lavoro completato.",
-    "skillLoaded": "Istruzioni della skill {skill} caricate (simulazione)."
+    "skillLoaded": "Istruzioni della skill {skill} caricate (simulazione).",
+    "answer": "Risposta simulata: il primo punto riguarda il caso in cui la funzione modificata riceve un input vuoto. Oggi restituisce un errore; la correzione proposta restituisce un valore neutro. Il secondo punto aggiunge il test che copre proprio questo caso, così non si ripresenta.",
+    "uat": {
+      "point1": "Filtro per categoria: scegliendo una categoria senza prodotti la lista resta vuota senza messaggio. Passi: apri il filtro, scegli \"Accessori\". Atteso: un messaggio \"Nessun prodotto\". Ottenuto: schermata bianca (02-filtro-vuoto.png).",
+      "point2": "Rotazione dello schermo: il filtro scelto si perde. Passi: scegli una categoria e ruota il telefono. Atteso: il filtro resta. Ottenuto: torna \"Tutte\" (03-rotazione.png).",
+      "manual": "Accoppiamento Bluetooth con un dispositivo reale: verificare a mano che il filtro non interferisca con la ricerca dei dispositivi."
+    }
   },
   "api": {
     "originForbidden": "Origine non consentita",
@@ -297,7 +327,11 @@
     "notSuspendable": "Si può sospendere solo un'esecuzione in corso.",
     "notResumable": "Si può riprendere solo un'esecuzione sospesa o interrotta.",
     "referenceNotFound": "Esecuzione di riferimento non trovata",
-    "invalidTarget": "Destinazione non valida."
+    "invalidTarget": "Destinazione non valida.",
+    "questionUnavailable": "Si possono fare domande solo mentre l'approvazione è in attesa.",
+    "questionEmpty": "Scrivi la domanda.",
+    "questionBusy": "Attendi la risposta alla domanda precedente.",
+    "questionTarget": "Questa fase non può ricevere domande: serve una fase con agente già completata in questa esecuzione."
   },
   "nodeenv": {
     "source": {
@@ -362,7 +396,8 @@
       "manyDevices": {
         "one": "{count} dispositivo collegato, uso {device}.",
         "other": "{count} dispositivi collegati, uso {device}. Puoi sceglierne un altro nella fase."
-      }
+      },
+      "flavor": "il progetto ha dei product flavor: viene installata la variante {variant} (altri flavor: {others})."
     }
   },
   "launch": {

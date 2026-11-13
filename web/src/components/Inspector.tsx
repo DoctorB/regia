@@ -139,7 +139,8 @@ function Issues({ issues }: { issues: ValidationIssue[] }) {
 }
 
 /** Fase "mostra" (telefono, browser, desktop): cosa Regia ha rilevato e solo scelte facoltative. */
-function ShowSection({ cfg, settings, onChange }: { cfg: PhaseConfig; settings: WorkflowSettings; onChange: (c: PhaseConfig) => void }) {
+/** uat: nel collaudo il rilevamento è lo stesso, ma non si può trasformare in una fase Avvio app. */
+function ShowSection({ cfg, settings, onChange, uat = false }: { cfg: PhaseConfig; settings: WorkflowSettings; onChange: (c: PhaseConfig) => void; uat?: boolean }) {
   const { t, tm } = useI18n();
   const s = cfg.show!;
   const [plan, setPlan] = useState<LaunchPlan | null>(null);
@@ -255,10 +256,10 @@ function ShowSection({ cfg, settings, onChange }: { cfg: PhaseConfig; settings: 
             <Field label={t('inspector.server.subdir')}><input value={cfg.subdir ?? ''} onChange={(e) => onChange({ ...cfg, subdir: e.target.value })} placeholder={t('inspector.show.auto').toLowerCase()} /></Field>
             <Field label={t('inspector.server.wait')}><Num value={cfg.readyTimeoutSec} onChange={(v) => onChange({ ...cfg, readyTimeoutSec: v })} min={5} placeholder={String(SHOW_WAIT[s.target])} /></Field>
           </div>
-          <button className="btn sm ghost" onClick={toCustom}><Terminal />{t('inspector.show.custom')}</button>
+          {!uat && <button className="btn sm ghost" onClick={toCustom}><Terminal />{t('inspector.show.custom')}</button>}
         </details>
       )}
-      <p className="hint">{t(`inspector.show.hint.${s.target}`)}</p>
+      <p className="hint">{uat ? t('inspector.show.hint.uat') : t(`inspector.show.hint.${s.target}`)}</p>
     </Section>
   );
 }
@@ -305,6 +306,7 @@ export function PhaseInspector({ cfg, settings, issues, onChange, onDelete }: { 
       <Issues issues={issues} />
 
       {server && cfg.show && <ShowSection cfg={cfg} settings={settings} onChange={onChange} />}
+      {cfg.kind === 'collaudo' && <ShowSection cfg={cfg.show ? cfg : { ...cfg, show: { target: 'dispositivo' } }} settings={settings} onChange={onChange} uat />}
 
       {server && !cfg.show && (
         <Section title={t('inspector.server.title')}>
@@ -367,6 +369,11 @@ export function PhaseInspector({ cfg, settings, issues, onChange, onDelete }: { 
             {(cfg.model === '' || custom) && <Field label={t('inspector.model.id')}><input className="mono" value={cfg.model} onChange={(e) => set('model', e.target.value.trim())} placeholder={t('inspector.model.idPlaceholder')} /></Field>}
           </Section>
 
+          {cfg.kind === 'collaudo' ? (
+            <Section title={t('inspector.permissions.title')}>
+              <p className="hint">{t('inspector.permissions.collaudo')}</p>
+            </Section>
+          ) : (
           <Section title={t('inspector.permissions.title')}>
             <div className="model-picker perm-picker" role="radiogroup" aria-label={t('inspector.permissions.title')}>
               {PERMISSION_LEVELS.map((lv) => (
@@ -378,6 +385,7 @@ export function PhaseInspector({ cfg, settings, issues, onChange, onDelete }: { 
             </div>
             <p className="hint">{t(`inspector.permissions.hint.${level}`)}{customTools ? ` ${t('inspector.permissions.custom')}` : ''}</p>
           </Section>
+          )}
 
           {/* Opzioni tecniche: chiuse, con il riepilogo di ciò che non è al valore consigliato per il tipo di fase. */}
           <details className="section advanced-section" open={advOpen} onToggle={(e) => setAdvOpen((e.target as HTMLDetailsElement).open)}>
