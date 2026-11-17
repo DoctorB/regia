@@ -10,6 +10,7 @@ const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'regia-app-'));
 process.env.REGIA_DATA_DIR = path.join(tmp, 'data');
 process.env.REGIA_GLOBAL_RULES = path.join(tmp, 'CLAUDE.md');
 process.env.REGIA_MOCK_SPEED = '2';
+process.env.REGIA_WAIT_MAX_SEC = '6';
 // Progetto non Node: nessun package.json, script eseguiti con la Node di sistema tramite percorso esplicito.
 const dir = path.join(tmp, 'app');
 fs.mkdirSync(dir);
@@ -134,6 +135,30 @@ test('comando che deve terminare con successo (build, installazione, deploy)', a
   await waitFor(() => Boolean(e3.run.nodes.app.pendingActions));
   assert.match(e3.run.nodes.app.pendingReason!, /il comando non è terminato entro 2 secondi/);
   assert.doesNotMatch(e3.run.nodes.app.pendingReason!, /Permessi insufficienti/);
+  e3.cancel();
+});
+
+test('build lunga: oltre il tempo previsto si aspetta finché scrive output, fino al massimo', async () => {
+  // Scrive per 4 secondi e termina: il tempo di 2 secondi si proroga e la fase riesce.
+  const long = script('build-long.cjs', "const t=setInterval(()=>console.log('> Task :app:step'),300);setTimeout(()=>{clearInterval(t);console.log('BUILD SUCCESSFUL');process.exit(0);},4000);");
+  const e1 = startRun(wfWith({ command: long, readyCheck: 'exit', readyTimeoutSec: 2 }), 'reale');
+  await waitFor(() => e1.run.nodes.ok.status === 'attesa_intervento');
+  assert.equal(e1.run.nodes.app.service!.status, 'completato');
+  assert.ok(e1.run.events.some((e) => e.msg?.key === 'events.service.stillWorking'));
+  e1.cancel();
+
+  // Scrive per 3 secondi poi tace: fallisce per il silenzio, non al tempo previsto.
+  const stuck = script('build-stuck.cjs', "const t=setInterval(()=>console.log('> Task :app:step'),300);setTimeout(()=>clearInterval(t),3000);setInterval(()=>{},1000);");
+  const e2 = startRun(wfWith({ command: stuck, readyCheck: 'exit', readyTimeoutSec: 2 }), 'reale');
+  await waitFor(() => Boolean(e2.run.nodes.app.pendingActions));
+  assert.match(e2.run.nodes.app.pendingReason!, /il comando non scrive più nulla da 1 secondi \(in corso da 4 secondi\)/);
+  e2.cancel();
+
+  // Scrive senza mai finire: si ferma al massimo assoluto (6 secondi in questo test).
+  const endless = script('build-endless.cjs', "setInterval(()=>console.log('> Task :app:step'),300);");
+  const e3 = startRun(wfWith({ command: endless, readyCheck: 'exit', readyTimeoutSec: 2 }), 'reale');
+  await waitFor(() => Boolean(e3.run.nodes.app.pendingActions));
+  assert.match(e3.run.nodes.app.pendingReason!, /non è terminato entro il limite massimo di 6 secondi/);
   e3.cancel();
 });
 

@@ -141,7 +141,8 @@
       "browserOpenedDefault": "{label}: aperto {url} nel browser predefinito.",
       "browserFallback": "{label}: {browser} non trovato, aperto {url} nel browser predefinito.",
       "companion": "{label}: avvio anche il backend {project} ({dir}).",
-      "companionExited": "{label}: il backend {project} si è chiuso (codice {code})."
+      "companionExited": "{label}: il backend {project} si è chiuso (codice {code}).",
+      "stillWorking": "{label}: dopo {seconds} secondi il comando è ancora al lavoro e scrive output: continuo ad aspettare finché resta attivo, al massimo {max} secondi."
     },
     "skillsAvailable": "{label}: skill disponibili ({count}): {skills}.",
     "skillsMissing": "{label}: skill non trovate, la fase prosegue senza: {skills}.",
@@ -200,7 +201,9 @@
       "depsReinstall": "{diag} Si possono reinstallare con \"{command}\".",
       "noOutput": "il testo \"{pattern}\" non è comparso nell'output entro {seconds} secondi",
       "exitCode": "il comando è terminato con codice {code}",
-      "notFinished": "il comando non è terminato entro {seconds} secondi"
+      "notFinished": "il comando non è terminato entro {seconds} secondi",
+      "stalled": "il comando non scrive più nulla da {idle} secondi (in corso da {seconds} secondi): sembra bloccato",
+      "tooLong": "il comando non è terminato entro il limite massimo di {seconds} secondi"
     }
   },
   "agent": {

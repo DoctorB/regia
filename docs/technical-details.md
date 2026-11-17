@@ -11,7 +11,9 @@ A phase run by Regia itself, with no agent and no cost. It runs a command in the
 - **url**: the address you set, or the first local address printed, gets any HTTP response (401 or 500 included). The certificate is not verified, so development certificates work (IIS Express, `dotnet dev-certs`): it is only a reachability check. **With no command** the phase only checks a service that is already running (IIS, container, test environment) and neither starts nor stops it.
 - **output**: an output line contains the expected text (case-insensitive), or matches `/regular expression/`.
 - **process**: the program is still open after a few seconds. For these phases and for **output** the window is not hidden. A launcher that exits right away with code 0 (e.g. `start app.exe`) counts as success.
-- **exit**: the command exits with code 0 within the maximum wait (default 600 seconds, up to 3600).
+- **exit**: the command exits with code 0 within the maximum wait (default 600 seconds, 1200 for the phone, up to 3600).
+
+For **exit** and **output**, if the command is still writing output when the wait runs out (for example a long Gradle build, especially the first one) Regia keeps waiting: the phase fails only once the command stays silent for half the wait (at most 5 minutes), or after 3600 seconds in total. The extension shows up among the events.
 
 **Systems**: on Windows the command runs through `cmd.exe` and the app is closed with `taskkill /T`; on macOS and Linux through `/bin/sh` in its own process group, closed by signalling the group. The ready-made "iOS app (simulator)" phase uses `xcodebuild` and `xcrun simctl`, so it only works on macOS with Xcode.
 

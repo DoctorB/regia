@@ -11,7 +11,9 @@ Fase gestita da Regia, senza agenti e senza costi. Esegue un comando nella carte
 - **url**: l'indirizzo indicato, oppure il primo indirizzo locale stampato, riceve una risposta HTTP qualsiasi (anche 401 o 500). Il certificato non viene verificato, così funzionano i certificati di sviluppo (IIS Express, `dotnet dev-certs`): è solo un controllo di raggiungibilità. **Senza comando** la fase verifica soltanto un servizio già attivo (IIS, container, ambiente di test) e non lo avvia né lo ferma.
 - **output**: una riga dell'output contiene il testo atteso (senza distinzione di maiuscole), oppure corrisponde a `/espressione regolare/`.
 - **process**: il programma è ancora aperto dopo qualche secondo. Per queste fasi e per **output** la finestra non viene nascosta. Un lanciatore che termina subito con codice 0 (es. `start app.exe`) è considerato riuscito.
-- **exit**: il comando termina con codice 0 entro l'attesa massima (predefinita 600 secondi, massimo 3600).
+- **exit**: il comando termina con codice 0 entro l'attesa massima (predefinita 600 secondi, 1200 per il telefono, massimo 3600).
+
+Per **exit** e **output**, se allo scadere dell'attesa il comando sta ancora scrivendo output (ad esempio una build Gradle lunga, soprattutto la prima volta) Regia continua ad aspettare: la fase fallisce solo quando il comando resta in silenzio per metà dell'attesa (al massimo 5 minuti), oppure dopo 3600 secondi in tutto. La proroga compare tra gli eventi.
 
 **Sistemi**: su Windows il comando parte con `cmd.exe` e l'app viene chiusa con `taskkill /T`; su macOS e Linux con `/bin/sh` in un gruppo di processi a parte, chiuso con un segnale al gruppo. La fase pronta "App iOS (simulatore)" usa `xcodebuild` e `xcrun simctl`, quindi funziona solo su macOS con Xcode.
 

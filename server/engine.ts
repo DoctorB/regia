@@ -161,6 +161,9 @@ export function resumeRun(id: string): RunEngine {
 
 /** Attesa predefinita della fase "mostra": le build mobili e desktop sono lente la prima volta. */
 const SHOW_TIMEOUT_SEC: Record<ShowTarget, number> = { dispositivo: 1200, browser: 180, desktop: 600 };
+/** Proroga per i comandi ancora attivi allo scadere del tempo: silenzio massimo e durata massima complessiva. */
+const WAIT_IDLE_SEC = Number(process.env.REGIA_WAIT_IDLE_SEC) || 300;
+const WAIT_MAX_SEC = Number(process.env.REGIA_WAIT_MAX_SEC) || 3600;
 
 export class RunEngine {
   private listeners = new Set<Broadcast>();
@@ -1110,8 +1113,11 @@ export class RunEngine {
       ev(msg('events.service.start', { command: c.command, cwd: path.join(baseCwd, c.dir) }));
     }
     let handle: ServiceHandle | undefined;
+    const startedAt = Date.now();
+    let lastOutput = startedAt;
     const h = startService(command, cwd, {
       onLine: (line) => {
+        lastOutput = Date.now();
         pushLog(svc.log, line);
         if (++lines <= 25) this.event('servizio', line, { nodeId: n.id, attemptId: a.id });
         if (pattern?.(line)) matchedResolve();
@@ -1151,6 +1157,32 @@ export class RunEngine {
         clearTimeout(t);
       }
     };
+    // Attesa che segue l'attività: allo scadere del tempo, se il comando scrive ancora output (es. una build Gradle
+    // lunga) si continua ad aspettare finché resta in silenzio per idleSec, fino al massimo assoluto.
+    const idleSec = Math.min(WAIT_IDLE_SEC, Math.max(1, Math.floor(timeoutSec / 2)));
+    const maxMs = Math.max(timeoutSec, WAIT_MAX_SEC) * 1000;
+    let extended = false;
+    const waitActive = async (p: Promise<unknown>) => {
+      let done = false;
+      void p.then(() => { done = true; });
+      for (;;) {
+        await within(p, Math.min(startedAt + maxMs, Math.max(startedAt + timeoutSec * 1000, lastOutput + idleSec * 1000)) - Date.now());
+        await Promise.resolve();
+        const now = Date.now();
+        if (done || ctrl.signal.aborted || now - startedAt >= maxMs || now - lastOutput >= idleSec * 1000) return;
+        if (!extended) {
+          extended = true;
+          ev(msg('events.service.stillWorking', { seconds: timeoutSec, max: maxMs / 1000 }));
+        }
+      }
+    };
+    /** Motivo del tempo scaduto: il limite normale, il silenzio dopo la proroga o il massimo assoluto. */
+    const timedOut = (normal: Msg) => {
+      const elapsed = Math.round((Date.now() - startedAt) / 1000);
+      if (!extended) return normal;
+      return elapsed * 1000 >= maxMs ? msg('interventions.service.tooLong', { seconds: maxMs / 1000 })
+        : msg('interventions.service.stalled', { seconds: elapsed, idle: idleSec });
+    };
     let ok = false;
     let detached = false;
     let failure: Msg | undefined;
@@ -1166,10 +1198,10 @@ export class RunEngine {
     } else if (check === 'output') {
       let seen = false;
       void matched.then(() => { seen = true; });
-      await within(matched, timeoutSec * 1000);
+      await waitActive(Promise.race([matched, exited]));
       await Promise.resolve();
       ok = seen && !h.exited;
-      if (!ok) failure = h.exited ? exitedDuringStart() : msg('interventions.service.noOutput', { pattern: d.readyPattern ?? '', seconds: timeoutSec });
+      if (!ok) failure = h.exited ? exitedDuringStart() : timedOut(msg('interventions.service.noOutput', { pattern: readyPattern, seconds: timeoutSec }));
     } else if (check === 'process') {
       // Il programma deve restare aperto per qualche secondo; un lanciatore che termina con 0 (es. "start app.exe") va bene.
       await within(exited, Math.min(timeoutSec, 5) * 1000);
@@ -1177,9 +1209,9 @@ export class RunEngine {
       else if (svc.exitCode === 0) { ok = true; detached = true; }
       else failure = exitedDuringStart();
     } else {
-      await within(exited, timeoutSec * 1000);
+      await waitActive(exited);
       if (h.exited && svc.exitCode === 0) { ok = true; detached = true; }
-      else failure = h.exited ? msg('interventions.service.exitCode', { code: String(svc.exitCode ?? '?') }) : msg('interventions.service.notFinished', { seconds: timeoutSec });
+      else failure = h.exited ? msg('interventions.service.exitCode', { code: String(svc.exitCode ?? '?') }) : timedOut(msg('interventions.service.notFinished', { seconds: timeoutSec }));
     }
     this.controllers.delete(n.id);
     if (ok) {
