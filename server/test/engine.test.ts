@@ -123,6 +123,14 @@ test('esecuzione di prova completa con approvazione e ripresa con feedback', asy
   assert.ok(Math.abs(run.totals.costUsd! - sumAttempts) < 1e-9);
   assert.ok(run.totals.costUsd! > costBefore);
 
+  // Nessun limite ai cicli di correzione: si può respingere quante volte serve.
+  for (let i = 2; i <= 5; i++) {
+    await eng.human('approvazione', 'respingi', `Correzione numero ${i}`);
+    await waitFor(() => run.nodes.approvazione.status === 'attesa_intervento' && run.nodes.correzione.attempts.length === i + 1);
+    assert.deepEqual(run.nodes.approvazione.pendingActions, ['approva', 'respingi', 'annulla']);
+  }
+  assert.equal(run.nodes.approvazione.feedbackRounds, 5);
+
   await eng.human('approvazione', 'approva');
   await waitFor(() => run.status === 'completata');
   assert.ok(run.events.some((e) => e.kind === 'decisione' && e.source === 'dichiarata'));

@@ -32,7 +32,6 @@ import { depsPlan, diagnose, envWithNode, needsDeps, resolveNode, runOnce, type 
 import { openBrowser, planLaunch } from './launch.ts';
 
 const MAX_EVENTS = 6000;
-const MAX_FEEDBACK_ROUNDS = 3;
 /** Punti proposti al massimo da una revisione. */
 const MAX_POINTS = 25;
 /** Turni massimi per rispondere a una domanda (può rileggere qualche file). */
@@ -1616,15 +1615,8 @@ export class RunEngine {
       }
       if (action === 'respingi') {
         if (!fb) { st.pendingActions = ['approva', 'respingi', 'annulla']; throw this.fail(msg('api.rejectNeedsComment')); }
+        // Nessun limite ai cicli: ogni ciclo parte solo da un respingimento con commento, quindi decide la persona.
         st.feedbackRounds++;
-        if (st.feedbackRounds > MAX_FEEDBACK_ROUNDS) {
-          st.status = 'fallita';
-          st.pendingActions = ['approva', 'annulla'];
-          this.setPending(st, msg('interventions.maxFeedbackRounds', { count: MAX_FEEDBACK_ROUNDS }));
-          this.nodeChanged(nodeId);
-          this.updateRunStatus();
-          return;
-        }
         // Il feedback va alla fase che ha prodotto il lavoro: la più vicina a monte che può modificare file
         // (altrimenti le fasi immediatamente precedenti). Le fasi intermedie (test, revisione) vengono rieseguite.
         const targets = this.reworkTargets(nodeId);

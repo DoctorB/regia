@@ -182,7 +182,6 @@
   },
   "interventions": {
     "declaredKo": "Esito negativo dichiarato: {summary}",
-    "maxFeedbackRounds": "Raggiunto il numero massimo di {count} cicli di correzione.",
     "serviceFailedLog": "{reason}\n\nUltime righe:\n{log}",
     "repairFailed": "\"{command}\" non è riuscito (codice {code}).\n\nUltime righe:\n{log}",
     "error": {

@@ -182,7 +182,6 @@
   },
   "interventions": {
     "declaredKo": "Negative outcome declared: {summary}",
-    "maxFeedbackRounds": "Reached the maximum of {count} correction rounds.",
     "serviceFailedLog": "{reason}\n\nLast lines:\n{log}",
     "repairFailed": "\"{command}\" failed (code {code}).\n\nLast lines:\n{log}",
     "error": {

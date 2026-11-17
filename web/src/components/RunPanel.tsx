@@ -40,6 +40,23 @@ const EVENT: Record<EventKind, { icon: LucideIcon }> = {
 
 type Tab = 'stato' | 'eventi' | 'decisioni' | 'consumi' | 'ottimizza';
 
+// Bozze di commenti, domande e punti scelti: restano se si cambia scheda o vista e si torna alla card.
+const drafts = new Map<string, unknown>();
+function useDraft<T>(key: string, initial: T): [T, (v: T | ((prev: T) => T)) => void] {
+  const [value, setValue] = useState<T>(() => (drafts.has(key) ? drafts.get(key) as T : initial));
+  const [shownKey, setShownKey] = useState(key);
+  if (shownKey !== key) {
+    setShownKey(key);
+    setValue(drafts.has(key) ? drafts.get(key) as T : initial);
+  }
+  const set = (v: T | ((prev: T) => T)) => setValue((prev) => {
+    const next = typeof v === 'function' ? (v as (p: T) => T)(prev) : v;
+    drafts.set(key, next);
+    return next;
+  });
+  return [value, set];
+}
+
 interface Props {
   run: Run;
   runs: RunSummary[];
@@ -253,8 +270,8 @@ function AskBox({ run, nodeId, readOnly }: { run: Run; nodeId: string; readOnly:
   const n = run.nodes[nodeId];
   const targets = n.askable ?? [];
   const asked = (n.questions ?? []).filter((q) => q.round === n.feedbackRounds);
-  const [target, setTarget] = useState('');
-  const [text, setText] = useState('');
+  const [target, setTarget] = useDraft(`${run.id}:${nodeId}:askTarget`, '');
+  const [text, setText] = useDraft(`${run.id}:${nodeId}:ask`, '');
   const [busy, setBusy] = useState(false);
   const canAsk = !readOnly && n.status === 'attesa_intervento' && Boolean(n.pendingActions?.includes('approva')) && targets.length > 0;
   if (!canAsk && !asked.length) return null;
@@ -311,12 +328,11 @@ const shortDir = (p: string) => { const parts = p.split(/[\\/]+/).filter(Boolean
 function InterventionCard({ run, nodeId, label, readOnly = false, onGranted }: { run: Run; nodeId: string; label: string; readOnly?: boolean; onGranted?: Props['onGranted'] }) {
   const { t, tm } = useI18n();
   const n = run.nodes[nodeId];
-  const [fb, setFb] = useState('');
+  const [fb, setFb] = useDraft(`${run.id}:${nodeId}:comment`, '');
   const [busy, setBusy] = useState(false);
-  // Punti scelti, come "nodeId:indice"; si azzerano quando arriva una nuova lista (nuovo giro di revisione).
-  const [chosen, setChosen] = useState<Set<string>>(new Set());
+  // Punti scelti, come "nodeId:indice"; legati alla lista: con una nuova lista (nuovo giro di revisione) si riparte da zero.
   const pointsKey = JSON.stringify(n.reviewPoints ?? []);
-  useEffect(() => setChosen(new Set()), [pointsKey]);
+  const [chosen, setChosen] = useDraft<Set<string>>(`${run.id}:${nodeId}:points:${pointsKey}`, new Set());
   const node = run.snapshot.nodes.find((x) => x.id === nodeId)!;
   const isApproval = node.data.kind === 'approvazione';
   const preds = run.snapshot.edges.filter((e) => e.target === nodeId).map((e) => run.nodes[e.source]).filter(Boolean);
