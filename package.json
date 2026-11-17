@@ -1,6 +1,6 @@
 {
   "name": "regia",
-  "version": "0.11.0",
+  "version": "0.11.1",
   "description": "Visual editor and live monitor for development workflows run by Claude Agent SDK agents",
   "scripts": {
     "start": "npm run build && node --import tsx server/index.ts",

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Bug, ChevronDown, X } from 'lucide-react';
 import type { ErrorReport, ReportsInfo } from '../../../shared/types.ts';
+import { isIgnoredUiError } from '../../../shared/ui-errors.ts';
 import { api, fmtTime } from '../api.ts';
 import { useI18n } from '../i18n.tsx';
 import { Modal, Switch, toast } from '../ui.tsx';
@@ -107,7 +108,7 @@ export function ReportsButton() {
 export function captureUiErrors() {
   let left = 5;
   const send = (message: string, detail?: string) => {
-    if (left-- <= 0 || !message) return;
+    if (!message || isIgnoredUiError(message) || left-- <= 0) return;
     void api.reportUi(message, detail).catch(() => undefined);
   };
   window.addEventListener('error', (e) => send(e.message, e.error instanceof Error ? e.error.stack : `${e.filename}:${e.lineno}`));

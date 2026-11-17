@@ -1194,7 +1194,9 @@ export class RunEngine {
     if (this.run.status === 'annullata') return finish(false, msg('interventions.service.cancelled'));
 
     // 4. Diagnosi dall'output: correzione automatica se possibile, altrimenti l'intervento adatto.
-    const diag = diagnose(svc.log, this.lang);
+    // Un comando che doveva terminare ed è ancora in corso allo scadere del tempo è solo lento (es. build Gradle):
+    // le parole trovate nel suo output non spiegano il fallimento.
+    const diag = check === 'exit' && !hadExited ? null : diagnose(svc.log, this.lang);
     const base = failure ?? (hadExited ? exitedDuringStart() : msg('interventions.service.noUrl', { seconds: timeoutSec }));
     if (diag?.kind === 'node' && nodeProject) {
       const range = diag.requiredRange ?? fix.range;

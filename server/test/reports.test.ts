@@ -85,6 +85,12 @@ test('con il consenso: copia locale, invio senza i campi locali, stesso errore n
   reports.report({ source: 'fase', key: 'events.phaseFailed', kind: 'collaudo', message: `Collaudo: errore in ${projectDir} (porta 60000)` });
   await new Promise((r) => setTimeout(r, 100));
   assert.equal(received.length, 1);
+  // Avvisi innocui del browser: né salvati né inviati.
+  const before = reports.reportsInfo().reports.length;
+  reports.report({ source: 'ui', message: 'ResizeObserver loop completed with undelivered notifications.' });
+  await new Promise((r) => setTimeout(r, 100));
+  assert.equal(received.length, 1);
+  assert.equal(reports.reportsInfo().reports.length, before);
 });
 
 test('senza rete la segnalazione resta in coda e parte con il primo invio successivo', async () => {

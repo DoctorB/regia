@@ -127,6 +127,14 @@ test('comando che deve terminare con successo (build, installazione, deploy)', a
   await waitFor(() => Boolean(e2.run.nodes.app.pendingActions));
   assert.match(e2.run.nodes.app.pendingReason!, /il comando è terminato con codice 1[\s\S]*CS1002/);
   e2.cancel();
+
+  // Ancora in corso allo scadere del tempo: solo il tempo scaduto, senza diagnosi presa dall'output.
+  const slow = script('build-slow.cjs', "console.log('> Task :app:compile');console.log('warning: permission denied on cache, ignored');setInterval(()=>{},1000);");
+  const e3 = startRun(wfWith({ command: slow, readyCheck: 'exit', readyTimeoutSec: 2 }), 'reale');
+  await waitFor(() => Boolean(e3.run.nodes.app.pendingActions));
+  assert.match(e3.run.nodes.app.pendingReason!, /il comando non è terminato entro 2 secondi/);
+  assert.doesNotMatch(e3.run.nodes.app.pendingReason!, /Permessi insufficienti/);
+  e3.cancel();
 });
 
 test('modalità di prova: ogni criterio simulato senza eseguire comandi', async () => {

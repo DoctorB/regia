@@ -10,6 +10,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import type { ErrorReport, ReportsInfo } from '../shared/types.ts';
+import { isIgnoredUiError } from '../shared/ui-errors.ts';
 import { redact } from './redact.ts';
 import { DATA_DIR, ROOT, listWorkflows } from './store.ts';
 
@@ -95,6 +96,7 @@ const signature = (r: ReportInput) => createHash('sha256').update(`${r.source}|$
 export function report(input: ReportInput): void {
   try {
     if (disabled()) return;
+    if (input.source === 'ui' && isIgnoredUiError(input.message)) return;
     const s = readSettings();
     if (s.consent !== 'si') return;
     const sig = signature(input);
