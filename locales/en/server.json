@@ -202,7 +202,11 @@
       "exitCode": "the command exited with code {code}",
       "notFinished": "the command did not finish within {seconds} seconds",
       "stalled": "the command has written nothing for {idle} seconds (running for {seconds} seconds): it looks stuck",
-      "tooLong": "the command did not finish within the maximum of {seconds} seconds"
+      "tooLong": "the command did not finish within the maximum of {seconds} seconds",
+      "silentSince": "{base}; no output for {silent} seconds, last line: «{last}». It looks stuck there, not just slow",
+      "stillWriting": "{base}; the command was still writing output ({silent} seconds ago): it is slow, the phase's wait can be increased",
+      "noLines": "{base}; the command wrote no lines at all",
+      "processes": "{base}. Processes still running: {procs}"
     }
   },
   "agent": {

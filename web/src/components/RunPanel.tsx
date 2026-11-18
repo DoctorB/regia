@@ -507,6 +507,9 @@ function ServiceCard({ run, nodeId, embedded = false }: { run: Run; nodeId: stri
           <pre>{svc.log.slice(-80).join('\n')}</pre>
         </details>
       )}
+      {svc.trace && (
+        <a className="small" href={`/api/runs/${run.id}/logs/${encodeURIComponent(svc.trace)}`} target="_blank" rel="noreferrer">{t('run.service.trace')}</a>
+      )}
     </div>
   );
 }

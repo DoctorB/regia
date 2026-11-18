@@ -28,6 +28,7 @@ import { cacheTtlMs, interruptedSummary, interruptNodes, isInterruptedNote } fro
 import { AttemptAccounting, sumTotals, type SessionSnapshot } from './usage.ts';
 import { topoOrder } from './validate.ts';
 import { pushLog, startService, waitForUrl, type ServiceHandle } from './service.ts';
+import { describeTree, logsDir, processTree, ServiceTrace } from './servicetrace.ts';
 import { depsPlan, diagnose, envWithNode, needsDeps, resolveNode, runOnce, type InstallPlan } from './nodeenv.ts';
 import { openBrowser, planLaunch } from './launch.ts';
 
@@ -168,6 +169,8 @@ export class RunEngine {
   private listeners = new Set<Broadcast>();
   private controllers = new Map<string, AbortController>();
   private services = new Map<string, ServiceHandle>();
+  /** Log di diagnosi dell'ultimo comando avviato da ogni fase (data/logs/<esecuzione>/). */
+  private traces = new Map<string, ServiceTrace>();
   /** Per le fasi server: versione di Node dedotta da un errore, installazione proponibile, tentativo automatico già fatto. */
   private serviceFixes = new Map<string, { range?: string; install?: InstallPlan; autoRetried?: boolean }>();
   private sessions = new Map<string, SessionSnapshot>();
@@ -254,7 +257,9 @@ export class RunEngine {
       const node = extra.nodeId ? this.wf.nodes.find((x) => x.id === extra.nodeId) : undefined;
       report({
         source: 'fase', key: m.key, kind: node?.data.kind, lang: this.lang, message: this.tx(safe),
-        detail: st?.service?.log.length ? st.service.log.slice(-30).join('\n') : undefined,
+        // Con il log di diagnosi: tempi, pause, processi rimasti attivi e ultime righe con il loro istante.
+        detail: (extra.nodeId ? this.traces.get(extra.nodeId)?.reportDetail() : undefined)
+          || (st?.service?.log.length ? st.service.log.slice(-30).join('\n') : undefined),
       });
     }
   }
@@ -919,6 +924,9 @@ export class RunEngine {
     const svc: ServiceState = { command, cwd, url: d.url?.trim() || undefined, status: 'avvio', startedAt: new Date().toISOString(), log: [], readyCheck: external ? 'url' : check, external: external || undefined };
     st.service = svc;
     this.running.add(n.id);
+    // Il log di diagnosi del tentativo precedente non deve finire nelle segnalazioni di questo.
+    this.traces.get(n.id)?.close();
+    this.traces.delete(n.id);
     const sim = this.run.mode === 'prova';
     /** Evento della fase: il nome della fase è aggiunto ai parametri del messaggio. */
     const ev = (m: Msg, kind: EventKind = 'servizio') => this.say(kind, { key: m.key, params: { ...m.params, label: d.label } }, { nodeId: n.id, attemptId: a.id });
@@ -926,6 +934,12 @@ export class RunEngine {
     this.updateRunStatus();
 
     const finish = (ok: boolean, failure?: Msg, actions?: HumanAction[]) => {
+      const tr = this.traces.get(n.id);
+      if (tr) {
+        tr.note(ok ? 'esito: avvio riuscito' : `esito: avvio non riuscito — ${failure ? this.tx(failure) : ''}`);
+        // Un servizio rimasto attivo continua a scrivere nel log; si chiude quando il processo termina.
+        if (!this.services.has(n.id)) tr.close();
+      }
       this.running.delete(n.id);
       a.endedAt = new Date().toISOString();
       st.activity = undefined;
@@ -1063,14 +1077,32 @@ export class RunEngine {
       return ok ? finish(true) : finish(false, msg('interventions.service.noResponse', { url, seconds: timeoutSec }));
     }
 
+    // Log di diagnosi: tutto l'output con l'istante di ogni riga, le pause e gli eventi di Regia.
+    const traceName = `${n.id}-${st.attempts.length}.log`;
+    const trace = new ServiceTrace(path.join(logsDir(this.run.id), traceName), {
+      fase: `${d.label} (${d.kind}${show ? `, ${show.target}` : ''})`,
+      comando: redact(command),
+      cartella: cwd,
+      criterio: check,
+      testo_atteso: check === 'output' ? readyPattern : undefined,
+      attesa: `${timeoutSec} s (proroga se scrive ancora: silenzio massimo ${Math.min(WAIT_IDLE_SEC, Math.max(1, Math.floor(timeoutSec / 2)))} s, massimo ${Math.max(timeoutSec, WAIT_MAX_SEC)} s)`,
+      node: svc.node,
+      backend: companion ? `${companion.command} in ${companion.dir || '.'}` : undefined,
+      sistema: `${process.platform} ${process.arch}, Node ${process.version}`,
+    });
+    this.traces.set(n.id, trace);
+    svc.trace = traceName;
+
     // 2. Dipendenze mancanti (progetti Node): installazione automatica senza modificare il lockfile.
     const deps = nodeProject ? depsPlan(cwd) : null;
     if (deps && needsDeps(cwd)) {
       st.activity = this.t('events.activity.deps', { command: deps.display });
       ev(msg('events.service.depsMissing', { command: deps.display }));
       this.nodeChanged(n.id);
+      trace.note(`installazione dipendenze: ${deps.display}`);
       let shown = 0;
       const code = await runOnce(deps.command, null, cwd, env, (l) => {
+        trace.line(redact(l), '[dipendenze]');
         pushLog(svc.log, redact(l));
         // Output del comando: resta testo, non viene tradotto.
         if (++shown <= 10) this.event('servizio', d.label + ': ' + redact(l), { nodeId: n.id, attemptId: a.id });
@@ -1101,11 +1133,13 @@ export class RunEngine {
       let shown = 0;
       side = startService(c.command, path.join(baseCwd, c.dir), {
         onLine: (line) => {
+          trace.line(line, `[${c.dir || '.'}]`);
           pushLog(svc.log, `[${c.dir || '.'}] ${line}`);
           if (++shown <= 10) this.event('servizio', `${c.project}: ${line}`, { nodeId: n.id, attemptId: a.id });
         },
         onUrl: () => undefined,
         onExit: (code) => {
+          trace.note(`backend ${c.project} terminato (codice ${code ?? '?'})`);
           if (this.services.get(n.id) === handle) this.say('errore', msg('events.service.companionExited', { label: d.label, project: c.project, code: String(code ?? '?') }), { nodeId: n.id });
         },
       }, env);
@@ -1114,9 +1148,11 @@ export class RunEngine {
     let handle: ServiceHandle | undefined;
     const startedAt = Date.now();
     let lastOutput = startedAt;
+    trace.note(`avvio del comando (attesa ${timeoutSec} s)`);
     const h = startService(command, cwd, {
       onLine: (line) => {
         lastOutput = Date.now();
+        trace.line(line);
         pushLog(svc.log, line);
         if (++lines <= 25) this.event('servizio', line, { nodeId: n.id, attemptId: a.id });
         if (pattern?.(line)) matchedResolve();
@@ -1130,6 +1166,9 @@ export class RunEngine {
       },
       onExit: (code) => {
         svc.exitCode = code;
+        trace.note(`processo terminato (codice ${code ?? '?'})`);
+        // A fase già conclusa (servizio rimasto attivo) il log si chiude qui; altrimenti lo chiude l'esito.
+        if (!this.running.has(n.id)) trace.close();
         // Se l'app si chiude, si ferma anche il backend avviato con lei.
         if (this.services.get(n.id) === handle) { this.services.delete(n.id); side?.stop(); }
         if (svc.status === 'attivo') {
@@ -1168,9 +1207,14 @@ export class RunEngine {
         await within(p, Math.min(startedAt + maxMs, Math.max(startedAt + timeoutSec * 1000, lastOutput + idleSec * 1000)) - Date.now());
         await Promise.resolve();
         const now = Date.now();
-        if (done || ctrl.signal.aborted || now - startedAt >= maxMs || now - lastOutput >= idleSec * 1000) return;
+        if (done || ctrl.signal.aborted) return;
+        if (now - startedAt >= maxMs || now - lastOutput >= idleSec * 1000) {
+          trace.note(`attesa finita: in corso da ${Math.round((now - startedAt) / 1000)} s, nessuna riga da ${Math.round((now - lastOutput) / 1000)} s`);
+          return;
+        }
         if (!extended) {
           extended = true;
+          trace.note(`tempo normale scaduto: il comando scrive ancora (ultima riga ${Math.round((now - lastOutput) / 1000)} s fa), proroga`);
           ev(msg('events.service.stillWorking', { seconds: timeoutSec, max: maxMs / 1000 }));
         }
       }
@@ -1220,6 +1264,20 @@ export class RunEngine {
       return finish(true);
     }
     const hadExited = h.exited;
+    // Comando ancora in corso allo scadere: prima di fermarlo si annota cosa sta girando e da quanto tace,
+    // così si distingue una build lenta da una bloccata (es. in attesa di una conferma sul dispositivo).
+    if (!hadExited && failure && !ctrl.signal.aborted && this.run.status !== 'annullata' && this.run.status !== 'sospesa') {
+      const procs = h.pid ? await processTree(h.pid) : [];
+      trace.procs = procs;
+      trace.note(procs.length ? `processi ancora attivi (${procs.length}):` : 'processi ancora attivi: nessuno trovato');
+      for (const p of procs) trace.note(`  pid ${p.pid} (padre ${p.ppid}) ${p.name} · cpu ${p.cpuSec ?? '?'} s · da ${p.ageSec ?? '?'} s · ${redact(p.command ?? '')}`);
+      const s = trace.summary();
+      const base = this.tx(failure);
+      failure = s.lines && s.silentSec >= idleSec
+        ? msg('interventions.service.silentSince', { base, silent: s.silentSec, last: clip(s.lastLine ?? '', 200) })
+        : s.lines ? msg('interventions.service.stillWriting', { base, silent: s.silentSec }) : msg('interventions.service.noLines', { base });
+      if (procs.length) failure = msg('interventions.service.processes', { base: this.tx(failure), procs: describeTree(procs) });
+    }
     this.stopService(n.id, 'startFailed');
     svc.status = 'errore';
     if (this.run.status === 'annullata') return finish(false, msg('interventions.service.cancelled'));

@@ -135,6 +135,18 @@ test('comando che deve terminare con successo (build, installazione, deploy)', a
   await waitFor(() => Boolean(e3.run.nodes.app.pendingActions));
   assert.match(e3.run.nodes.app.pendingReason!, /il comando non è terminato entro 2 secondi/);
   assert.doesNotMatch(e3.run.nodes.app.pendingReason!, /Permessi insufficienti/);
+  // Il messaggio dice da quanto tace, su quale riga si è fermato e quali processi giravano ancora.
+  assert.match(e3.run.nodes.app.pendingReason!, /nessun output da \d+ secondi, ultima riga: «warning: permission denied on cache, ignored»/);
+  assert.match(e3.run.nodes.app.pendingReason!, /Processi ancora attivi: .*node/i);
+  // Log di diagnosi: righe con l'istante, eventi di Regia e processi attivi con la riga di comando.
+  const svc3 = e3.run.nodes.app.service!;
+  assert.ok(svc3.trace);
+  const traceText = fs.readFileSync(path.join(tmp, 'data', 'logs', e3.run.id, svc3.trace!), 'utf8');
+  assert.match(traceText, /^comando: /m);
+  assert.match(traceText, /^\[\+00:0\d\] > Task :app:compile$/m);
+  assert.match(traceText, /## attesa finita: in corso da \d+ s, nessuna riga da \d+ s/);
+  assert.match(traceText, /## processi ancora attivi \(\d+\):[\s\S]*build-slow\.cjs/);
+  assert.match(traceText, /## esito: avvio non riuscito/);
   e3.cancel();
 });
 
@@ -159,6 +171,7 @@ test('build lunga: oltre il tempo previsto si aspetta finché scrive output, fin
   const e3 = startRun(wfWith({ command: endless, readyCheck: 'exit', readyTimeoutSec: 2 }), 'reale');
   await waitFor(() => Boolean(e3.run.nodes.app.pendingActions));
   assert.match(e3.run.nodes.app.pendingReason!, /non è terminato entro il limite massimo di 6 secondi/);
+  assert.match(e3.run.nodes.app.pendingReason!, /scriveva ancora output/);
   e3.cancel();
 });
 

@@ -86,6 +86,8 @@ export function deleteRunsOf(workflowId: string, keep: (runId: string) => boolea
   for (const r of listRuns(workflowId)) {
     if (keep(r.id)) continue;
     fs.rmSync(path.join(RUN_DIR, `${r.id}.json`), { force: true });
+    // Log di diagnosi dei comandi delle fasi (servicetrace.ts).
+    fs.rmSync(path.join(DATA_DIR, 'logs', r.id), { recursive: true, force: true });
     n++;
   }
   return n;

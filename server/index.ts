@@ -15,6 +15,7 @@ import { planLaunch } from './launch.ts';
 import { compareGit, recoverInterruptedRuns } from './resume.ts';
 import { withLayout } from '../shared/layout.ts';
 import { killAllServices } from './service.ts';
+import { logsDir } from './servicetrace.ts';
 import { languages, mergedDict, serverT, systemLanguage } from './i18n.ts';
 import { installScrcpy, scrcpyStatus } from './scrcpy.ts';
 import { flush as flushReports, report, reportsInfo, setConsent } from './reports.ts';
@@ -260,6 +261,15 @@ app.get('/api/runs/:id/uat/:nodeId/:round/:file', (req, res) => {
   const p = path.join(DATA_DIR, 'uat', id, nodeId, round, file);
   if (!fs.existsSync(p)) return void sendError(res, 404, msg('api.phaseNotFound'));
   res.sendFile(p);
+});
+
+// Log di diagnosi dei comandi delle fasi, salvati da Regia in data/logs/<esecuzione>/.
+app.get('/api/runs/:id/logs/:file', (req, res) => {
+  const { id, file } = req.params;
+  if (!/^run_[\w-]+$/.test(id) || !/^[\w-]+\.log$/i.test(file)) return void sendError(res, 400, msg('api.invalidAction'));
+  const p = path.join(logsDir(id), file);
+  if (!fs.existsSync(p)) return void sendError(res, 404, msg('api.phaseNotFound'));
+  res.type('text/plain; charset=utf-8').sendFile(p);
 });
 
 app.get('/api/runs/:id', (req, res) => {

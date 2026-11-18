@@ -72,6 +72,7 @@
       "startAgain": "Avvia di nuovo",
       "stoppedAtEnd": "Fermato a fine esecuzione.",
       "output": "Output",
+      "trace": "Log di diagnosi completo",
       "external": "Servizio esterno: Regia lo verifica ma non lo avvia né lo ferma.",
       "openOnDevice": "Controlla l'app sul desktop, sull'emulatore o sul dispositivo, poi decidi."
     },

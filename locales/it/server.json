@@ -202,7 +202,11 @@
       "exitCode": "il comando è terminato con codice {code}",
       "notFinished": "il comando non è terminato entro {seconds} secondi",
       "stalled": "il comando non scrive più nulla da {idle} secondi (in corso da {seconds} secondi): sembra bloccato",
-      "tooLong": "il comando non è terminato entro il limite massimo di {seconds} secondi"
+      "tooLong": "il comando non è terminato entro il limite massimo di {seconds} secondi",
+      "silentSince": "{base}; nessun output da {silent} secondi, ultima riga: «{last}». Sembra bloccato lì, non solo lento",
+      "stillWriting": "{base}; il comando scriveva ancora output ({silent} secondi fa): è lento, si può aumentare l'attesa della fase",
+      "noLines": "{base}; il comando non ha scritto nessuna riga",
+      "processes": "{base}. Processi ancora attivi: {procs}"
     }
   },
   "agent": {

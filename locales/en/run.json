@@ -72,6 +72,7 @@
       "startAgain": "Start again",
       "stoppedAtEnd": "Stopped at the end of the run.",
       "output": "Output",
+      "trace": "Full diagnostic log",
       "external": "External service: Regia checks it but neither starts nor stops it.",
       "openOnDevice": "Check the app on the desktop, emulator or device, then decide."
     },

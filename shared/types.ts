@@ -136,6 +136,8 @@ export interface ServiceState {
   exitCode?: number | null;
   /** Ultime righe di output (oscurate da eventuali segreti). */
   log: string[];
+  /** File del log di diagnosi in data/logs/<esecuzione>/: tutto l'output con i tempi, le pause e i processi attivi. */
+  trace?: string;
   /** Versione di Node usata per il comando. */
   node?: string;
   readyCheck?: ReadyCheck;
