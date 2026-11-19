@@ -136,6 +136,8 @@ export async function* mockQuery(o: MockOptions): AsyncGenerator<Record<string, 
   const stepMs = o.stepMs ?? Number(process.env.REGIA_MOCK_SPEED ?? 600);
   const resumed = Boolean(o.resume);
   const failFirst = p.instructions.includes('[simula-errore]') && o.attemptIndex === 0;
+  // Turni esauriti nella sessione nuova ([simula-turni]) o anche nella prosecuzione ([simula-turni-sempre]).
+  const outOfTurns = (p.instructions.includes('[simula-turni]') && !resumed) || p.instructions.includes('[simula-turni-sempre]');
   // Senza il permesso di modificare, la fase si ferma e lo chiede (finché non le viene concesso).
   const needsEdit = p.instructions.includes('[simula-permesso]') && !p.allowedTools.includes('Edit');
   // Lo stesso per una cartella fuori dal progetto, finché non diventa una cartella aggiuntiva.
@@ -238,6 +240,11 @@ export async function* mockQuery(o: MockOptions): AsyncGenerator<Record<string, 
       }
       yield { type: 'system', subtype: 'task_notification', task_id: `task_${toolId}`, tool_use_id: toolId, status: 'completed', summary: t('mock.subagentSummary'), usage: { total_tokens: subTokens, tool_uses: s.calls }, session_id: sessionId };
       yield { type: 'user', parent_tool_use_id: null, session_id: sessionId, message: { role: 'user', content: [{ type: 'tool_result', tool_use_id: toolId, content: t('mock.subagentSummary') }] } };
+    }
+    if (outOfTurns && i === 1) {
+      yield result('error_max_turns', '', true);
+      // Come l'SDK: dopo un risultato d'errore lancia anche un'eccezione con lo stesso motivo.
+      throw new Error(`Claude Code returned an error result: Reached maximum number of turns (${p.maxTurns ?? '?'})`);
     }
     if (failFirst && i === 1) {
       // Crash simulato: il result di errore arriva con i valori azzerati, come documentato.

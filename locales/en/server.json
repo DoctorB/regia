@@ -27,7 +27,8 @@
       "resumed": "{label}: started (session resumed with feedback). Model: {model}; tools: {tools}.",
       "retry": "{label}: started (new attempt). Model: {model}; tools: {tools}.",
       "interruptedSession": "{label}: started (resuming the interrupted session). Model: {model}; tools: {tools}.",
-      "interruptedSummary": "{label}: started (new session with a summary of the interrupted work). Model: {model}; tools: {tools}."
+      "interruptedSummary": "{label}: started (new session with a summary of the interrupted work). Model: {model}; tools: {tools}.",
+      "continued": "{label}: continues in the same session after running out of turns. Model: {model}; tools: {tools}."
     },
     "defaultModel": "default",
     "noTools": "none",
@@ -58,6 +59,7 @@
     },
     "phaseCancelled": "{label}: cancelled.",
     "phaseFailed": "{label}: failed — {error}",
+    "turnsContinue": "{label}: out of turns ({max}), the agent continues on its own with another {max} turns. If they are not enough the phase stops.",
     "agentBlocked": "{label}: the agent reports being blocked — {summary}",
     "agentKo": "{label}: negative outcome — {summary}",
     "noOutcomeBlock": "{label}: the agent did not return the expected outcome block; using the final text as the result.",
@@ -185,7 +187,7 @@
     "serviceFailedLog": "{reason}\n\nLast lines:\n{log}",
     "repairFailed": "\"{command}\" failed (code {code}).\n\nLast lines:\n{log}",
     "error": {
-      "maxTurns": "maximum number of turns reached",
+      "maxTurns": "maximum number of turns reached ({max}): raise the phase's \"Max turns\" or split the work into more phases",
       "cancelled": "Cancelled"
     },
     "service": {
@@ -220,6 +222,7 @@
     "chosenPoints": "Points reported by \"{label}\" to correct:\n{points}",
     "extraComment": "Additional instructions:\n{comment}",
     "continue": "Continue from where you left off.",
+    "continueTurns": "You ran out of turns before finishing. Continue from where you left off without redoing work already done: check the state of the files you were changing, complete the task going straight to the goal (avoid unnecessary exploration) and end with the outcome block. If you cannot finish, end with outcome \"bloccato\" explaining what is missing.\n\n{protocol}",
     "permissionGranted": {
       "modifica": "You can now edit files and run commands in the project folder. Resume the task from where you stopped.",
       "internet": "You can now also use the web, in addition to editing files and running commands. Resume the task from where you stopped."

@@ -277,7 +277,8 @@
       "ripresa_con_feedback": "ripresa con feedback",
       "dopo_correzione": "dopo correzione",
       "riuso": "riuso",
-      "ripresa_dopo_interruzione": "ripresa dopo interruzione"
+      "ripresa_dopo_interruzione": "ripresa dopo interruzione",
+      "proseguimento": "prosecuzione dopo i turni esauriti"
     },
     "attemptStatus": {
       "attiva": "attiva",

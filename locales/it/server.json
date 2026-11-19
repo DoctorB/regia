@@ -27,7 +27,8 @@
       "resumed": "{label}: avviata (ripresa della sessione con feedback). Modello: {model}; strumenti: {tools}.",
       "retry": "{label}: avviata (nuovo tentativo). Modello: {model}; strumenti: {tools}.",
       "interruptedSession": "{label}: avviata (ripresa della sessione interrotta). Modello: {model}; strumenti: {tools}.",
-      "interruptedSummary": "{label}: avviata (sessione nuova con il riassunto del lavoro interrotto). Modello: {model}; strumenti: {tools}."
+      "interruptedSummary": "{label}: avviata (sessione nuova con il riassunto del lavoro interrotto). Modello: {model}; strumenti: {tools}.",
+      "continued": "{label}: prosegue nella stessa sessione dopo aver esaurito i turni. Modello: {model}; strumenti: {tools}."
     },
     "defaultModel": "predefinito",
     "noTools": "nessuno",
@@ -58,6 +59,7 @@
     },
     "phaseCancelled": "{label}: annullata.",
     "phaseFailed": "{label}: fallita — {error}",
+    "turnsContinue": "{label}: turni esauriti ({max}), l'agente prosegue da solo con altri {max} turni. Se non bastano la fase si ferma.",
     "agentBlocked": "{label}: l'agente dichiara di essere bloccato — {summary}",
     "agentKo": "{label}: esito negativo — {summary}",
     "noOutcomeBlock": "{label}: l'agente non ha restituito il blocco di esito previsto; uso il testo finale come risultato.",
@@ -185,7 +187,7 @@
     "serviceFailedLog": "{reason}\n\nUltime righe:\n{log}",
     "repairFailed": "\"{command}\" non è riuscito (codice {code}).\n\nUltime righe:\n{log}",
     "error": {
-      "maxTurns": "numero massimo di turni raggiunto",
+      "maxTurns": "numero massimo di turni raggiunto ({max}): aumenta \"Turni massimi\" della fase o dividi il lavoro in più fasi",
       "cancelled": "Annullata"
     },
     "service": {
@@ -220,6 +222,7 @@
     "chosenPoints": "Punti segnalati da \"{label}\" da correggere:\n{points}",
     "extraComment": "Indicazioni aggiuntive:\n{comment}",
     "continue": "Continua dal punto in cui ti eri fermato.",
+    "continueTurns": "Hai esaurito i turni a disposizione prima di finire. Prosegui dal punto in cui ti eri fermato senza rifare il lavoro già fatto: controlla lo stato dei file che stavi modificando, completa il compito andando dritto all'obiettivo (evita esplorazioni non necessarie) e chiudi con il blocco di esito. Se non riesci a finire, chiudi con esito \"bloccato\" spiegando cosa manca.\n\n{protocol}",
     "permissionGranted": {
       "modifica": "Ora puoi modificare i file ed eseguire comandi nella cartella del progetto. Riprendi il compito dal punto in cui ti eri fermato.",
       "internet": "Ora puoi anche consultare il web, oltre a modificare i file ed eseguire comandi. Riprendi il compito dal punto in cui ti eri fermato."

@@ -336,7 +336,7 @@ export interface Attempt {
   id: string;
   nodeId: string;
   index: number;
-  reason: 'iniziale' | 'riprova' | 'ripresa_con_feedback' | 'dopo_correzione' | 'riuso' | 'ripresa_dopo_interruzione' | 'domanda';
+  reason: 'iniziale' | 'riprova' | 'ripresa_con_feedback' | 'dopo_correzione' | 'riuso' | 'ripresa_dopo_interruzione' | 'domanda' | 'proseguimento';
   startedAt: string;
   endedAt?: string;
   /** interrotta: fermato da una sospensione o dalla chiusura di Regia; la fase riparte con Riprendi. */

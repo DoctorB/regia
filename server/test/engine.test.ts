@@ -813,3 +813,32 @@ test('allineamento e verifica: esecuzione di riferimento passata alle fasi, corr
   assert.equal(off.run.reference, undefined);
   off.cancel();
 });
+
+test('turni esauriti: l\'agente prosegue da solo una volta, poi la fase si ferma', async () => {
+  const wfFor = (id: string, instructions: string): Workflow => ({
+    id, name: 'Turni', description: '', updatedAt: '',
+    settings: { projectDir, goal: 'Prova', maxParallel: 1, loadProjectSettings: false, applyGeneralRules: true },
+    nodes: [{ id: 'crea', position: { x: 0, y: 0 }, data: phase({ label: 'Crea file', kind: 'personalizzata', instructions }) }],
+    edges: [],
+  });
+
+  // Prosecuzione riuscita: la fase si completa senza intervento, nella stessa sessione.
+  const ok = startRun(wfFor('wf_turni_ok', '[simula-turni] Crea i file.'), 'prova');
+  await waitFor(() => ok.run.status === 'completata');
+  const att = ok.run.nodes.crea.attempts;
+  assert.deepEqual(att.map((a) => a.reason), ['iniziale', 'proseguimento']);
+  assert.equal(att[0].status, 'errore');
+  // Il motivo è quello riconosciuto da Regia, non il testo grezzo dell'eccezione lanciata dopo il risultato.
+  assert.match(att[0].error ?? '', /numero massimo di turni raggiunto \(10\)/);
+  assert.equal(att[1].resumedSessionId, att[0].sessionId);
+  assert.equal(att[1].status, 'ok');
+  assert.ok(ok.run.events.some((e) => e.text.includes('prosegue da solo')));
+
+  // Turni esauriti anche nella prosecuzione: niente altri tentativi automatici, si chiede un intervento.
+  const ko = startRun(wfFor('wf_turni_ko', '[simula-turni-sempre] Crea i file.'), 'prova');
+  await waitFor(() => ko.run.nodes.crea.status === 'fallita' && Boolean(ko.run.nodes.crea.pendingActions));
+  await new Promise((r) => setTimeout(r, 50));
+  assert.deepEqual(ko.run.nodes.crea.attempts.map((a) => a.reason), ['iniziale', 'proseguimento']);
+  assert.ok(ko.run.nodes.crea.pendingActions?.includes('riprendi'));
+  ko.cancel();
+});

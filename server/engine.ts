@@ -556,7 +556,7 @@ export class RunEngine {
       label: d.label, model: d.model || this.t('events.defaultModel'), tools: d.allowedTools.join(', ') || this.t('events.noTools'),
     };
     const how = reason === 'ripresa_dopo_interruzione' ? (resume ? 'interruptedSession' : 'interruptedSummary')
-      : resume ? 'resumed' : reason === 'riprova' ? 'retry' : 'initial';
+      : reason === 'proseguimento' ? 'continued' : resume ? 'resumed' : reason === 'riprova' ? 'retry' : 'initial';
     this.say('fase', msg(`events.phaseStarted.${how}`, startParams), { nodeId: n.id, attemptId: a.id });
     this.nodeChanged(n.id);
     this.updateRunStatus();
@@ -687,7 +687,7 @@ export class RunEngine {
             this.decision(n.id, a.id, msg('events.decisions.denied', { tool: den.tool_name }), 'osservata', false);
           }
           if (sm.subtype !== 'success' || sm.is_error) {
-            errorMsg = sm.subtype === 'error_max_turns' ? msg('interventions.error.maxTurns') : undefined;
+            errorMsg = sm.subtype === 'error_max_turns' ? msg('interventions.error.maxTurns', { max: String(d.maxTurns ?? sm.num_turns ?? '?') }) : undefined;
             const why = errorMsg ? this.tx(errorMsg) : (sm.errors?.join('; ') || sm.result || sm.subtype);
             a.error = redact(String(why));
           }
@@ -698,8 +698,12 @@ export class RunEngine {
     } catch (err) {
       if (!gotResult) acc.applyPartial();
       const aborted = ctrl.signal.aborted;
-      errorMsg = aborted ? msg('interventions.error.cancelled') : undefined;
-      a.error = aborted ? this.tx(errorMsg!) : redact(`${(err as Error).message}${stderrTail.length ? `\n${stderrTail.join('').slice(-800)}` : ''}`);
+      // Dopo un risultato d'errore (es. turni esauriti) l'SDK lancia anche "Claude Code returned an error result: ...":
+      // il motivo è già stato registrato dal risultato e non va sostituito con il testo grezzo dell'eccezione.
+      if (aborted || !(gotResult && a.error)) {
+        errorMsg = aborted ? msg('interventions.error.cancelled') : undefined;
+        a.error = aborted ? this.tx(errorMsg!) : redact(`${(err as Error).message}${stderrTail.length ? `\n${stderrTail.join('').slice(-800)}` : ''}`);
+      }
       if (aborted) a.status = 'annullata';
     } finally {
       this.running.delete(n.id);
@@ -741,6 +745,14 @@ export class RunEngine {
     if (a.status === 'annullata') {
       st.status = 'fallita';
       this.say('fase', msg('events.phaseCancelled', { label: d.label }), where);
+    } else if (a.status === 'errore' && errorMsg?.key === 'interventions.error.maxTurns' && a.sessionId && reason !== 'proseguimento' && !opts.uat) {
+      // Turni esauriti: l'agente prosegue da solo nella stessa sessione, una volta, con un altro giro di turni.
+      // Se li esaurisce di nuovo la fase si ferma e chiede un intervento: il limite resta un tetto ai costi.
+      this.say('fase', msg('events.turnsContinue', { label: d.label, max: String(d.maxTurns ?? '?') }), where);
+      this.nodeChanged(n.id);
+      this.runChanged();
+      void this.runAgent(n, 'proseguimento', { sessionId: a.sessionId, feedback: '', prompt: this.t('agent.continueTurns', { protocol: agentProtocol(this.lang, d.kind) }) });
+      return;
     } else if (a.status === 'errore') {
       st.status = 'fallita';
       this.setPending(st, errorMsg, a.error);

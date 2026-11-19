@@ -277,7 +277,8 @@
       "ripresa_con_feedback": "resumed with feedback",
       "dopo_correzione": "after correction",
       "riuso": "reuse",
-      "ripresa_dopo_interruzione": "resumed after interruption"
+      "ripresa_dopo_interruzione": "resumed after interruption",
+      "proseguimento": "continued after running out of turns"
     },
     "attemptStatus": {
       "attiva": "active",
