@@ -37,7 +37,11 @@
     "externalNeedsUrl": "Phase \"{name}\" starts nothing: it needs the address to check, with the \"An address responds\" criterion.",
     "showNeedsUrl": "\"{name}\": enter the address of the site already running.",
     "extraDirNotAbsolute": "Additional folder \"{dir}\": an absolute path is required, it will be ignored.",
-    "extraDirMissing": "Additional folder \"{dir}\": does not exist."
+    "extraDirMissing": "Additional folder \"{dir}\": does not exist.",
+    "prUrlInvalid": "The PR URL of phase \"{name}\" must start with http:// or https://.",
+    "prNeedsStory": "Phase \"{name}\" fixes the points of a PR: link the user story (Workflow settings → User story), so the fixes respect its specification and acceptance criteria.",
+    "storyInvalid": "The user story address is not recognised: it must be an Azure DevOps work item or a GitHub issue (https://…).",
+    "extraStoryInvalid": "The additional user story address is not recognised ({url}): it must be an Azure DevOps work item or a GitHub issue (https://…)."
   },
   "insights": {
     "corrections": {

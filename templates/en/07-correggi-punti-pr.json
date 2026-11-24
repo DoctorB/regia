@@ -1,0 +1,35 @@
+{
+  "id": "correggi-punti-pr",
+  "name": "Fix the points of a PR",
+  "description": "Reads the comments of a pull request, lets you choose which points to apply, fixes them and checks them with the tests.",
+  "goalHint": "Optional: the PR URL or extra directions. Linking the user story in the workflow settings is required. Without a URL the PR of the branch open in the project is used, shown to you for confirmation.",
+  "settings": { "maxParallel": 2, "loadProjectSettings": true, "applyGeneralRules": true },
+  "nodes": [
+    { "id": "pr", "position": { "x": 0, "y": 120 }, "data": {
+      "label": "PR points", "kind": "revisione", "role": "Pull request reader: collects the review comments to apply, without changing the code.",
+      "instructions": "Read the given pull request and turn the review comments that are still open into points to implement, one per comment, with the original severity.",
+      "model": "sonnet", "allowedTools": ["Read", "Glob", "Grep", "Bash", "WebFetch"], "maxTurns": 25, "contextMode": "sintesi", "reuseResult": false, "pr": { "url": "" } } },
+    { "id": "scelta", "position": { "x": 300, "y": 120 }, "data": {
+      "label": "Choose the points", "kind": "approvazione", "role": "",
+      "instructions": "Tick the PR points to fix (for example BLOCKER and MAJOR) and approve: they go to the fix. Unticked ones are left out.",
+      "model": "", "allowedTools": [], "contextMode": "sintesi", "reuseResult": false } },
+    { "id": "correzione", "position": { "x": 600, "y": 120 }, "data": {
+      "label": "Fix", "kind": "implementazione", "role": "Developer: makes small, targeted changes, in the project's style.",
+      "instructions": "Apply only the PR points chosen in the previous phase, one by one, limiting yourself to the necessary files and respecting the specification and acceptance criteria of the linked user stories: if a point contradicts them, do not apply it and explain why in the summary. Do not address other PR comments, do not commit and do not reply on the PR. If a point cannot be applied, explain why in the summary. If a test suite exists, run it once.",
+      "model": "sonnet", "allowedTools": ["Read", "Glob", "Grep", "Edit", "Write", "Bash"], "maxTurns": 30, "contextMode": "sintesi", "reuseResult": false } },
+    { "id": "test", "position": { "x": 900, "y": 120 }, "data": {
+      "label": "Test", "kind": "test", "role": "Tester: runs the tests and reports the outcome without modifying the code.",
+      "instructions": "Run the project's test suite (look for the command in package.json, Makefile, pyproject or README). Report how many tests pass and fail. Outcome 'ko' if at least one fails. Do not modify files.",
+      "model": "haiku", "allowedTools": ["Read", "Glob", "Bash"], "maxTurns": 8, "contextMode": "nessuno", "reuseResult": false } },
+    { "id": "approvazione", "position": { "x": 1200, "y": 120 }, "data": {
+      "label": "Approval", "kind": "approvazione", "role": "",
+      "instructions": "Check the test outcome and git diff, and that the fixes respect the user stories' acceptance criteria. Approve, or reject explaining what to fix: the fix will resume where it left off. After approval commit and push to the PR branch yourself (or add the Publishing phase).",
+      "model": "", "allowedTools": [], "contextMode": "sintesi", "reuseResult": false } }
+  ],
+  "edges": [
+    { "id": "e1", "source": "pr", "target": "scelta" },
+    { "id": "e2", "source": "scelta", "target": "correzione" },
+    { "id": "e3", "source": "correzione", "target": "test" },
+    { "id": "e4", "source": "test", "target": "approvazione" }
+  ]
+}

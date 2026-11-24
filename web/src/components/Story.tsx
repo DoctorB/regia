@@ -1,6 +1,6 @@
 // User story collegata: campo con anteprima nelle impostazioni del workflow e riquadro nell'esecuzione.
 import { useState } from 'react';
-import { BookOpenText, ExternalLink, Loader2 } from 'lucide-react';
+import { BookOpenText, ExternalLink, Loader2, X } from 'lucide-react';
 import type { UserStory } from '../../../shared/types.ts';
 import { api, fmtTime } from '../api.ts';
 import { useI18n } from '../i18n.tsx';
@@ -55,7 +55,7 @@ export function StoryView({ story, open = false }: { story: UserStory; open?: bo
 }
 
 /** Campo delle impostazioni: URL e pulsante Leggi, con l'anteprima di ciò che arriverà agli agenti. */
-export function StoryField({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+export function StoryField({ value, onChange, label, hint, onRemove }: { value: string; onChange: (v: string) => void; label?: string; hint?: string; onRemove?: () => void }) {
   const { t } = useI18n();
   const [busy, setBusy] = useState(false);
   const [story, setStory] = useState<UserStory | null>(null);
@@ -67,11 +67,12 @@ export function StoryField({ value, onChange }: { value: string; onChange: (v: s
     try { setStory(await api.previewStory(value.trim())); } catch (e) { setErr((e as Error).message); } finally { setBusy(false); }
   };
   return (
-    <Field label={t('story.label')} hint={t('story.hint')}>
+    <Field label={label ?? t('story.label')} hint={label ? hint : hint ?? t('story.hint')}>
       <div className="story-field">
         <div className="extra-dir-row">
           <input value={value} onChange={(e) => { onChange(e.target.value); setStory(null); setErr(''); }} placeholder={t('story.placeholder')} />
           <button className="btn sm" disabled={busy || !value.trim()} onClick={() => void read()}>{busy ? <Loader2 className="spin" /> : <BookOpenText />}{t(busy ? 'story.reading' : 'story.read')}</button>
+          {onRemove && <button className="icon-btn ghost" onClick={onRemove} title={t('story.remove')} aria-label={t('story.remove')}><X /></button>}
         </div>
         {busy && <p className="muted small">{t('story.readingHint')}</p>}
         {err && <div className="callout tone-warn"><span>{err}</span></div>}

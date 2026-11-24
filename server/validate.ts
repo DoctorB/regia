@@ -1,9 +1,10 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { KNOWN_TOOLS, WRITE_TOOLS, type SkillInfo, type ValidationIssue, type Workflow } from '../shared/types.ts';
+import { extraStoryUrls, KNOWN_TOOLS, WRITE_TOOLS, type SkillInfo, type ValidationIssue, type Workflow } from '../shared/types.ts';
 import { msg, type Msg } from '../shared/i18n.ts';
 import { serverT } from './i18n.ts';
 import { discoverSkills, phaseSkills, skillSources } from './skills.ts';
+import { parseStoryUrl } from './story.ts';
 
 /** Ordine topologico; restituisce null se il grafo ha cicli. */
 export function topoOrder(wf: Workflow): string[] | null {
@@ -66,6 +67,16 @@ export function validateWorkflow(wf: Workflow, mode: 'prova' | 'reale' = 'prova'
 
   if (!(wf.settings.maxParallel >= 1 && wf.settings.maxParallel <= 8)) err(msg('validate.maxParallelRange'));
 
+  // Correggere i punti di una PR richiede la user story: le correzioni devono rispettarne specifiche e criteri di accettazione.
+  const prNode = wf.nodes.find((n) => n.data.pr);
+  if (prNode) {
+    const story = wf.settings.story?.trim();
+    if (!story) err(msg('validate.prNeedsStory', { name: prNode.data.label || prNode.id }), prNode.id);
+    else if (!parseStoryUrl(story)) err(msg('validate.storyInvalid'), prNode.id);
+  }
+  // User story aggiuntive: ognuna deve essere un work item o una issue riconoscibile.
+  for (const url of extraStoryUrls(wf.settings)) if (!parseStoryUrl(url)) err(msg('validate.extraStoryInvalid', { url }));
+
   const hasIn = new Set(wf.edges.map((e) => e.target));
   const hasOut = new Set(wf.edges.map((e) => e.source));
   let skills: SkillInfo[] | undefined;
@@ -107,7 +118,13 @@ export function validateWorkflow(wf: Workflow, mode: 'prova' | 'reale' = 'prova'
     for (const tool of d.allowedTools) {
       if (!(KNOWN_TOOLS as readonly string[]).includes(tool) && !tool.startsWith('mcp__')) err(msg('validate.unknownTool', { tool, name }), n.id);
     }
-    if ((d.kind === 'analisi' || d.kind === 'revisione') && d.allowedTools.some((x) => WRITE_TOOLS.includes(x))) {
+    if (d.pr) {
+      // Punti della PR: senza URL si usa quello dell'obiettivo o, in mancanza, la PR del branch corrente (confermata
+      // durante l'esecuzione, perché la PR può nascere dopo aver creato il workflow). Bash le serve per gh o az.
+      const url = d.pr.url.trim();
+      if (url && !/^https?:\/\/[^\s]+$/i.test(url)) err(msg('validate.prUrlInvalid', { name }), n.id);
+    }
+    if ((d.kind === 'analisi' || d.kind === 'revisione') && !d.pr && d.allowedTools.some((x) => WRITE_TOOLS.includes(x))) {
       warn(d.kind === 'analisi' ? msg('validate.readOnlyKindWrites.analisi', { name }) : msg('validate.readOnlyKindWrites.revisione', { name }), n.id);
     }
     if (d.maxTurns !== undefined && !(Number.isInteger(d.maxTurns) && d.maxTurns > 0)) err(msg('validate.invalidMaxTurns', { name }), n.id);

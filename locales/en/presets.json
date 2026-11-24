@@ -70,6 +70,13 @@
       "phaseLabel": "Acceptance test on phone",
       "role": "Acceptance tester: uses the app like a user and checks that the change works, without modifying the code.",
       "instructions": "Test on the phone what was implemented, changed or fixed: pick the scenarios from the goal, the previous phases and git diff, run them on the app and report every anomaly. Do not perform irreversible actions (purchases, real sends, deleting data)."
+    },
+    "pr-commenti": {
+      "label": "PR points",
+      "hint": "Reads the comments of a pull request (GitHub, Azure DevOps) and lists them by priority: at approval you choose which ones to implement.",
+      "phaseLabel": "PR points",
+      "role": "Pull request reader: collects the review comments to apply, without changing the code.",
+      "instructions": "Read the given pull request and turn the review comments that are still open into points to implement, one per comment, with the original severity."
     }
   }
 }

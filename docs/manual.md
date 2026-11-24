@@ -81,6 +81,7 @@ then restart with `npm start`. The check only reads the published version number
 | **Human approval** | The workflow waits until you approve or reject |
 | **Run app** | Regia starts the app so you can check it: web, desktop, mobile, or it checks a site already served by IIS |
 | **Acceptance test on phone** (ready-made phase) | Builds and installs the app on the phone, tries it on the change's scenarios while following the log and reports anomalies |
+| **PR points** (ready-made phase) | Reads the comments of a pull request (GitHub or Azure DevOps; optional URL in the phase panel: without it, Regia finds the PR of the open branch and asks you to confirm it before going on) and lists them by priority, with the original severity (BLOCKER, MAJOR, WARNING…). Place it before an approval followed by an implementation: tick the points to do, approve and they go to the implementation. Requires the **user story** linked in the workflow settings: the fixes must respect its specification and acceptance criteria |
 | **Publishing** (ready-made phase) | Commit, push and any releases or GitHub Actions. Place it after an approval |
 
 ---

@@ -101,7 +101,8 @@
       "subagent": "Subagente · {summary}",
       "checking": "Verifica di {url}…",
       "detectingDevice": "Ricerca del progetto e del dispositivo…",
-      "detectingProject": "Ricerca del progetto…"
+      "detectingProject": "Ricerca del progetto…",
+      "detectingPr": "Cerco la PR del branch corrente…"
     },
     "service": {
       "withLabel": "{label}: {text}",
@@ -180,7 +181,11 @@
     "story": {
       "loaded": "User story letta: {type} {id} — {title} ({count} immagini).",
       "failed": "User story non letta: {error} Le fasi lavorano senza."
-    }
+    },
+    "prDetected": "\"{label}\": trovata la PR del branch \"{branch}\" ({url}), in attesa di conferma.",
+    "prNotDetected": "\"{label}\": PR del branch corrente non trovata. {reason}",
+    "prReplyPublished": "\"{label}\": risposta pubblicata sulla PR come @{account} per {ref} ({url}).",
+    "prReplyFailed": "\"{label}\": risposta per {ref} non pubblicata: {error}"
   },
   "interventions": {
     "declaredKo": "Esito negativo dichiarato: {summary}",
@@ -209,11 +214,25 @@
       "stillWriting": "{base}; il comando scriveva ancora output ({silent} secondi fa): è lento, si può aumentare l'attesa della fase",
       "noLines": "{base}; il comando non ha scritto nessuna riga",
       "processes": "{base}. Processi ancora attivi: {procs}"
+    },
+    "pr": {
+      "confirm": "Ho trovato la PR del branch \"{branch}\":\n{title}\n{url}\nÈ quella giusta? Conferma per leggerne i commenti. Se non lo è, apri il branch giusto nel progetto e premi Riprova.",
+      "noBranch": "Il progetto non è su un branch (HEAD staccato, o non è un repository git): apri il branch della PR e premi Riprova.",
+      "toolMissing": "Per trovare la PR del branch serve {tool}, che non risulta installato: installalo, autenticati e premi Riprova. In alternativa annulla e indica l'URL della PR nel pannello della fase.",
+      "notFound": "Nessuna PR aperta trovata per il branch \"{branch}\". {detail}\nCrea la PR (o apri il branch giusto) e premi Riprova, oppure annulla e indica l'URL nel pannello della fase.",
+      "notOpen": "La PR del branch \"{branch}\" non è aperta (stato: {state}): {url}\nApri il branch di una PR aperta e premi Riprova, oppure annulla e indica l'URL nel pannello della fase.",
+      "replyGithubOnly": "Pubblicare risposte è possibile solo sulle PR di GitHub ({url}).",
+      "replyFailed": "gh non è riuscito a pubblicare la risposta: {detail}",
+      "replyNoThread": "Questa risposta non ha una discussione di destinazione: Regia pubblica solo risposte sotto il commento del punto, mai commenti generali sulla PR.",
+      "replyThreadNotFound": "La discussione indicata non esiste su GitHub o non è accessibile con questo account.",
+      "replyThreadOtherPr": "La discussione indicata appartiene a un'altra PR: risposta non pubblicata.",
+      "replyAccountChanged": "L'account di gh è cambiato (mostrato @{expected}, ora @{actual}): ricontrolla l'account e conferma di nuovo.",
+      "accountUnknown": "Non è stato possibile sapere con quale account di GitHub pubblicherebbe gh. {detail}"
     }
   },
   "agent": {
     "protocol": "# Protocollo di risposta\n- Quando prendi una decisione rilevante (cosa leggere, cosa modificare, come verificare), scrivi una riga che inizia con \"DECISIONE:\" seguita da una spiegazione breve, una sola frase.\n- Lavora solo nella cartella del progetto (e nelle cartelle aggiuntive, se indicate) e solo con gli strumenti che hai a disposizione.\n- Termina SEMPRE la risposta con questo blocco, in JSON valido:\n```regia\n{\"esito\": \"ok\" | \"ko\" | \"bloccato\", \"sintesi\": \"risultato in 1-3 frasi, utile alla fase successiva\", \"decisioni\": [\"decisione principale e motivo\", \"...\"]}\n```\nUsa \"ko\" se il compito non è riuscito (es. test falliti), \"bloccato\" se non puoi procedere senza un intervento umano (spiega cosa serve nella sintesi).\nSe ti fermi perché non hai gli strumenti per farlo, aggiungi al blocco \"permesso\": \"modifica\" se ti serve modificare file o eseguire comandi, \"internet\" se ti serve consultare il web: chi supervisiona potrà concederlo con un clic.\nSe ti fermi perché devi leggere o scrivere in una cartella fuori da quelle consentite, aggiungi al blocco \"cartella\" con il percorso assoluto della cartella: anche questa si può concedere con un clic.",
-    "protocolPoints": "- Sei in una fase di revisione: se trovi modifiche concrete da fare, aggiungi al blocco la chiave \"punti\" con l'elenco delle correzioni proposte, una per voce (file o funzione, problema e correzione), in ordine di importanza dalla più importante, al massimo {max}: se ne trovi di più, accorpa quelle simili. Chi approva sceglierà quali far applicare. Trovare dei punti non rende il compito non riuscito: usa comunque \"ok\". Senza punti da segnalare ometti la chiave.",
+    "protocolPoints": "- Sei in una fase di revisione: se trovi modifiche concrete da fare, aggiungi al blocco la chiave \"punti\" con l'elenco delle correzioni proposte, una per voce, ciascuna come oggetto {\"testo\": \"file o funzione, problema e correzione\", \"priorita\": \"alta\" | \"bassa\"}: \"alta\" per bug e modifiche importanti, \"bassa\" per suggerimenti minori o di poca importanza (stile, nomi, piccole semplificazioni). Ordinale per priorità, dalla più importante, al massimo {max}: se ne trovi di più, accorpa quelle simili. Chi approva sceglierà quali far applicare. Trovare dei punti non rende il compito non riuscito: usa comunque \"ok\". Senza punti da segnalare ometti la chiave.",
     "goal": "# Obiettivo del workflow\n{goal}",
     "task": "# Il tuo compito: {label}\n{instructions}",
     "previousResults": "# Risultati delle fasi precedenti\n{results}",
@@ -231,6 +250,10 @@
     "output": {
       "decisions": "Decisioni:",
       "points": "Punti da correggere:",
+      "priority": {
+        "alta": "priorità alta",
+        "bassa": "priorità bassa"
+      },
       "pointsOmitted": {
         "one": "(un altro punto oltre il limite, non riportato)",
         "other": "(altri {count} punti oltre il limite, non riportati)"
@@ -275,7 +298,9 @@
       "acceptance": "## Criteri di accettazione",
       "comments": "## Commenti recenti",
       "images": "## Immagini\nI segnaposto [immagine n] nel testo corrispondono a questi file. Aprili con Read solo quando servono (ad esempio un mockup da confrontare con la schermata): ogni immagine consuma token."
-    }
+    },
+    "pr": "# Pull request da leggere\n{url}\n\nLeggi la pull request e tutti i suoi commenti, senza modificare file e senza rispondere sulla PR.\n- GitHub: dettagli e commenti generali con `gh pr view <url> --comments`; le discussioni sulle righe di codice, con il loro stato, con GraphQL (le API REST non dicono se una discussione è risolta):\n  `gh api graphql -F owner=<proprietario> -F name=<repo> -F number=<numero> -f query='query($owner:String!,$name:String!,$number:Int!){repository(owner:$owner,name:$name){pullRequest(number:$number){reviewThreads(first:100){nodes{id isResolved isOutdated path line comments(first:20){nodes{author{login} body}}}}}}}'`\n- Azure DevOps: `az repos pr show --id <numero>` e i thread con `az devops invoke --area git --resource pullRequestThreads --route-parameters project=<progetto> repositoryId=<repo> pullRequestId=<numero>`; considera solo i thread con stato active o pending.\n- Altrimenti apri l'indirizzo con WebFetch.\nSe lo strumento necessario non è installato o non sei autenticato, fermati con esito \"bloccato\" e spiega cosa serve.\n\nCome scegliere i punti:\n1. Escludi le discussioni risolte (isResolved), quelle superate da commit successivi (isOutdated) e i messaggi senza una richiesta di modifica.\n2. Un commento che elenca più segnalazioni (ad esempio il riepilogo di un bot di revisione) diventa un punto per ogni segnalazione.\n3. Per ogni segnalazione rimasta verifica sul codice attuale del progetto (branch corrente, comprese le modifiche non ancora committate) che il problema ci sia ancora: non fidarti della descrizione del commento né delle risposte, apri i file citati e cerca con Grep i nomi coinvolti (chiavi, funzioni, file di risorse) in tutto il progetto. Se risulta già sistemata, non metterla nei punti: aggiungila alla chiave \"sistemati\" del blocco di esito, una voce per segnalazione (gravità, file, problema e perché risulta sistemata).\n4. Non scartare segnalazioni aperte in base alla tua valutazione (ad esempio WARNING non introdotti dalla PR): decide chi approva.\n\nOgni punto è un oggetto {\"testo\": \"file e riga, problema, correzione da fare, autore del commento, e alla fine Verificato: cosa hai controllato nel codice per confermare che il problema c'è ancora\", \"gravita\": \"BLOCKER\" | \"CRITICAL\" | \"MAJOR\" | \"MINOR\" | \"WARNING\" | \"INFO\" | \"NIT\", \"priorita\": \"alta\" | \"bassa\"}. Usa la gravità indicata nel commento; se manca, deducila (bug e modifiche richieste esplicitamente: MAJOR; suggerimenti facoltativi: MINOR o NIT). Regia ordina i punti per gravità, dal BLOCKER in giù. Unisci i commenti duplicati.\nControlla con git che il branch corrente sia quello della PR: se non lo è, segnalalo nella sintesi, senza cambiare branch. Nella sintesi indica titolo, autore e branch della PR, quanti punti aperti hai trovato per gravità e quanti già sistemati.\n\nLe user story collegate (sopra) sono il riferimento: le correzioni devono rispettarne specifiche e criteri di accettazione (di tutte, se sono più di una). Se la correzione chiesta da un commento li contraddice, mantieni il punto, inizia il testo con \"In contrasto con la US:\", spiega perché e aggiungi all'oggetto \"contrastoUs\": true, così chi approva può decidere.\n\nRisposte sulla PR: per ogni segnalazione già sistemata e per ogni punto in contrasto con la US prepara una risposta da pubblicare sotto il commento originale, nella chiave \"risposte\" del blocco di esito: [{\"motivo\": \"sistemato\" | \"contrasto\", \"riferimento\": \"gravità e file:riga\", \"thread\": \"id della discussione del commento a cui rispondi (campo id di reviewThreads)\", \"testo\": \"la risposta\"}]. Il testo è breve, cortese e nella lingua del commento a cui rispondi: per \"sistemato\" indica dove e come risulta sistemato (file e, se lo conosci, il commit); per \"contrasto\" cita il criterio di accettazione della user story che la modifica contraddirebbe. La risposta viene pubblicata solo sotto quel commento: se la segnalazione viene da un commento generale (non in una discussione sul codice), lascia \"thread\" vuoto e Regia non la pubblicherà. Non pubblicare niente tu: Regia pubblica una risposta solo se chi approva la conferma.",
+    "prFromGoal": "(l'URL della PR indicato nell'obiettivo del workflow)"
   },
   "mock": {
     "decisions": {
@@ -316,6 +341,14 @@
       "point1": "Filtro per categoria: scegliendo una categoria senza prodotti la lista resta vuota senza messaggio. Passi: apri il filtro, scegli \"Accessori\". Atteso: un messaggio \"Nessun prodotto\". Ottenuto: schermata bianca (02-filtro-vuoto.png).",
       "point2": "Rotazione dello schermo: il filtro scelto si perde. Passi: scegli una categoria e ruota il telefono. Atteso: il filtro resta. Ottenuto: torna \"Tutte\" (03-rotazione.png).",
       "manual": "Accoppiamento Bluetooth con un dispositivo reale: verificare a mano che il filtro non interferisca con la ricerca dei dispositivi."
+    },
+    "pr": {
+      "blocker": "[BLOCKER] src/api.ts:42 — la risposta non viene controllata prima dell'uso: gestire il caso di errore restituendo un messaggio chiaro (Revisore A).",
+      "major": "[MAJOR] src/utils.ts:18 — la funzione di formattazione non gestisce le date vuote: restituire una stringa vuota (Revisore B).",
+      "warning": "[WARNING] src/utils.ts:7 — variabile non usata: rimuoverla (Analisi statica).",
+      "fixed": "[MAJOR] src/api.ts:30 — timeout non gestito: già sistemato, la chiamata ora usa withTimeout (Revisore A).",
+      "replyFixed": "Grazie della segnalazione: risulta già sistemato, la chiamata in src/api.ts ora usa withTimeout.",
+      "replyConflict": "Questa modifica contraddirebbe un criterio di accettazione della user story (AC8): la lasciamo com'è."
     }
   },
   "api": {
@@ -358,7 +391,10 @@
     "questionBusy": "Attendi la risposta alla domanda precedente.",
     "questionTarget": "Questa fase non può ricevere domande: serve una fase con agente già completata in questa esecuzione.",
     "scrcpyManual": "Su questo sistema scrcpy va installato a mano: vedi https://github.com/Genymobile/scrcpy.",
-    "scrcpyInstallFailed": "Installazione di scrcpy non riuscita: {error}"
+    "scrcpyInstallFailed": "Installazione di scrcpy non riuscita: {error}",
+    "prStoryUnreadable": "La user story collegata non si riesce a leggere, e correggendo i punti di una PR è obbligatoria: {error}",
+    "prReplyNotFound": "Risposta non trovata.",
+    "prReplyAlreadyPublished": "Questa risposta è già stata pubblicata."
   },
   "nodeenv": {
     "source": {

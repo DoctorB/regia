@@ -70,6 +70,13 @@
       "phaseLabel": "Collaudo sul telefono",
       "role": "Tester di collaudo: usa l'app come un utente e verifica che il cambiamento funzioni, senza modificare il codice.",
       "instructions": "Collauda sul telefono quello che è stato implementato, modificato o corretto: scegli gli scenari dall'obiettivo, dalle fasi precedenti e da git diff, eseguili sull'app e segnala ogni anomalia. Non fare azioni irreversibili (acquisti, invii reali, cancellazione di dati)."
+    },
+    "pr-commenti": {
+      "label": "Punti della PR",
+      "hint": "Legge i commenti di una pull request (GitHub, Azure DevOps) e li elenca per priorità: nell'approvazione scegli quali far implementare.",
+      "phaseLabel": "Punti della PR",
+      "role": "Lettore di pull request: raccoglie i commenti di revisione da applicare, senza modificare il codice.",
+      "instructions": "Leggi la pull request indicata e trasforma i commenti di revisione ancora aperti in punti da implementare, uno per commento, con la gravità originale."
     }
   }
 }

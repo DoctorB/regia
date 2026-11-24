@@ -1,0 +1,24 @@
+{
+  "id": "correggi-punti-pr-mobile",
+  "name": "Fix the points of a PR (mobile app)",
+  "description": "Like \"Fix the points of a PR\", plus the acceptance test on the connected phone: the fixes and the user story acceptance criteria are tried on the app before approval.",
+  "goalHint": "Optional: the PR URL or extra directions. Linking the user story in the workflow settings is required. Without a URL the PR of the branch open in the project is used, shown to you for confirmation.",
+  "settings": { "maxParallel": 2, "loadProjectSettings": true, "applyGeneralRules": true },
+  "nodes": [
+    { "id": "pr", "position": { "x": 0, "y": 120 }, "data": { "label": "PR points", "kind": "revisione", "role": "Pull request reader: collects the review comments to apply, without changing the code.", "instructions": "Read the given pull request and turn the review comments that are still open into points to implement, one per comment, with the original severity.", "model": "sonnet", "allowedTools": ["Read", "Glob", "Grep", "Bash", "WebFetch"], "maxTurns": 25, "contextMode": "sintesi", "reuseResult": false, "pr": { "url": "" } } },
+    { "id": "scelta", "position": { "x": 300, "y": 120 }, "data": { "label": "Choose the points", "kind": "approvazione", "role": "", "instructions": "Tick the PR points to fix (for example BLOCKER and MAJOR) and approve: they go to the fix. Unticked ones are left out.", "model": "", "allowedTools": [], "contextMode": "sintesi", "reuseResult": false } },
+    { "id": "correzione", "position": { "x": 600, "y": 120 }, "data": { "label": "Fix", "kind": "implementazione", "role": "Developer: makes small, targeted changes, in the project's style.", "instructions": "Apply only the PR points chosen in the previous phase, one by one, limiting yourself to the necessary files and respecting the specification and acceptance criteria of the linked user stories: if a point contradicts them, do not apply it and explain why in the summary. Do not address other PR comments, do not commit and do not reply on the PR. If a point cannot be applied, explain why in the summary. If a test suite exists, run it once.", "model": "sonnet", "allowedTools": ["Read", "Glob", "Grep", "Edit", "Write", "Bash"], "maxTurns": 30, "contextMode": "sintesi", "reuseResult": false } },
+    { "id": "test", "position": { "x": 900, "y": 20 }, "data": { "label": "Test", "kind": "test", "role": "Tester: runs the tests and reports the outcome without modifying the code.", "instructions": "Run the project's test suite (look for the command in package.json, Makefile, pyproject or README). Report how many tests pass and fail. Outcome 'ko' if at least one fails. Do not modify files.", "model": "haiku", "allowedTools": ["Read", "Glob", "Bash"], "maxTurns": 8, "contextMode": "nessuno", "reuseResult": false } },
+    { "id": "collaudo", "position": { "x": 1200, "y": 120 }, "data": { "label": "Acceptance test on phone", "kind": "collaudo", "role": "Acceptance tester: uses the app like a user and checks that the change works, without modifying the code.", "instructions": "Test on the phone the fixes just made: pick the scenarios from the PR points applied in the Fix phase and from the acceptance criteria of the linked user stories, run them on the app and report every anomaly, saying whether it concerns a PR point or an acceptance criterion. Do not perform irreversible actions (purchases, real sends, deleting data).", "model": "sonnet", "allowedTools": ["Read", "Glob", "Grep", "Bash"], "maxTurns": 80, "contextMode": "sintesi", "reuseResult": false, "show": { "target": "dispositivo" } } },
+    { "id": "approvazione", "position": { "x": 1500, "y": 120 }, "data": { "label": "Approval", "kind": "approvazione", "role": "", "instructions": "Check the test outcome, the acceptance test anomalies (with screenshots) and git diff, and that the fixes respect the user stories acceptance criteria. Tick the anomalies to fix and reject: they go back to the fix, then tests and acceptance test are redone. After approval commit and push to the PR branch yourself (or add the Publishing phase).", "model": "", "allowedTools": [], "contextMode": "sintesi", "reuseResult": false } }
+  ],
+  "edges": [
+    { "id": "e1", "source": "pr", "target": "scelta" },
+    { "id": "e2", "source": "scelta", "target": "correzione" },
+    { "id": "e3", "source": "correzione", "target": "test" },
+    { "id": "e4", "source": "test", "target": "collaudo" },
+    { "id": "e5", "source": "correzione", "target": "collaudo" },
+    { "id": "e6", "source": "collaudo", "target": "approvazione" },
+    { "id": "e7", "source": "test", "target": "approvazione" }
+  ]
+}

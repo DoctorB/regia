@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Activity, Bot, CircleAlert, FolderPlus, Loader2, MessageCircleQuestion, SendHorizontal, CircleCheck, Clock, Coins, Copy, CornerDownRight, Download, ExternalLink, FileText, Flag, Gauge, Globe, Hand, Info, Lightbulb, ListTree,
-  MessageSquareText, OctagonX, Pause, Play, Recycle, RotateCcw, ShieldCheck, SkipForward, Square, Terminal, TriangleAlert, Undo2, Workflow as WorkflowIcon, X,
+  CircleUserRound, GitPullRequest, MessageSquareText, OctagonX, Pause, Play, Recycle, RotateCcw, ShieldCheck, SkipForward, Square, Terminal, TriangleAlert, Undo2, Workflow as WorkflowIcon, X,
   type LucideIcon,
 } from 'lucide-react';
-import { isAgentKind, RESUMABLE, type EventKind, type HumanAction, type Insight, type Run, type RunSummary } from '../../../shared/types.ts';
+import { isAgentKind, RESUMABLE, type EventKind, type HumanAction, type Insight, type PrReply, type PrReplyContext, type PrThreadInfo, type Run, type RunSummary } from '../../../shared/types.ts';
 import { layoutGraph } from '../../../shared/layout.ts';
 import type { PermissionLevel } from '../../../shared/permissions.ts';
 import { runReport } from '../../../shared/report.ts';
@@ -28,6 +28,7 @@ const ACTION: Record<HumanAction, { icon: LucideIcon; cls?: string; help?: boole
   installa_dipendenze: { icon: Play, cls: 'primary', help: true },
   consenti: { icon: ShieldCheck, cls: 'primary', help: true },
   consenti_cartella: { icon: FolderPlus, cls: 'primary', help: true },
+  conferma_pr: { icon: GitPullRequest, cls: 'primary', help: true },
 };
 
 // Etichette in locales/<lingua>/run.json (events.kind.<tipo>).
@@ -242,13 +243,14 @@ function StatusTab({ run, ordered, label, selectedNode, onSelectNode, onGranted 
           );
         })}
       </div>
-      {run.story && (
-        <details className="pred">
-          <summary><FileText /><strong>{t('story.runTitle')}</strong><span className="muted small">{run.story.type} {run.story.id} · {run.story.title}</span></summary>
-          <StoryView story={run.story} />
+      {[run.story, ...(run.extraStories ?? [])].map((s, i) => s && (
+        <details key={`${i}:${s.id}`} className="pred">
+          <summary><FileText /><strong>{t('story.runTitle')}</strong><span className="muted small">{s.type} {s.id} · {s.title}</span></summary>
+          <StoryView story={s} />
         </details>
-      )}
+      ))}
       {run.storyError && <div className="callout tone-warn"><TriangleAlert /><span>{t('story.runError')} {tm(run.storyError)}</span></div>}
+      {run.extraStoryErrors?.map((x) => <div key={x.url} className="callout tone-warn"><TriangleAlert /><span>{t('story.runError')} {x.url}: {tm(x.error)}</span></div>)}
       {run.reference && (
         <details className="pred">
           <summary><FileText /><strong>{t('run.reference.title')}</strong><span className="muted small">{run.reference.workflowName} · {fmtTime(run.reference.startedAt)}</span></summary>
@@ -339,12 +341,23 @@ function InterventionCard({ run, nodeId, label, readOnly = false, onGranted }: {
   const needsText = n.pendingActions?.includes('respingi') || n.pendingActions?.includes('riprendi');
   const points = isApproval && n.pendingActions?.includes('respingi') ? n.reviewPoints ?? [] : [];
   const toggle = (k: string) => setChosen((s) => { const x = new Set(s); if (x.has(k)) x.delete(k); else x.add(k); return x; });
+  // Punti di una PR (forward): si scelgono quelli da implementare e passano avanti con Approva.
+  // Gli altri punti tornano con Respingi alla fase che ha scritto il codice.
+  const isForward = (k: string) => Boolean(points.find((g) => g.nodeId === k.slice(0, k.lastIndexOf(':')))?.forward);
+  const chosenBack = [...chosen].filter((k) => !isForward(k));
+  const chosenFwd = [...chosen].filter(isForward);
+  const hasBack = points.some((g) => !g.forward);
+  const hasFwd = points.some((g) => g.forward);
   const act = async (a: HumanAction) => {
     if (a === 'annulla' && !confirm(t('run.confirmCancelShort'))) return;
-    if (a === 'respingi' && !fb.trim() && !chosen.size) { toast(t(points.length ? 'run.intervention.needPointOrComment' : 'run.intervention.needComment'), 'bad'); return; }
-    if (a === 'approva' && chosen.size && !confirm(t('run.intervention.approveWithPoints', { count: chosen.size }))) return;
-    const refs = a === 'respingi'
-      ? [...chosen].map((k) => { const i = k.lastIndexOf(':'); return { nodeId: k.slice(0, i), index: Number(k.slice(i + 1)) }; })
+    if (a === 'respingi' && !fb.trim() && !chosenBack.length) { toast(t(hasBack ? 'run.intervention.needPointOrComment' : 'run.intervention.needComment'), 'bad'); return; }
+    if (a === 'approva' && chosenBack.length && !confirm(t('run.intervention.approveWithPoints', { count: chosenBack.length }))) return;
+    if (a === 'approva' && hasFwd && !chosenFwd.length && !confirm(t('run.intervention.approveNoForward'))) return;
+    // Punti scelti in contrasto con la user story: la correzione non li applicherà, meglio saperlo prima.
+    const conflicting = chosenFwd.filter((k) => { const i = k.lastIndexOf(':'); return points.find((g) => g.nodeId === k.slice(0, i))?.conflicts?.[Number(k.slice(i + 1))]; });
+    if (a === 'approva' && conflicting.length && !confirm(t('run.intervention.approveConflicts', { count: conflicting.length, points: conflicting.map((k) => Number(k.slice(k.lastIndexOf(':') + 1)) + 1).join(', ') }))) return;
+    const refs = a === 'respingi' || a === 'approva'
+      ? (a === 'respingi' ? chosenBack : chosenFwd).map((k) => { const i = k.lastIndexOf(':'); return { nodeId: k.slice(0, i), index: Number(k.slice(i + 1)) }; })
       : undefined;
     setBusy(true);
     const asked = n.missingPermission;
@@ -358,7 +371,7 @@ function InterventionCard({ run, nodeId, label, readOnly = false, onGranted }: {
   const primary = n.pendingActions!.filter((a) => a !== 'annulla');
   const reason = tm(n.pendingMsg, n.pendingReason);
   return (
-    <div className={`card intervention ${isApproval ? '' : 'tone-bad'}`}>
+    <div className={`card intervention ${isApproval || n.pendingActions?.includes('conferma_pr') ? '' : 'tone-bad'}`}>
       <div className="card-head">
         <KindTile kind={node.data.kind} />
         <div className="grow">
@@ -367,6 +380,9 @@ function InterventionCard({ run, nodeId, label, readOnly = false, onGranted }: {
         </div>
       </div>
       {reason && <p className="reason">{reason}</p>}
+      {n.detectedPr && n.pendingActions?.includes('conferma_pr') && /^https?:\/\//i.test(n.detectedPr.url) && (
+        <a className="small" href={n.detectedPr.url} target="_blank" rel="noreferrer"><ExternalLink size={13} /> {t('run.intervention.openPr')}</a>
+      )}
       {isApproval && preds.map((p) => {
         if (p.service) return <ServiceCard key={p.nodeId} run={run} nodeId={p.nodeId} embedded />;
         const pn = run.snapshot.nodes.find((x) => x.id === p.nodeId)!;
@@ -388,20 +404,38 @@ function InterventionCard({ run, nodeId, label, readOnly = false, onGranted }: {
       })}
       {points.length > 0 && (
         <div className="points">
-          <div className="points-head"><strong>{t('run.intervention.pointsTitle')}</strong><span className="muted small">{t('run.intervention.pointsHint')}</span></div>
+          <div className="points-head"><strong>{t('run.intervention.pointsTitle')}</strong><span className="muted small">{t(hasBack ? 'run.intervention.pointsHint' : 'run.intervention.pointsHintForward')}</span></div>
           {points.map((g) => (
             <div key={g.nodeId} className="points-group">
               {points.length > 1 && <div className="points-label">{g.label}</div>}
+              {hasBack && g.forward && <div className="muted small">{t('run.intervention.pointsHintForward')}</div>}
               {g.items.map((item, i) => {
                 const k = `${g.nodeId}:${i}`;
+                // I punti arrivano già ordinati per priorità: rosso per bug e modifiche importanti, verde per i suggerimenti minori.
+                const pr = g.priorities?.[i] ?? 'alta';
+                // In contrasto con la user story: si può spuntare, ma la correzione non lo applicherà (vince la US).
+                const conflict = Boolean(g.conflicts?.[i]);
                 return (
-                  <label key={k} className="check point">
+                  <label key={k} className={`check point ${conflict ? 'point-conflict' : ''}`}>
                     <input type="checkbox" checked={chosen.has(k)} disabled={readOnly || busy} onChange={() => toggle(k)} />
-                    <span>{item}</span>
+                    <span className={`point-num prio-${pr}`} title={t(`run.intervention.priority.${pr}`)}>
+                      <span className="prio-dot" aria-hidden="true" />{i + 1}.
+                    </span>
+                    <span>
+                      {conflict && <span className="pill tone-warn point-tag" title={t('run.intervention.conflictHelp')}>{t('run.intervention.conflict')}</span>}
+                      {item}
+                    </span>
                   </label>
                 );
               })}
+              {g.resolved?.length ? (
+                <details className="points-resolved">
+                  <summary className="muted small">{t('run.intervention.resolved', { count: g.resolved.length })}</summary>
+                  <ul className="uat-list small">{g.resolved.map((x, i) => <li key={i}>{x}</li>)}</ul>
+                </details>
+              ) : null}
               {g.omitted ? <p className="muted small points-omitted">{t('run.intervention.pointsOmitted', { count: g.omitted })}</p> : null}
+              {g.forward && <PrReplies run={run} nodeId={g.nodeId} readOnly={readOnly} />}
             </div>
           ))}
         </div>
@@ -420,6 +454,97 @@ function InterventionCard({ run, nodeId, label, readOnly = false, onGranted }: {
         <span className="grow" />
         {n.pendingActions!.includes('annulla') && <button className="btn ghost danger" disabled={busy} onClick={() => act('annulla')}><X />{t('actions.annulla.label')}</button>}
       </div>}
+    </div>
+  );
+}
+
+/**
+ * Risposte ai commenti della PR già sistemati o in contrasto con la user story: testo proposto dall'agente,
+ * modificabile, pubblicato da Regia solo dopo la conferma, una risposta alla volta.
+ */
+function PrReplies({ run, nodeId, readOnly }: { run: Run; nodeId: string; readOnly: boolean }) {
+  const { t, tm } = useI18n();
+  const replies = run.nodes[nodeId]?.attempts.at(-1)?.declared?.risposte ?? [];
+  // Account di gh e commenti di destinazione, chiesti a GitHub: si vedono prima di pubblicare qualsiasi cosa.
+  const [ctx, setCtx] = useState<PrReplyContext | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [ctxErr, setCtxErr] = useState('');
+  const load = async () => {
+    setLoading(true);
+    setCtxErr('');
+    try { setCtx(await api.prReplyContext(run.id, nodeId)); } catch (e) { setCtx(null); setCtxErr((e as Error).message); } finally { setLoading(false); }
+  };
+  const key = replies.map((r) => r.thread ?? '').join(',');
+  useEffect(() => { if (replies.length) void load(); }, [run.id, nodeId, key]); // eslint-disable-line react-hooks/exhaustive-deps
+  if (!replies.length) return null;
+  const done = replies.filter((_, i) => run.nodes[nodeId].prReplies?.[i]?.status === 'pubblicata').length;
+  const accountProblem = ctxErr || (ctx?.accountError ? tm(ctx.accountError) : '');
+  return (
+    <details className="pr-replies" open>
+      <summary><strong className="small">{t('run.prReply.title', { count: replies.length })}</strong>{done > 0 && <span className="muted small"> · {t('run.prReply.done', { count: done })}</span>}</summary>
+      <p className="muted small">{t('run.prReply.hint')}</p>
+      <div className={`callout pr-account ${accountProblem ? 'tone-bad' : 'tone-info'}`}>
+        <CircleUserRound />
+        {loading ? <span>{t('run.prReply.accountLoading')}</span>
+          : accountProblem ? <span>{t('run.prReply.accountMissing')} {accountProblem}</span>
+          : ctx?.account ? <span>{t('run.prReply.accountAs')} <strong className="mono">@{ctx.account}</strong></span> : null}
+        <button className="btn sm ghost" disabled={loading} onClick={() => void load()} title={t('run.prReply.refreshHelp')}><RotateCcw />{t('run.prReply.refresh')}</button>
+      </div>
+      {replies.map((r, i) => <PrReplyItem key={i} run={run} nodeId={nodeId} index={i} reply={r} readOnly={readOnly}
+        account={accountProblem ? undefined : ctx?.account} target={r.thread ? ctx?.threads[r.thread] : undefined} />)}
+    </details>
+  );
+}
+
+function PrReplyItem({ run, nodeId, index, reply, readOnly, account, target }: { run: Run; nodeId: string; index: number; reply: PrReply; readOnly: boolean; account?: string; target?: PrThreadInfo }) {
+  const { t, tm } = useI18n();
+  const [text, setText] = useDraft(`${run.id}:${nodeId}:reply:${index}:${reply.testo.length}`, reply.testo);
+  const [busy, setBusy] = useState(false);
+  const state = run.nodes[nodeId].prReplies?.[index];
+  const published = state?.status === 'pubblicata';
+  const where = target?.path ? `${target.path}${target.line ? `:${target.line}` : ''}` : '';
+  // Si pubblica solo come risposta al commento del punto, in una discussione verificata, con un account noto.
+  const canPublish = Boolean(reply.thread && target?.ok && account);
+  const publish = async () => {
+    if (!account || !text.trim()) return;
+    if (!confirm(t('run.prReply.confirm', { account, ref: reply.riferimento || `#${index + 1}`, author: target?.author ?? '?', where, text: text.trim() }))) return;
+    setBusy(true);
+    try { await api.prReply(run.id, nodeId, index, text, account); } catch (e) { toast((e as Error).message, 'bad'); } finally { setBusy(false); }
+  };
+  const copy = async () => { try { await navigator.clipboard.writeText(text); toast(t('run.prReply.copied'), 'good'); } catch { /* appunti non disponibili */ } };
+  return (
+    <div className="pr-reply">
+      <div className="pr-reply-head">
+        <span className={`pill ${reply.motivo === 'contrasto' ? 'tone-warn' : 'tone-good'}`}>{t(`run.prReply.motivo.${reply.motivo}`)}</span>
+        <span className="small grow">{reply.riferimento}</span>
+      </div>
+      {/* Il commento a cui si risponde, come lo restituisce GitHub. */}
+      {!reply.thread ? <p className="small tone-bad">{t('run.prReply.noThread')}</p>
+        : target && !target.ok ? <p className="small tone-bad">{target.reason ? tm(target.reason) : t('run.prReply.threadUnknown')}</p>
+        : target ? (
+          <div className="pr-reply-target small">
+            <span className="muted">{t('run.prReply.replyTo')}</span> <strong>@{target.author ?? '?'}</strong>{where && <> · <span className="mono">{where}</span></>}
+            {target.resolved && <span className="muted"> · {t('run.prReply.resolvedThread')}</span>}
+            {target.url && <> · <a href={target.url} target="_blank" rel="noreferrer">{t('run.prReply.open')}</a></>}
+            {target.excerpt && <blockquote>{target.excerpt}</blockquote>}
+          </div>
+        ) : null}
+      {published ? (
+        <>
+          <p className="pre small">{state.body}</p>
+          <span className="small pr-reply-ok"><CircleCheck size={13} /> {t('run.prReply.publishedAs', { account: state.account ?? '?' })}{state.url && <> · <a href={state.url} target="_blank" rel="noreferrer">{t('run.prReply.open')}</a></>}</span>
+        </>
+      ) : (
+        <>
+          <textarea rows={3} value={text} disabled={readOnly || busy} onChange={(e) => setText(e.target.value)} aria-label={t('run.prReply.textLabel')} />
+          <div className="actions">
+            {reply.thread
+              ? <button className="btn sm" disabled={readOnly || busy || !text.trim() || !canPublish} onClick={() => void publish()}>{busy ? <Loader2 className="spin" /> : <SendHorizontal />}{account ? t('run.prReply.publishAs', { account }) : t('run.prReply.publish')}</button>
+              : <button className="btn sm ghost" onClick={() => void copy()}><Copy />{t('run.prReply.copy')}</button>}
+            {state?.status === 'errore' && <span className="small tone-bad">{state.error}</span>}
+          </div>
+        </>
+      )}
     </div>
   );
 }

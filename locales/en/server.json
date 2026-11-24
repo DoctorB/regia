@@ -101,7 +101,8 @@
       "subagent": "Subagent · {summary}",
       "checking": "Checking {url}…",
       "detectingDevice": "Looking for the project and the device…",
-      "detectingProject": "Looking for the project…"
+      "detectingProject": "Looking for the project…",
+      "detectingPr": "Looking for the PR of the current branch…"
     },
     "service": {
       "withLabel": "{label}: {text}",
@@ -180,7 +181,11 @@
     "story": {
       "loaded": "User story read: {type} {id} — {title} ({count} images).",
       "failed": "User story not read: {error} The phases work without it."
-    }
+    },
+    "prDetected": "\"{label}\": found the PR of branch \"{branch}\" ({url}), waiting for confirmation.",
+    "prNotDetected": "\"{label}\": PR of the current branch not found. {reason}",
+    "prReplyPublished": "\"{label}\": reply published on the PR as @{account} for {ref} ({url}).",
+    "prReplyFailed": "\"{label}\": reply for {ref} not published: {error}"
   },
   "interventions": {
     "declaredKo": "Negative outcome declared: {summary}",
@@ -209,11 +214,25 @@
       "stillWriting": "{base}; the command was still writing output ({silent} seconds ago): it is slow, the phase's wait can be increased",
       "noLines": "{base}; the command wrote no lines at all",
       "processes": "{base}. Processes still running: {procs}"
+    },
+    "pr": {
+      "confirm": "I found the PR of branch \"{branch}\":\n{title}\n{url}\nIs it the right one? Confirm to read its comments. If not, open the right branch in the project and press Retry.",
+      "noBranch": "The project is not on a branch (detached HEAD, or not a git repository): open the PR branch and press Retry.",
+      "toolMissing": "Finding the branch PR needs {tool}, which does not seem to be installed: install it, sign in and press Retry. Alternatively cancel and set the PR URL in the phase panel.",
+      "notFound": "No open PR found for branch \"{branch}\". {detail}\nCreate the PR (or open the right branch) and press Retry, or cancel and set the URL in the phase panel.",
+      "notOpen": "The PR of branch \"{branch}\" is not open (state: {state}): {url}\nOpen the branch of an open PR and press Retry, or cancel and set the URL in the phase panel.",
+      "replyGithubOnly": "Publishing replies is only possible on GitHub PRs ({url}).",
+      "replyFailed": "gh could not publish the reply: {detail}",
+      "replyNoThread": "This reply has no target discussion: Regia only publishes replies under the comment of the point, never general PR comments.",
+      "replyThreadNotFound": "The given discussion does not exist on GitHub or is not accessible with this account.",
+      "replyThreadOtherPr": "The given discussion belongs to another PR: reply not published.",
+      "replyAccountChanged": "The gh account has changed (shown @{expected}, now @{actual}): check the account again and confirm again.",
+      "accountUnknown": "Could not find out which GitHub account gh would publish with. {detail}"
     }
   },
   "agent": {
     "protocol": "# Response protocol\n- When you make a significant decision (what to read, what to change, how to verify), write a line that starts with \"DECISION:\" followed by a short explanation in a single sentence.\n- Work only inside the project folder (and the additional folders, if listed) and only with the tools available to you.\n- ALWAYS end your response with this block, as valid JSON (keep the keys and the outcome values exactly as shown):\n```regia\n{\"esito\": \"ok\" | \"ko\" | \"bloccato\", \"sintesi\": \"result in 1-3 sentences, useful to the next phase\", \"decisioni\": [\"main decision and reason\", \"...\"]}\n```\n\"esito\" is the outcome, \"sintesi\" the summary, \"decisioni\" the list of decisions. Use \"ko\" if the task did not succeed (e.g. failing tests), \"bloccato\" if you cannot proceed without human intervention (explain what is needed in \"sintesi\").\nIf you stop because you lack the tools to do it, add \"permesso\" (permission) to the block: \"modifica\" if you need to edit files or run commands, \"internet\" if you need to use the web: the person supervising can grant it with one click.\nIf you stop because you need to read or write in a folder outside the allowed ones, add \"cartella\" (folder) to the block with the absolute path of the folder: this too can be granted with one click.",
-    "protocolPoints": "- You are in a review phase: if you find concrete changes to make, add the \"punti\" key (the list of points) to the block, with the proposed corrections, one per item (file or function, problem and fix), ordered from most to least important, at most {max}: if you find more, merge similar ones. The person approving will choose which ones to apply. Finding points does not make the task unsuccessful: still use \"ok\". With nothing to report, leave the key out.",
+    "protocolPoints": "- You are in a review phase: if you find concrete changes to make, add the \"punti\" key (the list of points) to the block, with the proposed corrections, one per item, each as an object {\"testo\": \"file or function, problem and fix\", \"priorita\": \"alta\" | \"bassa\"} (\"testo\" is the text, \"priorita\" the priority): \"alta\" (high) for bugs and important changes, \"bassa\" (low) for minor or unimportant suggestions (style, naming, small simplifications). Order them by priority, most important first, at most {max}: if you find more, merge similar ones. The person approving will choose which ones to apply. Finding points does not make the task unsuccessful: still use \"ok\". With nothing to report, leave the key out.",
     "goal": "# Workflow goal\n{goal}",
     "task": "# Your task: {label}\n{instructions}",
     "previousResults": "# Results of the previous phases\n{results}",
@@ -231,6 +250,10 @@
     "output": {
       "decisions": "Decisions:",
       "points": "Points to correct:",
+      "priority": {
+        "alta": "high priority",
+        "bassa": "low priority"
+      },
       "pointsOmitted": {
         "one": "(one more point over the limit, not included)",
         "other": "({count} more points over the limit, not included)"
@@ -275,7 +298,9 @@
       "acceptance": "## Acceptance criteria",
       "comments": "## Recent comments",
       "images": "## Images\nThe [immagine n] placeholders in the text match these files. Open them with Read only when needed (for example a mockup to compare with the screen): every image costs tokens."
-    }
+    },
+    "pr": "# Pull request to read\n{url}\n\nRead the pull request and all its comments, without changing files and without replying on the PR.\n- GitHub: details and general comments with `gh pr view <url> --comments`; the discussions on code lines, with their state, with GraphQL (the REST API does not tell whether a discussion is resolved):\n  `gh api graphql -F owner=<owner> -F name=<repo> -F number=<number> -f query='query($owner:String!,$name:String!,$number:Int!){repository(owner:$owner,name:$name){pullRequest(number:$number){reviewThreads(first:100){nodes{id isResolved isOutdated path line comments(first:20){nodes{author{login} body}}}}}}}'`\n- Azure DevOps: `az repos pr show --id <number>` and the threads with `az devops invoke --area git --resource pullRequestThreads --route-parameters project=<project> repositoryId=<repo> pullRequestId=<number>`; consider only threads with status active or pending.\n- Otherwise open the address with WebFetch.\nIf the required tool is not installed or you are not authenticated, stop with outcome \"bloccato\" and explain what is needed.\n\nHow to choose the points:\n1. Leave out resolved discussions (isResolved), those outdated by later commits (isOutdated) and messages without a change request.\n2. A comment listing several findings (for example the summary of a review bot) becomes one point per finding.\n3. For each remaining finding verify on the project's current code (current branch, including uncommitted changes) that the problem is still there: do not trust the comment's description or the replies, open the cited files and search with Grep for the names involved (keys, functions, resource files) across the whole project. If it is already fixed, do not put it in the points: add it to the \"sistemati\" (already fixed) key of the outcome block, one item per finding (severity, file, problem and why it is fixed).\n4. Do not drop open findings based on your own judgement (for example WARNINGs not introduced by the PR): the approver decides.\n\nEach point is an object {\"testo\": \"file and line, problem, fix to make, comment author, and at the end Verified: what you checked in the code to confirm the problem is still there\", \"gravita\": \"BLOCKER\" | \"CRITICAL\" | \"MAJOR\" | \"MINOR\" | \"WARNING\" | \"INFO\" | \"NIT\", \"priorita\": \"alta\" | \"bassa\"} (\"testo\" is the text, \"gravita\" the severity, \"priorita\" the priority). Use the severity stated in the comment; if missing, infer it (bugs and explicitly requested changes: MAJOR; optional suggestions: MINOR or NIT). Regia orders the points by severity, from BLOCKER down. Merge duplicate comments.\nCheck with git that the current branch is the PR branch: if it is not, say so in the summary, without switching branch. In the summary give the PR title, author and branch, how many open points you found per severity and how many are already fixed.\n\nThe linked user stories (above) are the reference: the fixes must respect their specification and acceptance criteria (all of them, if more than one). If the fix asked by a comment contradicts them, keep the point, start the text with \"Conflicts with the US:\", explain why and add \"contrastoUs\": true to the object, so the approver can decide.\n\nReplies on the PR: for each finding already fixed and each point conflicting with the US prepare a reply to publish under the original comment, in the \"risposte\" (replies) key of the outcome block: [{\"motivo\": \"sistemato\" | \"contrasto\", \"riferimento\": \"severity and file:line\", \"thread\": \"id of the discussion of the comment you reply to (id field of reviewThreads)\", \"testo\": \"the reply\"}] (\"motivo\" is the reason: already fixed or conflicting; \"riferimento\" the reference). The text is short, polite and in the language of the comment you reply to: for \"sistemato\" say where and how it is fixed (file and, if you know it, the commit); for \"contrasto\" quote the user story acceptance criterion the change would contradict. The reply is published only under that comment: if the finding comes from a general comment (not in a code discussion), leave \"thread\" empty and Regia will not publish it. Do not publish anything yourself: Regia publishes a reply only if the approver confirms it.",
+    "prFromGoal": "(the PR URL given in the workflow goal)"
   },
   "mock": {
     "decisions": {
@@ -316,6 +341,14 @@
       "point1": "Category filter: picking a category with no products leaves the list empty with no message. Steps: open the filter, pick \"Accessories\". Expected: a \"No products\" message. Actual: blank screen (02-empty-filter.png).",
       "point2": "Screen rotation: the chosen filter is lost. Steps: pick a category and rotate the phone. Expected: the filter stays. Actual: back to \"All\" (03-rotation.png).",
       "manual": "Bluetooth pairing with a real device: check by hand that the filter does not interfere with device discovery."
+    },
+    "pr": {
+      "blocker": "[BLOCKER] src/api.ts:42 — the response is not checked before use: handle the error case returning a clear message (Reviewer A).",
+      "major": "[MAJOR] src/utils.ts:18 — the formatting function does not handle empty dates: return an empty string (Reviewer B).",
+      "warning": "[WARNING] src/utils.ts:7 — unused variable: remove it (Static analysis).",
+      "fixed": "[MAJOR] src/api.ts:30 — unhandled timeout: already fixed, the call now uses withTimeout (Reviewer A).",
+      "replyFixed": "Thanks for the report: it is already fixed, the call in src/api.ts now uses withTimeout.",
+      "replyConflict": "This change would contradict a user story acceptance criterion (AC8): we are leaving it as it is."
     }
   },
   "api": {
@@ -358,7 +391,10 @@
     "questionBusy": "Wait for the answer to the previous question.",
     "questionTarget": "This phase cannot receive questions: it must be an agent phase already completed in this run.",
     "scrcpyManual": "On this system scrcpy must be installed by hand: see https://github.com/Genymobile/scrcpy.",
-    "scrcpyInstallFailed": "scrcpy installation failed: {error}"
+    "scrcpyInstallFailed": "scrcpy installation failed: {error}",
+    "prStoryUnreadable": "The linked user story cannot be read, and it is required when fixing the points of a PR: {error}",
+    "prReplyNotFound": "Reply not found.",
+    "prReplyAlreadyPublished": "This reply has already been published."
   },
   "nodeenv": {
     "source": {

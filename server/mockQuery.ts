@@ -264,7 +264,16 @@ export async function* mockQuery(o: MockOptions): AsyncGenerator<Record<string, 
   const decisione = t('mock.finalDecision', { outcome: esito, label: p.label });
   const finalText = `${t('mock.workDone')}\n\n\`\`\`regia\n${JSON.stringify({ esito, sintesi, decisioni: [decisione], ...(needsEdit ? { permesso: 'modifica' } : {}), ...(needsDir && !needsEdit ? { cartella: outside } : {}), ...(withPoints ? { punti: manyPoints
     ? Array.from({ length: 27 }, (_, i) => t('mock.points.numbered', { n: i + 1 }))
-    : uat ? [t('mock.uat.point1'), t('mock.uat.point2')] : [t('mock.points.first'), t('mock.points.second')] } : {}), ...(uat && !blockFirst ? { manuali: [t('mock.uat.manual')] } : {}) }, null, 1)}\n\`\`\``;
+    : uat ? [t('mock.uat.point1'), t('mock.uat.point2')]
+    // Punti della PR: come capita con un agente vero, BLOCKER in fondo e priorità tutte alte; Regia li ordina per gravità.
+    : p.pr ? [{ testo: t('mock.pr.warning'), gravita: 'WARNING', priorita: 'alta' }, { testo: t('mock.pr.major'), gravita: 'MAJOR', priorita: 'alta', contrastoUs: true }, { testo: t('mock.pr.blocker'), gravita: 'BLOCKER', priorita: 'alta' }]
+    : [{ testo: t('mock.points.first'), priorita: 'alta' }, { testo: t('mock.points.second'), priorita: 'bassa' }] } : {}), ...(withPoints && p.pr ? {
+    sistemati: [t('mock.pr.fixed')],
+    risposte: [
+      { motivo: 'sistemato', riferimento: '[MAJOR] src/api.ts:30', thread: 'PRRT_simulato1', testo: t('mock.pr.replyFixed') },
+      { motivo: 'contrasto', riferimento: '[MAJOR] src/utils.ts:18', testo: t('mock.pr.replyConflict') },
+    ],
+  } : {}), ...(uat && !blockFirst ? { manuali: [t('mock.uat.manual')] } : {}) }, null, 1)}\n\`\`\``;
   const fid = `msg_sim_${randomUUID().slice(0, 12)}`;
   const usage = { input_tokens: 20, output_tokens: 1, cache_creation_input_tokens: 400, cache_read_input_tokens: ctx };
   mainInput += 20; mainCC += 400; mainCR += ctx; mainOutput += 260;

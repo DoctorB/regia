@@ -5,6 +5,9 @@ export type { Msg } from './i18n.ts';
 
 export type PhaseKind = 'analisi' | 'implementazione' | 'test' | 'revisione' | 'collaudo' | 'approvazione' | 'server' | 'personalizzata';
 
+/** Indirizzi delle user story aggiuntive compilati (le righe vuote non contano). */
+export const extraStoryUrls = (s: { extraStories?: string[] }): string[] => (s.extraStories ?? []).map((x) => x.trim()).filter(Boolean);
+
 /** Fasi eseguite da un agente (le altre sono gestite da Regia: approvazione umana, server locale). */
 export const isAgentKind = (k: PhaseKind) => k !== 'approvazione' && k !== 'server';
 export type ContextMode = 'sintesi' | 'completo' | 'nessuno';
@@ -45,6 +48,11 @@ export interface PhaseConfig {
    * (e il dispositivo o il browser) e compone da sé comando e criterio di pronto: command e readyCheck non servono.
    */
   show?: ShowConfig;
+  /**
+   * Solo fase di revisione "Punti della PR": legge i commenti di una pull request e li propone come punti.
+   * URL vuoto = l'URL indicato nell'obiettivo del workflow.
+   */
+  pr?: { url: string };
 }
 
 /** Dove mostrare il risultato: sul telefono (APK o build iOS), nel browser, come app desktop. */
@@ -175,6 +183,8 @@ export interface WorkflowSettings {
   extraDirs?: string[];
   /** URL della user story collegata (work item di Azure DevOps o issue di GitHub): letta a ogni esecuzione. */
   story?: string;
+  /** Altre user story collegate (es. più US coperte dalla stessa PR): lette e passate agli agenti come la principale. */
+  extraStories?: string[];
   /** Principi di progettazione seguiti dal workflow (es. kiss, yagni): le fasi ne ricevono le indicazioni. Assente = nessuno. */
   principles?: string[];
   /**
@@ -301,12 +311,23 @@ export interface UsageTotals {
  */
 export type UsageSource = 'risultato' | 'delta_ripresa' | 'parziale' | 'riusato' | 'nessuno';
 
+/** Priorità di un punto di revisione: alta per bug e correzioni importanti, bassa per suggerimenti minori. */
+export type PointPriority = 'alta' | 'bassa';
+
 export interface DeclaredOutcome {
   esito: 'ok' | 'ko' | 'bloccato';
   sintesi: string;
   decisioni: string[];
   /** Solo revisioni: modifiche concrete proposte, una per voce, da scegliere nell'approvazione. */
   punti?: string[];
+  /** Priorità di ciascun punto, nello stesso ordine di `punti` (prima tutti quelli ad alta priorità). */
+  priorita?: PointPriority[];
+  /** Solo "Punti della PR": commenti già sistemati nel codice o risolti sulla PR, esclusi dai punti. */
+  sistemati?: string[];
+  /** Punti in contrasto con la user story, nello stesso ordine di `punti`: la correzione non li applica. */
+  contrastoUs?: boolean[];
+  /** Solo "Punti della PR": risposte preparate per i commenti già sistemati o in contrasto con la US, da confermare una per una. */
+  risposte?: PrReply[];
   /** Punti oltre il limite: non vanno nella checklist, sono riportati in un evento. */
   puntiOmessi?: string[];
   /** Fase ferma per un permesso che non ha: cosa le servirebbe. */
@@ -322,6 +343,17 @@ export interface ReviewPoints {
   nodeId: string;
   label: string;
   items: string[];
+  /** Priorità di ciascun punto, nello stesso ordine di `items`; assente nelle esecuzioni precedenti (vale alta). */
+  priorities?: PointPriority[];
+  /**
+   * Punti da portare avanti (fase "Punti della PR"): quelli scelti passano con Approva alle fasi successive,
+   * invece di tornare con Respingi a una fase precedente.
+   */
+  forward?: boolean;
+  /** Solo "Punti della PR": commenti già sistemati, mostrati a parte (non si scelgono). */
+  resolved?: string[];
+  /** Punti in contrasto con la user story (stesso ordine di `items`): evidenziati, e non verranno applicati. */
+  conflicts?: boolean[];
   /** Punti oltre il limite, non mostrati. */
   omitted?: number;
 }
@@ -489,6 +521,12 @@ export interface NodeRunState {
   missingPermission?: PermissionLevel;
   /** Fase ferma: la cartella esterna chiesta dall'agente, concedibile con l'azione "consenti_cartella". */
   missingDir?: string;
+  /** Solo "Punti della PR" senza URL: PR trovata dal branch corrente, in attesa di conferma ("conferma_pr"). */
+  detectedPr?: DetectedPr;
+  /** Solo "Punti della PR" senza URL: URL della PR confermata, usato anche nei giri successivi. */
+  prUrl?: string;
+  /** Solo "Punti della PR": risposte pubblicate (o fallite), per indice in declared.risposte dell'ultimo tentativo. */
+  prReplies?: Record<number, PrReplyState>;
   /** Solo approvazioni in attesa: fasi a cui si può fare una domanda (con agente, completate, con una sessione). */
   askable?: { nodeId: string; label: string }[];
   /** Solo approvazioni: domande di chiarimento fatte alle fasi precedenti, con le risposte. */
@@ -527,7 +565,60 @@ export interface ResumeCheck {
   headChanged: boolean;
 }
 
-export type HumanAction = 'approva' | 'respingi' | 'consenti' | 'consenti_cartella' | 'riprova' | 'riprendi' | 'salta' | 'annulla' | 'installa_node' | 'installa_dipendenze';
+export type HumanAction = 'approva' | 'respingi' | 'consenti' | 'consenti_cartella' | 'conferma_pr' | 'riprova' | 'riprendi' | 'salta' | 'annulla' | 'installa_node' | 'installa_dipendenze';
+
+/** Risposta a un commento della PR, preparata dall'agente e pubblicata da Regia solo dopo la conferma della persona. */
+export interface PrReply {
+  /** Perché si risponde: il commento è già sistemato nel codice, oppure chiede qualcosa in contrasto con la user story. */
+  motivo: 'sistemato' | 'contrasto';
+  /** Di quale commento si tratta (gravità, file e riga), per riconoscerlo. */
+  riferimento: string;
+  /** Testo proposto per la risposta. */
+  testo: string;
+  /** Id GraphQL della discussione a cui rispondere; assente = commento generale sulla PR. */
+  thread?: string;
+}
+
+/** Discussione della PR a cui andrebbe una risposta, verificata su GitHub. */
+export interface PrThreadInfo {
+  ok: boolean;
+  /** Perché non si può rispondere (discussione inesistente o di un'altra PR). */
+  reason?: Msg;
+  path?: string;
+  line?: number;
+  resolved?: boolean;
+  /** Autore e inizio del primo commento della discussione: il commento a cui si risponde. */
+  author?: string;
+  excerpt?: string;
+  url?: string;
+}
+
+/** Account di gh che pubblicherebbe e discussioni di destinazione, per id GraphQL. */
+export interface PrReplyContext {
+  account?: string;
+  accountError?: Msg;
+  threads: Record<string, PrThreadInfo>;
+}
+
+/** Esito della pubblicazione di una risposta sulla PR. */
+export interface PrReplyState {
+  status: 'pubblicata' | 'errore';
+  at: string;
+  /** Testo effettivamente pubblicato (quello confermato, eventualmente modificato). */
+  body?: string;
+  /** Account di GitHub con cui è stata pubblicata. */
+  account?: string;
+  url?: string;
+  error?: string;
+}
+
+/** Pull request trovata dal branch corrente del progetto. */
+export interface DetectedPr {
+  url: string;
+  title: string;
+  branch: string;
+  number?: number;
+}
 
 export type EventKind =
   | 'run'
@@ -568,6 +659,9 @@ export interface Run {
   /** User story collegata, letta all'avvio; storyError se non è stato possibile leggerla. */
   story?: UserStory;
   storyError?: Msg;
+  /** User story aggiuntive lette all'avvio, e quelle che non è stato possibile leggere. */
+  extraStories?: UserStory[];
+  extraStoryErrors?: { url: string; error: Msg }[];
   mode: RunMode;
   status: RunStatus;
   startedAt: string;

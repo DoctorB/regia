@@ -42,6 +42,10 @@
       "outcome": "esito {esito}",
       "noOutput": "Nessun risultato.",
       "pointsTitle": "Punti segnalati",
+      "priority": {
+        "alta": "Priorità alta: bug o modifica importante",
+        "bassa": "Priorità bassa: suggerimento minore"
+      },
       "pointsHint": "Spunta quelli da correggere e respingi: arrivano alla fase che ha scritto il codice, insieme al tuo commento.",
       "pointsOmitted": {
         "one": "Un altro punto oltre il limite, non mostrato qui: lo trovi nella scheda Eventi.",
@@ -64,6 +68,19 @@
           "one": "{count} domanda",
           "other": "{count} domande"
         }
+      },
+      "pointsHintForward": "Spunta i punti da implementare e approva: arrivano alle fasi successive, insieme al tuo commento.",
+      "approveNoForward": "Non hai scelto nessun punto della PR da implementare. Approvare comunque?",
+      "openPr": "Apri la PR per controllarla",
+      "resolved": {
+        "one": "Un commento già sistemato, escluso dai punti",
+        "other": "{count} commenti già sistemati, esclusi dai punti"
+      },
+      "conflict": "In contrasto con la US",
+      "conflictHelp": "Secondo l'agente questa correzione contraddice le specifiche o i criteri di accettazione della user story: anche se lo spunti, la correzione non lo applicherà.",
+      "approveConflicts": {
+        "one": "Il punto {points} è in contrasto con la user story: la correzione non lo applicherà. Approvare comunque?",
+        "other": "I punti {points} sono in contrasto con la user story: la correzione non li applicherà. Approvare comunque?"
       }
     },
     "service": {
@@ -117,6 +134,39 @@
       },
       "enlarge": "Ingrandisci",
       "shrink": "Riduci (Esc)"
+    },
+    "prReply": {
+      "title": {
+        "one": "Una risposta da pubblicare sulla PR",
+        "other": "{count} risposte da pubblicare sulla PR"
+      },
+      "done": {
+        "one": "una già pubblicata",
+        "other": "{count} già pubblicate"
+      },
+      "hint": "Risposte ai commenti già sistemati o in contrasto con la user story, ognuna sotto il commento a cui si riferisce. Controlla e modifica il testo: Regia pubblica solo quelle che confermi, una per una.",
+      "motivo": {
+        "sistemato": "Già sistemato",
+        "contrasto": "In contrasto con la US"
+      },
+      "textLabel": "Testo della risposta",
+      "confirm": "Pubblicare questa risposta sulla PR, visibile a tutti?\n\nAccount GitHub: @{account}\nIn risposta a: @{author} {where}\nPunto: {ref}\n\n{text}",
+      "published": "Pubblicata sulla PR",
+      "open": "apri",
+      "accountLoading": "Controllo l'account di GitHub…",
+      "accountAs": "Le risposte verranno pubblicate con l'account GitHub",
+      "accountMissing": "Non è possibile pubblicare: account di GitHub non disponibile.",
+      "refresh": "Ricontrolla",
+      "refreshHelp": "Chiede di nuovo a GitHub l'account di gh e i commenti a cui rispondere (ad esempio dopo gh auth switch).",
+      "replyTo": "Risposta al commento di",
+      "resolvedThread": "discussione già risolta",
+      "noThread": "Il commento originale non è in una discussione sul codice, quindi non gli si può rispondere direttamente: Regia non lo pubblica come commento generale. Copia il testo se vuoi rispondere a mano.",
+      "threadUnknown": "Commento di destinazione non verificato.",
+      "publishAs": "Pubblica come @{account}",
+      "publishedAs": "Pubblicata come @{account}",
+      "copy": "Copia il testo",
+      "copied": "Testo copiato.",
+      "publish": "Pubblica sulla PR"
     }
   },
   "actions": {
@@ -160,6 +210,10 @@
     "consenti_cartella": {
       "label": "Consenti {path} e riprendi",
       "help": "La fase riprende la stessa sessione e può lavorare anche in questa cartella. La cartella viene aggiunta alle cartelle aggiuntive del workflow salvato."
+    },
+    "conferma_pr": {
+      "label": "Conferma la PR",
+      "help": "La fase legge i commenti di questa PR. La scelta vale per tutta l'esecuzione, anche se la fase viene rifatta."
     }
   },
   "events": {
@@ -602,6 +656,11 @@
         "window": "Anche in una finestra separata (scrcpy)",
         "windowHint": "Utile su un secondo monitor. Richiede scrcpy, che Regia può installare."
       }
+    },
+    "pr": {
+      "url": "URL della PR",
+      "urlHint": "Pull request da leggere (GitHub o Azure DevOps). Vuoto: si usa l'URL della PR scritto nell'obiettivo o, se manca, la PR del branch aperto nel progetto, che ti verrà mostrata da confermare prima di procedere.",
+      "placeholder": "https://github.com/organizzazione/repo/pull/123"
     }
   },
   "settings": {
@@ -718,6 +777,9 @@
       "other": "{count} immagini non scaricate (limiti o accesso)."
     },
     "runTitle": "User story",
-    "runError": "User story non letta:"
+    "runError": "User story non letta:",
+    "extraLabel": "User story {n}",
+    "add": "Aggiungi un'altra user story",
+    "remove": "Togli questa user story"
   }
 }

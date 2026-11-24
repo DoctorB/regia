@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ReactFlowProvider } from '@xyflow/react';
-import { Activity, Bell, BellOff, Check, ChevronDown, CircleAlert, CircleArrowUp, CircleCheck, FilePlus2, FlaskConical, GitCompare, KeyRound, Languages, PenLine, Play, Rocket, Save, ScrollText, ShieldAlert, LayoutList, Monitor, Moon, Search, Sun, TriangleAlert, Workflow as WorkflowIcon, Smartphone, Globe } from 'lucide-react';
+import { Activity, Bell, BellOff, Check, ChevronDown, CircleAlert, CircleArrowUp, CircleCheck, FilePlus2, FlaskConical, GitCompare, GitPullRequest, KeyRound, Languages, PenLine, Play, Rocket, Save, ScrollText, ShieldAlert, LayoutList, Monitor, Moon, Search, Sun, TriangleAlert, Workflow as WorkflowIcon, Smartphone, Globe } from 'lucide-react';
 import {
   WRITE_TOOLS, isAgentKind, type EnvInfo, type PhaseConfig, type PhaseKind, type Run, type RunSummary, type ValidationIssue, type VersionInfo, type Workflow,
 } from '../../shared/types.ts';
@@ -467,6 +467,7 @@ export function App() {
                   {s.data.kind === 'server'
                     ? <span className="kind-tile kind-server" aria-hidden>{s.id === 'app-desktop' ? <Monitor /> : s.id === 'app-mobile' ? <Smartphone /> : <Globe />}</span>
                     : s.data.kind === 'collaudo' ? <span className="kind-tile kind-collaudo" aria-hidden><Smartphone /></span>
+                    : s.data.pr ? <span className="kind-tile kind-revisione" aria-hidden><GitPullRequest /></span>
                     : <span className="kind-tile kind-publish" aria-hidden><Rocket /></span>}
                   <span className="pal-text"><span>{s.label}</span><small>{s.id === 'pubblicazione' ? t('palette.publishSub') : s.hint}</small></span>
                 </button>

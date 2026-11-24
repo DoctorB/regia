@@ -83,6 +83,7 @@ poi riavvia con `npm start`. Il controllo legge solo il numero di versione pubbl
 | **Approvazione umana** | Il workflow si ferma finché non approvi o respingi |
 | **Avvio app** | Regia avvia l'app per fartela verificare: web, desktop, mobile, oppure controlla un sito già servito da IIS |
 | **Collaudo sul telefono** (fase pronta) | Compila e installa l'app sul telefono, la prova sugli scenari del cambiamento seguendo il log e segnala le anomalie |
+| **Punti della PR** (fase pronta) | Legge i commenti di una pull request (GitHub o Azure DevOps; URL facoltativo nel pannello della fase: senza, Regia trova la PR del branch aperto e te la fa confermare prima di procedere) e li elenca per priorità, con la gravità originale (BLOCKER, MAJOR, WARNING…). Mettila prima di un'approvazione seguita da un'implementazione: spunti i punti da fare, approvi e passano all'implementazione. Richiede la **user story** collegata nelle impostazioni del workflow: le correzioni devono rispettarne specifiche e criteri di accettazione |
 | **Pubblicazione** (fase pronta) | Commit, push ed eventuali pubblicazioni o GitHub Actions. Mettila dopo un'approvazione |
 
 ---

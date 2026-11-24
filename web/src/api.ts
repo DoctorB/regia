@@ -1,5 +1,5 @@
 import { currentLocaleTag, tm } from './i18n.tsx';
-import type { ApiErrorBody, ContinuationPlan, EnvInfo, FolderInfo, HumanAction, Insight, LaunchPlan, PointRef, ReportsInfo, ResumeCheck, UserStory, ScrcpyStatus, ShowConfig, RulesInfo, Run, RunMode, RunSummary, SkillInfo, ValidationIssue, VersionInfo, Workflow, WorkflowTemplate } from '../../shared/types.ts';
+import type { ApiErrorBody, ContinuationPlan, EnvInfo, FolderInfo, HumanAction, Insight, LaunchPlan, PointRef, PrReplyContext, ReportsInfo, ResumeCheck, UserStory, ScrcpyStatus, ShowConfig, RulesInfo, Run, RunMode, RunSummary, SkillInfo, ValidationIssue, VersionInfo, Workflow, WorkflowTemplate } from '../../shared/types.ts';
 
 async function req<T>(method: string, url: string, body?: unknown): Promise<T> {
   const r = await fetch(url, { method, headers: body ? { 'Content-Type': 'application/json' } : undefined, body: body ? JSON.stringify(body) : undefined });
@@ -49,6 +49,8 @@ export const api = {
   installScrcpy: () => req<ScrcpyStatus>('POST', '/api/tools/scrcpy/install'),
   ask: (runId: string, nodeId: string, targetId: string, question: string) => req<{ ok: boolean; id: string }>('POST', `/api/runs/${runId}/question`, { nodeId, targetId, question }),
   action: (runId: string, nodeId: string, action: HumanAction, feedback?: string, points?: PointRef[]) => req<{ ok: boolean }>('POST', `/api/runs/${runId}/action`, { nodeId, action, feedback, points }),
+  prReplyContext: (runId: string, nodeId: string) => req<PrReplyContext>('GET', `/api/runs/${runId}/pr-reply/${encodeURIComponent(nodeId)}`),
+  prReply: (runId: string, nodeId: string, index: number, body: string, account: string) => req<{ ok: boolean }>('POST', `/api/runs/${runId}/pr-reply`, { nodeId, index, body, account }),
   serviceAction: (runId: string, nodeId: string, action: 'ferma' | 'riavvia') => req<{ ok: boolean }>('POST', `/api/runs/${runId}/service/${nodeId}`, { action }),
   cancel: (runId: string) => req<{ ok: boolean }>('POST', `/api/runs/${runId}/cancel`),
   suspend: (runId: string) => req<{ ok: boolean }>('POST', `/api/runs/${runId}/suspend`),

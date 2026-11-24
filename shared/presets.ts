@@ -40,6 +40,11 @@ const SNIPPETS: { id: string; base: Base }[] = [
   { id: 'app-web', base: { ...APP, show: { target: 'browser' } } },
   { id: 'app-desktop', base: { ...APP, show: { target: 'desktop' } } },
   { id: 'collaudo-mobile', base: { kind: 'collaudo', model: 'sonnet', allowedTools: ['Read', 'Glob', 'Grep', 'Bash'], maxTurns: 80, contextMode: 'sintesi', reuseResult: false, show: { target: 'dispositivo' } } },
+  // Legge i commenti di una pull request (gh, az o web) e li propone come punti da scegliere nell'approvazione.
+  {
+    id: 'pr-commenti',
+    base: { kind: 'revisione', model: 'sonnet', allowedTools: ['Read', 'Glob', 'Grep', 'Bash', 'WebFetch'], maxTurns: 25, contextMode: 'sintesi', reuseResult: false, pr: { url: '' } },
+  },
   {
     id: 'pubblicazione',
     base: { kind: 'personalizzata', model: 'sonnet', allowedTools: ['Read', 'Glob', 'Grep', 'Bash'], maxTurns: 15, contextMode: 'sintesi', reuseResult: false },

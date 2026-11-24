@@ -4,7 +4,7 @@ import { randomUUID } from 'node:crypto';
 import express, { type NextFunction, type Request, type Response } from 'express';
 import { msg, type Msg } from '../shared/i18n.ts';
 import type { ApiErrorBody, HumanAction, LaunchPlan, PointRef, Run, RunMode, ShowConfig, ValidationIssue, Workflow } from '../shared/types.ts';
-import { RESUMABLE } from '../shared/types.ts';
+import { extraStoryUrls, RESUMABLE } from '../shared/types.ts';
 import { RegiaError, getEngine, planContinuation, resumeRun, startRun } from './engine.ts';
 import { envInfo } from './env.ts';
 import { versionInfo } from './version.ts';
@@ -324,12 +324,27 @@ app.post('/api/runs', h(async (req, res) => {
     if (!reference) return void sendError(res, 400, msg('api.referenceNotFound'));
   }
   // User story collegata: letta a ogni avvio (può essere cambiata); se non si legge, si parte lo stesso.
+  // Eccezione: correggendo i punti di una PR la user story è il riferimento obbligatorio, e senza non si parte
+  // (in prova sì, per poter provare il percorso anche con un indirizzo di esempio).
   let story: Parameters<typeof startRun>[4];
   if (wf.settings.story?.trim()) {
     try {
       story = { story: await fetchStory(wf.settings.story, `run-${Date.now()}-${randomUUID().slice(0, 6)}`) };
     } catch (e) {
-      story = { error: storyErrorMsg(e) };
+      const error = storyErrorMsg(e);
+      if (mode === 'reale' && wf.nodes.some((n) => n.data.pr)) return void sendError(res, 400, msg('api.prStoryUnreadable', { error: serverT(systemLanguage())(error.key, error.params) }));
+      story = { error };
+    }
+  }
+  // User story aggiuntive: stesse regole della principale, ognuna nella sua cartella.
+  for (const [i, url] of extraStoryUrls(wf.settings).entries()) {
+    story ??= {};
+    try {
+      (story.extra ??= []).push(await fetchStory(url, `run-${Date.now()}-${randomUUID().slice(0, 6)}-${i + 2}`));
+    } catch (e) {
+      const error = storyErrorMsg(e);
+      if (mode === 'reale' && wf.nodes.some((n) => n.data.pr)) return void sendError(res, 400, msg('api.prStoryUnreadable', { error: `${url}: ${serverT(systemLanguage())(error.key, error.params)}` }));
+      (story.extraErrors ??= []).push({ url, error });
     }
   }
   const eng = startRun(wf, mode, from, reference, story);
@@ -397,6 +412,33 @@ app.post('/api/runs/:id/action', h(async (req, res) => {
   const early = await Promise.race([p.then(() => null, (e: Error) => e), new Promise((r) => setTimeout(() => r(null), 50))]);
   if (early instanceof Error) return void sendThrown(res, 400, early);
   p.catch(() => undefined);
+  res.json({ ok: true });
+}));
+
+// Prima di pubblicare: account di gh che verrà usato e commenti a cui si risponde, verificati su GitHub.
+app.get('/api/runs/:id/pr-reply/:nodeId', h(async (req, res) => {
+  const eng = getEngine(req.params.id);
+  if (!eng) return void sendError(res, 409, msg('api.runNotActive'));
+  try {
+    res.json(await eng.prReplyContext(req.params.nodeId));
+  } catch (e) {
+    sendThrown(res, 400, e as Error);
+  }
+}));
+
+// Risposta a un commento della PR, confermata dalla persona: pubblicata da Regia con gh, una alla volta.
+app.post('/api/runs/:id/pr-reply', h(async (req, res) => {
+  const eng = getEngine(req.params.id);
+  if (!eng) return void sendError(res, 409, msg('api.runNotActive'));
+  const { nodeId, index, body, account } = req.body as { nodeId?: unknown; index?: unknown; body?: unknown; account?: unknown };
+  if (typeof nodeId !== 'string' || !Number.isInteger(index) || (index as number) < 0 || typeof body !== 'string') return void sendError(res, 400, msg('api.prReplyNotFound'));
+  // L'account mostrato alla persona: se gh nel frattempo ne usa un altro, non si pubblica.
+  if (typeof account !== 'string' || !account.trim()) return void sendError(res, 400, msg('interventions.pr.accountUnknown', { detail: '' }));
+  try {
+    await eng.publishPrReply(nodeId, index as number, body, account.trim());
+  } catch (e) {
+    return void sendThrown(res, 400, e as Error);
+  }
   res.json({ ok: true });
 }));
 

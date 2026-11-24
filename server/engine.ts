@@ -4,7 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { query } from '@anthropic-ai/claude-agent-sdk';
 import type {
-  Attempt, ContinuationPlan, LaunchPlan, PointRef, ReviewPoints, RunReference, ServiceState, DeclaredOutcome, EventKind, HumanAction, InterruptedWork, NodeRunState, ReadyCheck, Run, RunEvent, RunMode, ShowTarget, Workflow, WorkflowNode, WorkflowSettings, PhaseQuestion, UserStory,
+  Attempt, ContinuationPlan, LaunchPlan, PointPriority, PointRef, PrReply, PrReplyContext, ReviewPoints, RunReference, ServiceState, DeclaredOutcome, EventKind, HumanAction, InterruptedWork, NodeRunState, ReadyCheck, Run, RunEvent, RunMode, ShowTarget, Workflow, WorkflowNode, WorkflowSettings, PhaseQuestion, UserStory,
 } from '../shared/types.ts';
 import { emptyTotals, isAgentKind, RESUMABLE } from '../shared/types.ts';
 import { msg, type Msg, type Params, type Translate } from '../shared/i18n.ts';
@@ -31,6 +31,7 @@ import { pushLog, startService, waitForUrl, type ServiceHandle } from './service
 import { describeTree, logsDir, processTree, ServiceTrace } from './servicetrace.ts';
 import { depsPlan, diagnose, envWithNode, needsDeps, resolveNode, runOnce, type InstallPlan } from './nodeenv.ts';
 import { openBrowser, planLaunch } from './launch.ts';
+import { detectPr, postPrReply, prReplyContext } from './pr.ts';
 
 const MAX_EVENTS = 6000;
 /** Punti proposti al massimo da una revisione. */
@@ -96,7 +97,7 @@ export function makeReference(ref: Run, lang: string): RunReference {
  * reference: esecuzione di riferimento scelta all'avvio (solo per i workflow con referenceRun);
  * in una continuazione senza nuova scelta resta quella dell'esecuzione di partenza.
  */
-export function startRun(wf: Workflow, mode: RunMode, from?: Run, reference?: Run, story?: { story?: UserStory; error?: Msg }): RunEngine {
+export function startRun(wf: Workflow, mode: RunMode, from?: Run, reference?: Run, story?: { story?: UserStory; error?: Msg; extra?: UserStory[]; extraErrors?: { url: string; error: Msg }[] }): RunEngine {
   const plan = from ? planContinuation(wf, from) : undefined;
   const run: Run = {
     id: `run_${new Date().toISOString().replace(/[-:T.Z]/g, '').slice(0, 14)}_${randomUUID().slice(0, 6)}`,
@@ -115,6 +116,8 @@ export function startRun(wf: Workflow, mode: RunMode, from?: Run, reference?: Ru
     reference: wf.settings.referenceRun ? (reference ? makeReference(reference, workflowLang(wf)) : from?.reference) : undefined,
     story: story?.story,
     storyError: story?.error,
+    ...(story?.extra?.length ? { extraStories: story.extra } : {}),
+    ...(story?.extraErrors?.length ? { extraStoryErrors: story.extraErrors } : {}),
   };
   // Fasi riprese: risultato, decisioni e sessione dell'esecuzione precedente, nessuna chiamata.
   for (const r of plan?.reused ?? []) {
@@ -203,7 +206,8 @@ export class RunEngine {
 
   /** Cartelle di lavoro in più per gli agenti: aggiuntive del workflow, immagini della user story, prove del collaudo. */
   private agentDirs(uatDir?: string): string[] {
-    return [...existingExtraDirs(this.wf.settings), ...(this.run.story?.images.length ? [storyDir(this.run.story)] : []), ...(uatDir ? [uatDir] : [])];
+    const stories = [this.run.story, ...(this.run.extraStories ?? [])].filter((s): s is UserStory => Boolean(s?.images.length));
+    return [...existingExtraDirs(this.wf.settings), ...stories.map(storyDir), ...(uatDir ? [uatDir] : [])];
   }
 
   /** Schermo dal vivo del collaudo in corso nella fase, se c'è. */
@@ -312,6 +316,8 @@ export class RunEngine {
     if (ref) this.say('run', msg('events.reference', { name: ref.workflowName, id: ref.runId }));
     if (this.run.story) this.say('run', msg('events.story.loaded', { type: this.run.story.type ?? '', id: this.run.story.id, title: this.run.story.title, count: this.run.story.images.length }));
     else if (this.run.storyError) this.say('errore', msg('events.story.failed', { error: this.tx(this.run.storyError) }));
+    for (const s of this.run.extraStories ?? []) this.say('run', msg('events.story.loaded', { type: s.type ?? '', id: s.id, title: s.title, count: s.images.length }));
+    for (const x of this.run.extraStoryErrors ?? []) this.say('errore', msg('events.story.failed', { error: `${x.url}: ${this.tx(x.error)}` }));
     const dirs = extraDirs(this.wf.settings);
     if (dirs.length) this.say('run', msg('events.extraDirs', { dirs: dirs.join(', '), count: dirs.length }));
     const r = this.run.rules;
@@ -461,12 +467,14 @@ export class RunEngine {
     return [
       this.wf.settings.goal ? this.t('agent.goal', { goal: this.wf.settings.goal }) : '',
       this.run.story ? storyPrompt(this.run.story, this.t) : '',
+      ...(this.run.extraStories ?? []).map((s) => storyPrompt(s, this.t)),
       this.run.reference ? this.t('agent.reference', {
         name: this.run.reference.workflowName,
         date: new Date(this.run.reference.startedAt).toLocaleString(this.lang, { dateStyle: 'short', timeStyle: 'short' }),
         report: this.run.reference.text,
       }) : '',
       this.t('agent.task', { label: n.data.label, instructions: n.data.instructions }),
+      n.data.pr ? prPrompt(this.prUrlFor(n), this.t) : '',
       ctx,
       extra,
       agentProtocol(this.lang, n.data.kind),
@@ -784,7 +792,7 @@ export class RunEngine {
       // I punti restano anche nel testo per le fasi successive (ad esempio un rapporto che unisce le revisioni).
       st.output = declared
         ? `${declared.sintesi}${declared.decisioni.length ? `\n${this.t('agent.output.decisions')} ${declared.decisioni.map((x) => `- ${x}`).join('\n')}` : ''}`
-          + (declared.punti?.length ? `\n${this.t('agent.output.points')}\n${declared.punti.map((x) => `- ${x}`).join('\n')}` : '')
+          + (declared.punti?.length ? `\n${this.t('agent.output.points')}\n${declared.punti.map((x, i) => `- [${this.t(`agent.output.priority.${declared.priorita?.[i] ?? 'alta'}`)}] ${x}`).join('\n')}` : '')
           + (declared.puntiOmessi?.length ? `\n${this.t('agent.output.pointsOmitted', { count: declared.puntiOmessi.length })}` : '')
           + (declared.manuali?.length ? `\n${this.t('agent.output.manual')}\n${declared.manuali.map((x) => `- ${x}`).join('\n')}` : '')
         : clip(a.resultText ?? '', 3000);
@@ -818,8 +826,92 @@ export class RunEngine {
 
   private startNode(n: WorkflowNode, reason: Attempt['reason']) {
     if (this.run.status === 'sospesa') return Promise.resolve();
+    if (this.needsPrDetection(n)) return this.detectPrFor(n);
     if (n.data.kind === 'collaudo') return this.runCollaudo(n, reason);
     return n.data.kind === 'server' ? this.runService(n, reason) : this.runAgent(n, reason);
+  }
+
+  /** URL della PR da leggere: quello della fase, altrimenti quello confermato in questa esecuzione (vuoto = dall'obiettivo). */
+  private prUrlFor(n: WorkflowNode): string {
+    return n.data.pr?.url.trim() || this.run.nodes[n.id]?.prUrl || '';
+  }
+
+  /**
+   * Pubblica sulla PR una risposta preparata dalla fase "Punti della PR", con il testo confermato (ed eventualmente
+   * modificato) dalla persona. Una alla volta, mai due volte la stessa: è un'azione visibile agli altri.
+   */
+  async publishPrReply(nodeId: string, index: number, body: string, account: string) {
+    const n = this.node(nodeId);
+    const st = this.run.nodes[nodeId];
+    const reply = st?.attempts.at(-1)?.declared?.risposte?.[index];
+    if (!n?.data.pr || !reply) throw this.fail(msg('api.prReplyNotFound'));
+    // Solo come risposta nella discussione del commento: mai un commento generale sulla PR.
+    if (!reply.thread) throw this.fail(msg('interventions.pr.replyNoThread'));
+    if (st.prReplies?.[index]?.status === 'pubblicata') throw this.fail(msg('api.prReplyAlreadyPublished'));
+    const text = body.trim().slice(0, 3000);
+    if (!text) throw this.fail(msg('api.textMissing'));
+    const url = this.resolvedPrUrl(n);
+    const res = await postPrReply(this.wf.settings.projectDir, url, text, reply.thread, account, this.run.mode === 'prova');
+    const at = new Date().toISOString();
+    st.prReplies = { ...st.prReplies, [index]: res.ok ? { status: 'pubblicata', at, body: text, account, ...(res.url ? { url: res.url } : {}) } : { status: 'errore', at, error: this.tx(res.reason) } };
+    const where = { nodeId };
+    if (res.ok) this.say('intervento', msg('events.prReplyPublished', { label: n.data.label, ref: reply.riferimento, url: res.url ?? url, account }), where);
+    else this.say('intervento', msg('events.prReplyFailed', { label: n.data.label, ref: reply.riferimento, error: this.tx(res.reason) }), where);
+    this.nodeChanged(nodeId);
+    this.persist();
+    if (!res.ok) throw this.fail(res.reason);
+  }
+
+  /** URL della PR letta dalla fase: della fase, confermato in questa esecuzione o scritto nell'obiettivo. */
+  private resolvedPrUrl(n: WorkflowNode): string {
+    return this.prUrlFor(n) || this.wf.settings.goal?.match(PR_URL)?.[0] || '';
+  }
+
+  /** Per l'interfaccia, prima di pubblicare: account di gh che pubblicherebbe e commenti a cui si risponderebbe. */
+  async prReplyContext(nodeId: string): Promise<PrReplyContext> {
+    const n = this.node(nodeId);
+    const replies = this.run.nodes[nodeId]?.attempts.at(-1)?.declared?.risposte;
+    if (!n?.data.pr || !replies) throw this.fail(msg('api.prReplyNotFound'));
+    const ids = replies.flatMap((r) => (r.thread ? [r.thread] : []));
+    return prReplyContext(this.wf.settings.projectDir, this.resolvedPrUrl(n), ids, this.run.mode === 'prova');
+  }
+
+  /** "Punti della PR" senza URL né nella fase né nell'obiettivo: la PR va cercata dal branch corrente e confermata. */
+  private needsPrDetection(n: WorkflowNode): boolean {
+    return Boolean(n.data.pr) && !this.prUrlFor(n) && !PR_URL.test(this.wf.settings.goal ?? '');
+  }
+
+  /** Cerca la PR del branch corrente e la mostra a chi supervisiona: la fase parte solo dopo la conferma. */
+  private async detectPrFor(n: WorkflowNode) {
+    const st = this.run.nodes[n.id];
+    const where = { nodeId: n.id };
+    st.status = 'attiva';
+    st.detectedPr = undefined;
+    st.activity = this.t('events.activity.detectingPr');
+    this.running.add(n.id);
+    this.nodeChanged(n.id);
+    let res: Awaited<ReturnType<typeof detectPr>>;
+    try {
+      res = await detectPr(this.wf.settings.projectDir, this.run.mode === 'prova');
+    } finally {
+      this.running.delete(n.id);
+      st.activity = undefined;
+    }
+    if (this.run.status === 'annullata') return;
+    if (res.ok) {
+      st.status = 'attesa_intervento';
+      st.detectedPr = res.pr;
+      st.pendingActions = ['conferma_pr', 'riprova', 'annulla'];
+      this.setPending(st, msg('interventions.pr.confirm', { url: res.pr.url, title: res.pr.title, branch: res.pr.branch }));
+      this.say('intervento', msg('events.prDetected', { label: n.data.label, url: res.pr.url, branch: res.pr.branch }), where);
+    } else {
+      st.status = 'fallita';
+      st.pendingActions = ['riprova', 'salta', 'annulla'];
+      this.setPending(st, res.reason);
+      this.say('intervento', msg('events.prNotDetected', { label: n.data.label, reason: this.tx(res.reason) }), where);
+    }
+    this.nodeChanged(n.id);
+    this.updateRunStatus();
   }
 
   /** Collaudo: build, installazione e avvio come "Mostra sul telefono", poi l'agente prova l'app mentre Regia ne segue il log. */
@@ -897,7 +989,14 @@ export class RunEngine {
     st.uat.log = log;
     if (log.crashes.length && a.declared) {
       const found = log.crashes.map((c) => this.t('agent.uat.crashPoint', { what: c }));
-      a.declared.punti = [...(a.declared.punti ?? []), ...found].slice(0, MAX_POINTS);
+      // I crash sono anomalie ad alta priorità: vanno dopo le altre alte e prima dei punti minori.
+      const old = a.declared.punti ?? [];
+      const pr = old.map((_, i): PointPriority => a.declared!.priorita?.[i] ?? 'alta');
+      const cut = pr.includes('bassa') ? pr.indexOf('bassa') : old.length;
+      a.declared.punti = [...old.slice(0, cut), ...found, ...old.slice(cut)].slice(0, MAX_POINTS);
+      a.declared.priorita = [...pr.slice(0, cut), ...found.map((): PointPriority => 'alta'), ...pr.slice(cut)].slice(0, MAX_POINTS);
+      const cf = a.declared.contrastoUs;
+      if (cf) a.declared.contrastoUs = [...cf.slice(0, cut), ...found.map(() => false), ...cf.slice(cut)].slice(0, MAX_POINTS);
     }
   }
 
@@ -1441,9 +1540,12 @@ export class RunEngine {
       .filter((x) => ids.has(x.id) && x.data.kind !== 'approvazione' && this.run.nodes[x.id]?.status === 'completata')
       .map((x) => {
         const declared = this.run.nodes[x.id].attempts.at(-1)?.declared;
-        return { nodeId: x.id, label: x.data.label, items: declared?.punti ?? [], ...(declared?.puntiOmessi?.length ? { omitted: declared.puntiOmessi.length } : {}) };
+        const items = declared?.punti ?? [];
+        return { nodeId: x.id, label: x.data.label, items, priorities: items.map((_, i): PointPriority => declared?.priorita?.[i] ?? 'alta'), ...(x.data.pr ? { forward: true } : {}), ...(x.data.pr && declared?.sistemati?.length ? { resolved: declared.sistemati } : {}),
+          ...(declared?.contrastoUs?.some(Boolean) ? { conflicts: items.map((_, i) => Boolean(declared.contrastoUs?.[i])) } : {}), ...(declared?.puntiOmessi?.length ? { omitted: declared.puntiOmessi.length } : {}) };
       })
-      .filter((p) => p.items.length);
+      // Una PR con tutti i commenti già sistemati resta visibile, per controllare il giudizio dell'agente.
+      .filter((p) => p.items.length || p.resolved?.length);
   }
 
   /** Ultima sessione della fase, da cui riprendere una conversazione. */
@@ -1565,10 +1667,13 @@ export class RunEngine {
     this.runChanged();
   }
 
-  /** Feedback per la fase da correggere: i punti scelti, raggruppati per fase, e il commento libero. */
-  private composeFeedback(st: NodeRunState, refs: PointRef[], comment: string): string {
+  /**
+   * Testo dei punti scelti, raggruppati per fase, e del commento libero. Con `forward` contano solo i punti da portare
+   * avanti (Approva, verso le fasi successive), altrimenti solo quelli da rimandare indietro (Respingi).
+   */
+  private composeFeedback(st: NodeRunState, refs: PointRef[], comment: string, forward = false): string {
     const parts: string[] = [];
-    for (const group of st.reviewPoints ?? []) {
+    for (const group of (st.reviewPoints ?? []).filter((g) => Boolean(g.forward) === forward)) {
       const chosen = [...new Set(refs.filter((r) => r.nodeId === group.nodeId).map((r) => r.index))]
         .sort((a, b) => a - b).map((i) => group.items[i]).filter(Boolean);
       if (chosen.length) parts.push(this.t('agent.chosenPoints', { label: group.label, points: chosen.map((x) => `- ${x}`).join('\n') }));
@@ -1641,8 +1746,9 @@ export class RunEngine {
     if (!st.pendingActions?.includes(action)) throw this.fail(msg('api.actionUnavailable', { action }));
     for (const q of st.questions ?? []) if (q.status === 'in_corso') this.controllers.get(q.attempt.id)?.abort();
     // Respingendo, i punti scelti tra quelli proposti diventano parte del feedback per la fase da correggere.
-    const fb = action === 'respingi' && n.data.kind === 'approvazione'
-      ? this.composeFeedback(st, points, redact(feedback.trim()))
+    // Approvando, i punti scelti di una PR passano alle fasi successive insieme al commento.
+    const fb = (action === 'respingi' || action === 'approva') && n.data.kind === 'approvazione'
+      ? this.composeFeedback(st, points, redact(feedback.trim()), action === 'approva')
       : redact(feedback.trim());
     if (n.data.kind === 'approvazione' && (action === 'approva' || (action === 'respingi' && fb))) st.reviewPoints = undefined;
     this.say('intervento', fb
@@ -1672,6 +1778,17 @@ export class RunEngine {
       this.nodeChanged(nodeId);
       if (sess) void this.runAgent(n, 'ripresa_con_feedback', { sessionId: sess, feedback: note });
       else void this.startNode(n, 'riprova');
+      return;
+    }
+
+    if (action === 'conferma_pr') {
+      // PR trovata dal branch corrente e confermata: vale per questa esecuzione, anche se la fase viene rifatta.
+      if (!st.detectedPr) throw this.fail(msg('api.actionUnavailable', { action }));
+      st.prUrl = st.detectedPr.url;
+      st.detectedPr = undefined;
+      st.status = 'in_attesa';
+      this.nodeChanged(nodeId);
+      void this.runAgent(n, st.attempts.length ? 'riprova' : 'iniziale');
       return;
     }
 
@@ -1764,6 +1881,15 @@ type StopReason = 'completed' | 'restart' | 'startFailed' | 'manual' | 'cancelle
  * Le parti lette da Regia restano invariate in ogni lingua: il blocco ```regia, le chiavi esito/sintesi/decisioni
  * e i valori ok/ko/bloccato. Le righe di decisione iniziano con "DECISIONE:" (it) o "DECISION:" (en).
  */
+/** Indirizzo di una pull request (GitHub .../pull/N, Azure DevOps .../pullrequest/N), non un link qualsiasi. */
+export const PR_URL = /https?:\/\/\S+\/(?:pull|pullrequest)\/\d+/i;
+
+/** Fase "Punti della PR": quale pull request leggere e come trasformarne i commenti in punti. */
+export function prPrompt(url: string, t: Translate): string {
+  const u = url.trim();
+  return t('agent.pr', { url: u || t('agent.prFromGoal') });
+}
+
 export function agentProtocol(lang = 'it', kind?: WorkflowNode['data']['kind']): string {
   const t = serverT(lang);
   // Le revisioni elencano a parte le modifiche proposte: chi approva sceglie quali far applicare.
@@ -1823,6 +1949,68 @@ export function isInsideDir(dir: string, parent: string) {
   return rel === '' || (!rel.startsWith('..') && !path.isAbsolute(rel));
 }
 
+type ParsedPoint = { text: string; priority: PointPriority; rank: number; conflict: boolean };
+
+/**
+ * Gravità usate nelle revisioni delle PR (bot e persone), dalla più grave. Decidono ordine e priorità del punto:
+ * le prime tre sono alte (rosse), le altre basse (verdi).
+ */
+const SEVERITIES = ['BLOCKER', 'CRITICAL', 'MAJOR', 'MINOR', 'WARNING', 'INFO', 'NIT'];
+const HIGH_SEVERITIES = 3;
+/**
+ * Gravità all'inizio del testo, solo in maiuscolo e delimitata ("[BLOCKER] ...", "**MAJOR**: ...", "WARNING - ..."):
+ * una frase che inizia con "Minor" o "Info" non è una gravità.
+ */
+const SEV = `(${SEVERITIES.join('|')})`;
+const LEADING_SEVERITY = new RegExp(`^\\s*(?:\\[${SEV}\\]|\\(${SEV}\\)|\\*\\*${SEV}\\*\\*|${SEV}(?=\\s*[:\\-–—]))\\s*[:\\-–—]?\\s*`);
+
+/**
+ * Un punto del blocco di esito: testo semplice oppure {"testo", "priorita": "alta" | "bassa", "gravita"}.
+ * Con una gravità nota (nel campo o all'inizio del testo) è questa a decidere priorità e ordine, e il testo
+ * inizia sempre con l'etichetta tra parentesi quadre; senza, conta la priorità indicata (alta se manca).
+ */
+function parsePoint(x: unknown): ParsedPoint | undefined {
+  const obj = x && typeof x === 'object' && !Array.isArray(x) ? (x as Record<string, unknown>) : undefined;
+  const raw = obj ? obj.testo ?? obj.text ?? '' : x ?? '';
+  // I punti di una PR citano file, commento e verifica: servono più dei 500 caratteri degli altri testi.
+  let text = redact(String(raw)).trim().slice(0, 1000);
+  if (!text) return undefined;
+  // In contrasto con la user story: dal campo o dal prefisso del testo (che resta, così lo vede anche la correzione).
+  const conflict = obj?.contrastoUs === true || obj?.conflictsWithUs === true || US_CONFLICT.test(text.replace(LEADING_SEVERITY, ''));
+  const field = String(obj?.gravita ?? obj?.severity ?? '').trim().toUpperCase();
+  const lead = text.match(LEADING_SEVERITY);
+  const leadSeverity = lead ? lead.slice(1).find(Boolean) ?? '' : '';
+  const severity = SEVERITIES.includes(field) ? field : leadSeverity;
+  const p = String(obj?.priorita ?? obj?.priority ?? '').trim().toLowerCase();
+  const declared: PointPriority = p === 'bassa' || p === 'low' ? 'bassa' : 'alta';
+  if (!severity) return { text, priority: declared, rank: declared === 'alta' ? HIGH_SEVERITIES - 0.5 : SEVERITIES.length, conflict };
+  if (lead) text = text.slice(lead[0].length).trim() || text;
+  const rank = SEVERITIES.indexOf(severity);
+  return { text: `[${severity}] ${text}`, priority: rank < HIGH_SEVERITIES ? 'alta' : 'bassa', rank, conflict };
+}
+
+/** Prefisso dei punti in contrasto con la user story (in italiano o in inglese, secondo la lingua del workflow). */
+const US_CONFLICT = /^\s*\**\s*(?:In contrasto con la US|Conflicts with the US)\s*\**\s*:/i;
+
+/** Risposte proposte per la PR: solo quelle complete; l'id della discussione deve avere la forma di un id GraphQL. */
+function parseReplies(v: unknown): PrReply[] {
+  if (!Array.isArray(v)) return [];
+  return v.flatMap((x): PrReply[] => {
+    if (!x || typeof x !== 'object') return [];
+    const o = x as Record<string, unknown>;
+    const testo = redact(String(o.testo ?? '')).trim().slice(0, 3000);
+    const motivo = o.motivo === 'contrasto' ? 'contrasto' : o.motivo === 'sistemato' ? 'sistemato' : undefined;
+    if (!testo || !motivo) return [];
+    const thread = typeof o.thread === 'string' && /^[A-Za-z0-9_=-]{4,200}$/.test(o.thread.trim()) ? o.thread.trim() : undefined;
+    return [{ motivo, riferimento: redact(String(o.riferimento ?? '')).trim().slice(0, 300), testo, ...(thread ? { thread } : {}) }];
+  }).slice(0, MAX_POINTS);
+}
+
+/** Testi semplici (es. punti già sistemati), puliti e limitati come i punti. */
+const textList = (v: unknown) => (Array.isArray(v) ? v : [])
+  .map((x: unknown) => redact(String(x && typeof x === 'object' ? (x as Record<string, unknown>).testo ?? '' : x ?? '')).trim().slice(0, 500))
+  .filter(Boolean);
+
 export function parseDeclared(text: unknown): DeclaredOutcome | undefined {
   if (typeof text !== 'string') return undefined;
   const blocks = [...text.matchAll(/```regia\s*([\s\S]*?)```/g)];
@@ -1831,11 +2019,17 @@ export function parseDeclared(text: unknown): DeclaredOutcome | undefined {
   try {
     const j = JSON.parse(last);
     const esito = ['ok', 'ko', 'bloccato'].includes(j.esito) ? j.esito : 'ok';
-    // Oltre il limite si tengono i primi (il protocollo chiede l'ordine per importanza); gli altri vanno nel registro.
-    const all: string[] = Array.isArray(j.punti)
-      ? j.punti.map((x: unknown) => redact(String(x ?? '')).trim().slice(0, 500)).filter(Boolean)
-      : [];
+    // Ogni punto è un testo o {testo, priorita}: prima quelli ad alta priorità (senza priorità valida contano come alti),
+    // poi i minori, ciascun gruppo nell'ordine dell'agente. Oltre il limite si tengono i primi; gli altri vanno nel registro.
+    const parsed = Array.isArray(j.punti) ? j.punti.map(parsePoint).filter((p: ParsedPoint | undefined): p is ParsedPoint => Boolean(p)) : [];
+    // Prima le priorità alte, poi per gravità (BLOCKER in testa); a parità resta l'ordine dell'agente (sort stabile).
+    const ranked: ParsedPoint[] = [...parsed].sort((a: ParsedPoint, b: ParsedPoint) => (a.priority === b.priority ? 0 : a.priority === 'alta' ? -1 : 1) || a.rank - b.rank);
+    // Solo PR: commenti già sistemati nel codice o risolti sulla PR, mostrati a parte per controllo.
+    const sistemati = textList(j.sistemati).slice(0, MAX_POINTS);
+    const all = ranked.map((p) => p.text);
     const punti = all.slice(0, MAX_POINTS);
+    const priorita = ranked.slice(0, MAX_POINTS).map((p) => p.priority);
+    const contrastoUs = ranked.slice(0, MAX_POINTS).map((p) => p.conflict);
     const manuali: string[] = Array.isArray(j.manuali)
       ? j.manuali.map((x: unknown) => redact(String(x ?? '')).trim().slice(0, 500)).filter(Boolean).slice(0, MAX_POINTS)
       : [];
@@ -1844,7 +2038,10 @@ export function parseDeclared(text: unknown): DeclaredOutcome | undefined {
       esito,
       sintesi: redact(String(j.sintesi ?? '')).slice(0, 2000),
       decisioni: Array.isArray(j.decisioni) ? j.decisioni.slice(0, 10).map((x: unknown) => redact(String(x)).slice(0, 300)) : [],
-      ...(punti.length ? { punti } : {}),
+      ...(punti.length ? { punti, priorita } : {}),
+      ...(contrastoUs.some(Boolean) ? { contrastoUs } : {}),
+      ...(parseReplies(j.risposte).length ? { risposte: parseReplies(j.risposte) } : {}),
+      ...(sistemati.length ? { sistemati } : {}),
       ...(puntiOmessi.length ? { puntiOmessi } : {}),
       ...(manuali.length ? { manuali } : {}),
       // Il permesso conta solo se la fase si è fermata.

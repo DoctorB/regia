@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import type { PhaseConfig, Workflow, WorkflowTemplate } from '../../shared/types.ts';
+import type { PhaseConfig, UserStory, Workflow, WorkflowTemplate } from '../../shared/types.ts';
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'regia-test-'));
 const projectDir = path.join(tmp, 'progetto');
@@ -43,11 +43,18 @@ function fromTemplate(t: WorkflowTemplate): Workflow {
 }
 const templates = store.listTemplates();
 const bugWf = () => fromTemplate(templates.find((t) => t.id === 'correggi-bug')!);
+const STORY_URL = 'https://github.com/o/r/issues/1';
 
 test('tutti i preset sono validi una volta impostata la cartella', () => {
   assert.ok(templates.length >= 5);
   for (const t of templates) {
-    const errors = validateWorkflow(fromTemplate(t), 'prova').filter((i) => i.level === 'errore');
+    const wf = fromTemplate(t);
+    // Correggere i punti di una PR richiede la user story collegata.
+    if (wf.nodes.some((n) => n.data.pr)) {
+      assert.deepEqual(validateWorkflow(wf, 'prova').filter((i) => i.level === 'errore').map((i) => i.msg?.key), ['validate.prNeedsStory'], t.id);
+      wf.settings.story = STORY_URL;
+    }
+    const errors = validateWorkflow(wf, 'prova').filter((i) => i.level === 'errore');
     assert.deepEqual(errors, [], t.id);
   }
 });
@@ -366,12 +373,60 @@ test('punti della revisione: dichiarati a parte, scelti nell\'approvazione e inv
   assert.deepEqual(d?.punti, ['a', 'b']);
   assert.equal(d?.esito, 'ok');
   assert.equal(parseDeclared('```regia\n{"esito":"ok","sintesi":"s","decisioni":[],"punti":"x"}\n```')?.punti, undefined);
-  assert.match(agentProtocol('it', 'revisione'), /in ordine di importanza[\s\S]*al massimo 25/);
+  assert.match(agentProtocol('it', 'revisione'), /"priorita": "alta" \| "bassa"[\s\S]*Ordinale per priorità[\s\S]*al massimo 25/);
+  assert.match(agentProtocol('en', 'revisione'), /"priorita": "alta" \| "bassa"/);
   // Oltre il limite si tengono i primi 25; gli altri restano a parte, per l'evento e la nota nell'approvazione.
   const many = parseDeclared(`\`\`\`regia\n${JSON.stringify({ esito: 'ok', sintesi: 's', punti: Array.from({ length: 28 }, (_, i) => `p${i}`) })}\n\`\`\``);
   assert.equal(many?.punti?.length, 25);
   assert.deepEqual(many?.puntiOmessi, ['p25', 'p26', 'p27']);
   assert.equal(d?.puntiOmessi, undefined);
+  assert.deepEqual(d?.priorita, ['alta', 'alta']);
+  // Priorità: testo semplice o priorità non valida contano come alta; prima le alte, poi le basse, ciascuna nell'ordine dato.
+  const block = (punti: unknown[]) => `\`\`\`regia\n${JSON.stringify({ esito: 'ok', sintesi: 's', punti })}\n\`\`\``;
+  const pr = parseDeclared(block([
+    { testo: 'stile', priorita: 'bassa' }, { testo: 'bug', priorita: 'alta' }, 'semplice', { testo: ' ', priorita: 'alta' }, { testo: 'nomi', priorita: 'bassa' }, { testo: 'altro', priorita: 'boh' },
+  ]));
+  assert.deepEqual(pr?.punti, ['bug', 'semplice', 'altro', 'stile', 'nomi']);
+  assert.deepEqual(pr?.priorita, ['alta', 'alta', 'alta', 'bassa', 'bassa']);
+  // Oltre il limite restano fuori i punti minori, non quelli importanti.
+  const ranked = parseDeclared(block([
+    ...Array.from({ length: 5 }, (_, i) => ({ testo: `b${i}`, priorita: 'bassa' })), ...Array.from({ length: 25 }, (_, i) => `a${i}`),
+  ]));
+  assert.ok(ranked?.priorita?.every((x) => x === 'alta'));
+  assert.deepEqual(ranked?.puntiOmessi, ['b0', 'b1', 'b2', 'b3', 'b4']);
+  // Gravità (nel campo o all'inizio del testo): decide ordine e priorità, anche se l'agente dichiara tutto "alta"
+  // e mette il BLOCKER in fondo; l'etichetta è sempre davanti al testo.
+  const sev = parseDeclared(block([
+    { testo: 'Test instabile', gravita: 'major', priorita: 'alta' },
+    { testo: 'variabile inutile', gravita: 'WARNING', priorita: 'alta' },
+    '**BLOCKER**: crash all\'avvio',
+    { testo: '[MAJOR] nome fuorviante', priorita: 'bassa' },
+    { testo: 'senza gravità', priorita: 'alta' },
+    'Minor refactoring del modulo',
+    { testo: 'reset non gestito', gravita: 'BLOCKER' },
+  ]));
+  assert.deepEqual(sev?.punti, [
+    '[BLOCKER] crash all\'avvio', '[BLOCKER] reset non gestito', '[MAJOR] Test instabile', '[MAJOR] nome fuorviante',
+    'senza gravità', 'Minor refactoring del modulo', '[WARNING] variabile inutile',
+  ]);
+  assert.deepEqual(sev?.priorita, ['alta', 'alta', 'alta', 'alta', 'alta', 'alta', 'bassa']);
+  // In contrasto con la user story: dal campo o dal prefisso (anche dopo la gravità), allineato ai punti ordinati.
+  const us = parseDeclared(block([
+    { testo: 'ok', gravita: 'WARNING' },
+    { testo: 'In contrasto con la US: cambia AC8', gravita: 'MAJOR' },
+    { testo: 'campo', gravita: 'BLOCKER', contrastoUs: true },
+    '[MAJOR] Conflicts with the US: changes AC2',
+  ]));
+  assert.deepEqual(us?.punti, ['[BLOCKER] campo', '[MAJOR] In contrasto con la US: cambia AC8', '[MAJOR] Conflicts with the US: changes AC2', '[WARNING] ok']);
+  assert.deepEqual(us?.contrastoUs, [true, true, true, false]);
+  assert.equal(sev?.contrastoUs, undefined);
+  // Testi lunghi (commento, correzione e verifica) non vengono tagliati a 500 caratteri.
+  assert.equal(parseDeclared(block(['x'.repeat(900)]))?.punti?.[0].length, 900);
+  // Risposte per la PR: solo complete, con un id di discussione plausibile (altrimenti commento generale).
+  const rp = parseDeclared(block([]).replace('"punti":[]', '"risposte":[{"motivo":"sistemato","riferimento":"r","testo":"ok","thread":"PRRT_kwDO1"},{"motivo":"contrasto","testo":"t","thread":"x; rm -rf"},{"motivo":"altro","testo":"no"},{"motivo":"sistemato","testo":" "}]'));
+  assert.deepEqual(rp?.risposte, [{ motivo: 'sistemato', riferimento: 'r', testo: 'ok', thread: 'PRRT_kwDO1' }, { motivo: 'contrasto', riferimento: '', testo: 't' }]);
+  // Commenti già sistemati: chiave a parte, testi semplici.
+  assert.deepEqual(parseDeclared('```regia\n{"esito":"ok","sintesi":"s","sistemati":["a"," ",{"testo":"b"}]}\n```')?.sistemati, ['a', 'b']);
 
   const eng = startRun(bugWf(), 'prova');
   const run = eng.run;
@@ -382,7 +437,8 @@ test('punti della revisione: dichiarati a parte, scelti nell\'approvazione e inv
   assert.equal(groups.length, 1);
   assert.equal(groups[0].nodeId, 'revisione');
   assert.equal(groups[0].items.length, 2);
-  assert.match(run.nodes.revisione.output!, /Punti da correggere:\n- Gestire il caso di input vuoto/);
+  assert.match(run.nodes.revisione.output!, /Punti da correggere:\n- \[priorità alta\] Gestire il caso di input vuoto[\s\S]*\n- \[priorità bassa\] Aggiungere un test/);
+  assert.deepEqual(groups[0].priorities, ['alta', 'bassa']);
 
   // Senza punti né commento non si respinge; un indice inesistente viene ignorato.
   await assert.rejects(eng.human('approvazione', 'respingi', '', [{ nodeId: 'revisione', index: 9 }]));
@@ -424,6 +480,149 @@ test('punti oltre il limite: checklist con i primi 25, gli altri in un evento e 
   const ev = run.events.find((e) => e.nodeId === 'revisione' && e.text.includes('oltre il limite di 25'));
   assert.match(ev!.text, /2 punti oltre il limite di 25[\s\S]*- Punto simulato numero 26\.\n- Punto simulato numero 27\./);
   assert.match(run.nodes.revisione.output!, /\(altri 2 punti oltre il limite, non riportati\)/);
+  eng.cancel();
+});
+
+test('punti della PR: elenco per priorità, scelti nell\'approvazione e passati alla fase successiva', async () => {
+  const { phaseSnippets } = await import('../../shared/presets.ts');
+  const { prPrompt } = await import('../engine.ts');
+  const pr = phaseSnippets(serverT('it')).find((s) => s.id === 'pr-commenti')!.data;
+  assert.equal(pr.kind, 'revisione');
+  assert.deepEqual(pr.pr, { url: '' });
+  // L'URL indicato finisce nel prompt; senza URL si rimanda all'obiettivo.
+  // L'URL indicato è nel prompt, con lo stato delle discussioni (GraphQL), i commenti già sistemati a parte e la gravità per punto.
+  for (const lang of ['it', 'en']) {
+    const p = prPrompt('https://github.com/o/r/pull/7', serverT(lang));
+    assert.match(p, /https:\/\/github\.com\/o\/r\/pull\/7[\s\S]*isResolved isOutdated[\s\S]*"sistemati"[\s\S]*"gravita": "BLOCKER"/);
+    assert.doesNotMatch(p, /\{url\}/);
+  }
+  assert.match(prPrompt('', serverT('it')), /obiettivo del workflow/);
+
+  const base = bugWf();
+  base.settings.story = STORY_URL;
+  const impl = base.nodes.find((x) => x.id === 'correzione')!;
+  const wf: Workflow = {
+    ...base,
+    nodes: [
+      { id: 'pr', position: { x: 0, y: 0 }, data: { ...pr, pr: { url: 'https://github.com/o/r/pull/7' } } },
+      { id: 'scelta', position: { x: 300, y: 0 }, data: { label: 'Scelta dei punti', kind: 'approvazione', role: '', instructions: 'Scegli.', model: '', allowedTools: [], contextMode: 'sintesi', reuseResult: false } },
+      { id: 'impl', position: { x: 600, y: 0 }, data: { ...impl.data, label: 'Implementazione' } },
+    ],
+    edges: [{ id: 'a', source: 'pr', target: 'scelta' }, { id: 'b', source: 'scelta', target: 'impl' }],
+  };
+  assert.deepEqual(validateWorkflow(wf, 'prova').filter((i) => i.level === 'errore'), []);
+  const withUrl = (url: string) => validateWorkflow({ ...wf, nodes: wf.nodes.map((x) => x.id === 'pr' ? { ...x, data: { ...x.data, pr: { url } } } : x) }, 'prova')
+    .filter((i) => i.level === 'errore').map((i) => i.msg?.key);
+  assert.ok(withUrl('pull/7').includes('validate.prUrlInvalid'));
+  // L'URL è facoltativo: la PR può nascere dopo il workflow, e senza URL si usa quella del branch corrente.
+  assert.deepEqual(withUrl(''), []);
+
+  const eng = startRun(wf, 'prova');
+  const run = eng.run;
+  await waitFor(() => run.nodes.scelta.status === 'attesa_intervento');
+  const g = run.nodes.scelta.reviewPoints![0];
+  // Prima le priorità alte (BLOCKER, MAJOR), poi il WARNING, anche se la PR li elencava in un altro ordine.
+  assert.equal(g.forward, true);
+  assert.deepEqual(g.items.map((x) => x.slice(0, x.indexOf(']') + 1)), ['[BLOCKER]', '[MAJOR]', '[WARNING]']);
+  assert.deepEqual(g.priorities, ['alta', 'alta', 'bassa']);
+  // I commenti già sistemati non sono tra i punti: restano a parte, da controllare.
+  assert.equal(g.resolved?.length, 1);
+  // Il MAJOR è in contrasto con la user story: segnalato nell'approvazione, nella stessa posizione.
+  assert.deepEqual(g.conflicts, [false, true, false]);
+  assert.match(serverT('it')('agent.pr'), /Verificato:[\s\S]*"contrastoUs": true/);
+  // Risposte per la PR (già sistemati e in contrasto con la US): preparate dall'agente, pubblicate solo su conferma, una alla volta.
+  assert.match(serverT('it')('agent.pr'), /nodes\{id isResolved[\s\S]*"risposte"/);
+  assert.equal(run.nodes.pr.attempts[0].declared?.risposte?.length, 2);
+  assert.equal(run.nodes.pr.prReplies, undefined);
+  // Prima di pubblicare: account di gh e commento di destinazione, verificati (simulati in prova).
+  const ctx = await eng.prReplyContext('pr');
+  assert.equal(ctx.account, 'utente-simulato');
+  assert.deepEqual(Object.keys(ctx.threads), ['PRRT_simulato1']);
+  assert.equal(ctx.threads.PRRT_simulato1.ok, true);
+  // Solo come risposta nella discussione del punto: senza discussione non si pubblica (niente commenti generali).
+  await assert.rejects(eng.publishPrReply('pr', 1, 'testo', 'utente-simulato'), (e: Error) => /discussione/.test(e.message));
+  // Account diverso da quello mostrato: non si pubblica.
+  await assert.rejects(eng.publishPrReply('pr', 0, 'testo', 'altro-account'), (e: Error) => /@altro-account/.test(e.message));
+  const prReplies = () => run.nodes.pr.prReplies;
+  assert.equal(prReplies()?.[0]?.status, 'errore');
+  await eng.publishPrReply('pr', 0, '  Testo modificato da me  ', 'utente-simulato');
+  assert.deepEqual({ ...prReplies()![0], at: '' }, { status: 'pubblicata', at: '', body: 'Testo modificato da me', account: 'utente-simulato', url: 'https://github.com/o/r/pull/7#PRRT_simulato1' });
+  assert.ok(run.events.some((e) => e.msg?.key === 'events.prReplyPublished' && e.text.includes('@utente-simulato')));
+  await assert.rejects(eng.publishPrReply('pr', 0, 'di nuovo', 'utente-simulato'));
+  await assert.rejects(eng.publishPrReply('pr', 9, 'x', 'utente-simulato'));
+  await assert.rejects(eng.publishPrReply('scelta', 0, 'x', 'utente-simulato'));
+  assert.ok(!g.items.some((x) => x.includes('withTimeout')));
+
+  // Approvando con BLOCKER e MAJOR scelti, quei punti (e non il WARNING) arrivano all'implementazione.
+  await eng.human('scelta', 'approva', '', [{ nodeId: 'pr', index: 0 }, { nodeId: 'pr', index: 1 }]);
+  assert.equal(run.nodes.scelta.status, 'completata');
+  assert.match(run.nodes.scelta.output!, /\[BLOCKER\][\s\S]*\[MAJOR\]/);
+  assert.doesNotMatch(run.nodes.scelta.output!, /WARNING/);
+  await waitFor(() => run.nodes.impl.status === 'completata');
+  assert.equal(run.nodes.pr.attempts.length, 1);
+  eng.cancel();
+});
+
+test('punti della PR senza URL: PR del branch corrente mostrata e confermata prima di procedere', async () => {
+  const { phaseSnippets } = await import('../../shared/presets.ts');
+  const tpl = fromTemplate(templates.find((t) => t.id === 'correggi-punti-pr')!);
+  // User story obbligatoria: mancante o con un indirizzo non riconosciuto blocca l'avvio.
+  const errs = (story?: string) => validateWorkflow({ ...tpl, settings: { ...tpl.settings, story } }, 'prova').filter((i) => i.level === 'errore').map((i) => i.msg?.key);
+  assert.deepEqual(errs(), ['validate.prNeedsStory']);
+  assert.deepEqual(errs('https://example.com/storia'), ['validate.storyInvalid']);
+  tpl.settings.story = STORY_URL;
+  assert.deepEqual(errs(STORY_URL), []);
+  assert.match(serverT('it')('agent.pr'), /criteri di accettazione[\s\S]*In contrasto con la US:/);
+  assert.deepEqual(tpl.nodes.find((x) => x.id === 'pr')!.data.pr, phaseSnippets(serverT('it')).find((s) => s.id === 'pr-commenti')!.data.pr);
+
+  const eng = startRun(tpl, 'prova');
+  const run = eng.run;
+  // La fase non parte: Regia trova la PR del branch (simulata in prova) e aspetta la conferma.
+  await waitFor(() => run.nodes.pr.status === 'attesa_intervento');
+  assert.equal(run.nodes.pr.attempts.length, 0);
+  assert.deepEqual(run.nodes.pr.pendingActions, ['conferma_pr', 'riprova', 'annulla']);
+  const url = run.nodes.pr.detectedPr!.url;
+  assert.match(run.nodes.pr.pendingReason!, new RegExp(url.replace(/[.\/]/g, '\\$&')));
+  await assert.rejects(eng.human('scelta', 'conferma_pr'));
+
+  await eng.human('pr', 'conferma_pr');
+  assert.equal(run.nodes.pr.prUrl, url);
+  assert.equal(run.nodes.pr.detectedPr, undefined);
+  await waitFor(() => run.nodes.scelta.status === 'attesa_intervento');
+  assert.equal(run.nodes.pr.status, 'completata');
+  assert.equal(run.nodes.scelta.reviewPoints![0].forward, true);
+  eng.cancel();
+
+  // URL di una PR nell'obiettivo: nessuna ricerca; un link qualsiasi (es. una user story) non basta.
+  const goal = (g: string) => startRun({ ...tpl, settings: { ...tpl.settings, goal: g } }, 'prova');
+  const e1 = goal('Correggi i punti di https://github.com/o/r/pull/9');
+  await waitFor(() => e1.run.nodes.scelta.status === 'attesa_intervento');
+  assert.equal(e1.run.nodes.pr.prUrl, undefined);
+  e1.cancel();
+  const e2 = goal('Vedi https://dev.azure.com/org/prj/_workitems/edit/5');
+  await waitFor(() => e2.run.nodes.pr.status === 'attesa_intervento');
+  assert.ok(e2.run.nodes.pr.pendingActions?.includes('conferma_pr'));
+  e2.cancel();
+});
+
+test('più user story collegate: validate, passate a ogni fase, nel pannello e nel resoconto', async () => {
+  const tpl = fromTemplate(templates.find((t) => t.id === 'correggi-punti-pr')!);
+  tpl.settings.story = STORY_URL;
+  const keys = (extra: string[]) => validateWorkflow({ ...tpl, settings: { ...tpl.settings, extraStories: extra } }, 'prova').filter((i) => i.level === 'errore').map((i) => i.msg?.key);
+  assert.deepEqual(keys(['https://dev.azure.com/org/prj/_workitems/edit/248637', ' ']), []);
+  assert.deepEqual(keys(['https://example.com/x']), ['validate.extraStoryInvalid']);
+
+  const us = (id: string, title: string): UserStory => ({ url: `https://dev.azure.com/org/prj/_workitems/edit/${id}`, provider: 'azure', id, type: 'User Story', title, description: `Descrizione ${id}`, acceptance: `Criterio ${id}`, images: [], imagesFound: 0, fetchedAt: '', dir: `t-${id}` });
+  const eng = startRun(tpl, 'prova', undefined, undefined, { story: us('1', 'Prima'), extra: [us('2', 'Seconda')], extraErrors: [{ url: 'https://dev.azure.com/org/prj/_workitems/edit/3', error: { key: 'story.error.network', params: { detail: 'x' } } }] });
+  const run = eng.run;
+  assert.deepEqual(run.extraStories?.map((s) => s.id), ['2']);
+  // Ogni fase riceve tutte le user story lette, con i loro criteri di accettazione.
+  const prompt = (eng as unknown as { buildPrompt: (n: Workflow['nodes'][number]) => string }).buildPrompt(tpl.nodes.find((n) => n.id === 'correzione')!);
+  assert.match(prompt, /Prima[\s\S]*Criterio 1[\s\S]*Seconda[\s\S]*Criterio 2/);
+  assert.equal(run.events.filter((e) => e.msg?.key === 'events.story.loaded').length, 2);
+  assert.ok(run.events.some((e) => e.msg?.key === 'events.story.failed' && e.text.includes('edit/3')));
+  const report = runReport(run, serverT('it'), 'it-IT');
+  assert.match(report, /1: Prima[\s\S]*2: Seconda/);
   eng.cancel();
 });
 

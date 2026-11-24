@@ -1,0 +1,35 @@
+{
+  "id": "correggi-punti-pr",
+  "name": "Correggi i punti di una PR",
+  "description": "Legge i commenti di una pull request, ti fa scegliere quali punti applicare, li corregge e li verifica con i test.",
+  "goalHint": "Facoltativo: l'URL della PR o indicazioni aggiuntive. Obbligatorio collegare la user story nelle impostazioni del workflow. Senza URL si usa la PR del branch aperto nel progetto, che ti verrà mostrata da confermare.",
+  "settings": { "maxParallel": 2, "loadProjectSettings": true, "applyGeneralRules": true },
+  "nodes": [
+    { "id": "pr", "position": { "x": 0, "y": 120 }, "data": {
+      "label": "Punti della PR", "kind": "revisione", "role": "Lettore di pull request: raccoglie i commenti di revisione da applicare, senza modificare il codice.",
+      "instructions": "Leggi la pull request indicata e trasforma i commenti di revisione ancora aperti in punti da implementare, uno per commento, con la gravità originale.",
+      "model": "sonnet", "allowedTools": ["Read", "Glob", "Grep", "Bash", "WebFetch"], "maxTurns": 25, "contextMode": "sintesi", "reuseResult": false, "pr": { "url": "" } } },
+    { "id": "scelta", "position": { "x": 300, "y": 120 }, "data": {
+      "label": "Scelta dei punti", "kind": "approvazione", "role": "",
+      "instructions": "Spunta i punti della PR da correggere (ad esempio BLOCKER e MAJOR) e approva: passano alla correzione. Quelli non spuntati restano fuori.",
+      "model": "", "allowedTools": [], "contextMode": "sintesi", "reuseResult": false } },
+    { "id": "correzione", "position": { "x": 600, "y": 120 }, "data": {
+      "label": "Correzione", "kind": "implementazione", "role": "Sviluppatore: applica modifiche piccole e mirate, nello stile del progetto.",
+      "instructions": "Applica solo i punti della PR scelti nella fase precedente, uno per uno, limitandoti ai file necessari e rispettando specifiche e criteri di accettazione delle user story collegate: se un punto li contraddice, non applicarlo e spiegalo nella sintesi. Non affrontare altri commenti della PR, non fare commit e non rispondere sulla PR. Se un punto non è applicabile, spiegalo nella sintesi. Se esiste una suite di test, eseguila una volta.",
+      "model": "sonnet", "allowedTools": ["Read", "Glob", "Grep", "Edit", "Write", "Bash"], "maxTurns": 30, "contextMode": "sintesi", "reuseResult": false } },
+    { "id": "test", "position": { "x": 900, "y": 120 }, "data": {
+      "label": "Test", "kind": "test", "role": "Tester: esegue i test e riporta l'esito senza modificare il codice.",
+      "instructions": "Esegui la suite di test del progetto (cerca il comando in package.json, Makefile, pyproject o README). Riporta quanti test passano e falliscono. Esito 'ko' se ne fallisce almeno uno. Non modificare file.",
+      "model": "haiku", "allowedTools": ["Read", "Glob", "Bash"], "maxTurns": 8, "contextMode": "nessuno", "reuseResult": false } },
+    { "id": "approvazione", "position": { "x": 1200, "y": 120 }, "data": {
+      "label": "Approvazione", "kind": "approvazione", "role": "",
+      "instructions": "Controlla esito dei test e git diff, e che le correzioni rispettino i criteri di accettazione delle user story. Approva, oppure respingi spiegando cosa correggere: la correzione riprenderà dal punto in cui era. Dopo l'approvazione fai tu commit e push sul branch della PR (oppure aggiungi la fase Pubblicazione).",
+      "model": "", "allowedTools": [], "contextMode": "sintesi", "reuseResult": false } }
+  ],
+  "edges": [
+    { "id": "e1", "source": "pr", "target": "scelta" },
+    { "id": "e2", "source": "scelta", "target": "correzione" },
+    { "id": "e3", "source": "correzione", "target": "test" },
+    { "id": "e4", "source": "test", "target": "approvazione" }
+  ]
+}

@@ -117,6 +117,38 @@ test('collaudo in prova: build e installazione, poi l\'agente; le anomalie arriv
   eng.cancel();
 });
 
+test('punti di una PR su app mobile: correzione, test, collaudo sul telefono; le anomalie tornano alla correzione', async () => {
+  const { validateWorkflow } = await import('../validate.ts');
+  const projectDir = path.join(tmp, 'app-pr');
+  fs.mkdirSync(path.join(projectDir, 'app'), { recursive: true });
+  fs.writeFileSync(path.join(projectDir, 'gradlew'), '');
+  fs.writeFileSync(path.join(projectDir, 'app', 'build.gradle.kts'), 'plugins { id("com.android.application") }\nandroid { defaultConfig { applicationId = "it.example.app" } }');
+  const tpl = store.listTemplates('it').find((t) => t.id === 'correggi-punti-pr-mobile')!;
+  const wf: Workflow = { id: 'wf_pr_mobile', name: tpl.name, description: '', updatedAt: '', nodes: structuredClone(tpl.nodes), edges: structuredClone(tpl.edges),
+    settings: { maxParallel: 2, loadProjectSettings: false, applyGeneralRules: false, projectDir, goal: '', story: 'https://github.com/o/r/issues/1' } };
+  assert.deepEqual(validateWorkflow(wf, 'prova').filter((i) => i.level === 'errore'), []);
+  // Il collaudo riceve anche l'esito della correzione (quali punti sono stati sistemati), non solo quello dei test.
+  assert.deepEqual(wf.edges.filter((e) => e.target === 'collaudo').map((e) => e.source).sort(), ['correzione', 'test']);
+
+  const eng = startRun(wf, 'prova');
+  const run = eng.run;
+  await waitFor(() => run.nodes.pr.pendingActions?.includes('conferma_pr') ?? false);
+  await eng.human('pr', 'conferma_pr');
+  await waitFor(() => run.nodes.scelta.status === 'attesa_intervento');
+  await eng.human('scelta', 'approva', '', [{ nodeId: 'pr', index: 0 }]);
+  await waitFor(() => run.nodes.approvazione.status === 'attesa_intervento', 15000);
+  assert.deepEqual(run.nodes.collaudo.attempts.map((a) => a.step ?? 'agente'), ['build', 'agente']);
+  // Le anomalie del collaudo sono punti da rimandare indietro (non da portare avanti come quelli della PR).
+  const g = run.nodes.approvazione.reviewPoints!.find((x) => x.nodeId === 'collaudo')!;
+  assert.ok(g.items.length > 0 && !g.forward);
+  await eng.human('approvazione', 'respingi', '', [{ nodeId: 'collaudo', index: 0 }]);
+  await waitFor(() => run.nodes.approvazione.status === 'attesa_intervento' && run.nodes.collaudo.uat?.round === 2, 15000);
+  assert.equal(run.nodes.correzione.attempts.length, 2);
+  // La PR non viene riletta: i punti scelti restano quelli.
+  assert.equal(run.nodes.pr.attempts.length, 1);
+  eng.cancel();
+});
+
 test('flusso H.264: unità NAL anche spezzate tra più pacchetti, codec per WebCodecs dall\'SPS', async () => {
   const { NalSplitter, nalType, avcCodec } = await import('../../shared/annexb.ts');
   const got: Uint8Array[] = [];

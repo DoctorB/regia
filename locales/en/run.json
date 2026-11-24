@@ -42,6 +42,10 @@
       "outcome": "outcome {esito}",
       "noOutput": "No result.",
       "pointsTitle": "Points reported",
+      "priority": {
+        "alta": "High priority: bug or important change",
+        "bassa": "Low priority: minor suggestion"
+      },
       "pointsHint": "Tick the ones to correct and reject: they go to the phase that wrote the code, along with your comment.",
       "pointsOmitted": {
         "one": "One more point over the limit, not shown here: you will find it in the Events tab.",
@@ -64,6 +68,19 @@
           "one": "{count} question",
           "other": "{count} questions"
         }
+      },
+      "pointsHintForward": "Tick the points to implement and approve: they go to the next phases, along with your comment.",
+      "approveNoForward": "You have not chosen any PR point to implement. Approve anyway?",
+      "openPr": "Open the PR to check it",
+      "resolved": {
+        "one": "One comment already fixed, left out of the points",
+        "other": "{count} comments already fixed, left out of the points"
+      },
+      "conflict": "Conflicts with the US",
+      "conflictHelp": "According to the agent this fix contradicts the user story specification or acceptance criteria: even if you tick it, the fix will not apply it.",
+      "approveConflicts": {
+        "one": "Point {points} conflicts with the user story: the fix will not apply it. Approve anyway?",
+        "other": "Points {points} conflict with the user story: the fix will not apply them. Approve anyway?"
       }
     },
     "service": {
@@ -117,6 +134,39 @@
       },
       "enlarge": "Enlarge",
       "shrink": "Shrink (Esc)"
+    },
+    "prReply": {
+      "title": {
+        "one": "One reply to publish on the PR",
+        "other": "{count} replies to publish on the PR"
+      },
+      "done": {
+        "one": "one already published",
+        "other": "{count} already published"
+      },
+      "hint": "Replies to comments already fixed or conflicting with the user story, each under the comment it refers to. Check and edit the text: Regia publishes only the ones you confirm, one at a time.",
+      "motivo": {
+        "sistemato": "Already fixed",
+        "contrasto": "Conflicts with the US"
+      },
+      "textLabel": "Reply text",
+      "confirm": "Publish this reply on the PR, visible to everyone?\n\nGitHub account: @{account}\nReplying to: @{author} {where}\nPoint: {ref}\n\n{text}",
+      "published": "Published on the PR",
+      "open": "open",
+      "accountLoading": "Checking the GitHub account…",
+      "accountAs": "Replies will be published with the GitHub account",
+      "accountMissing": "Publishing is not possible: GitHub account not available.",
+      "refresh": "Check again",
+      "refreshHelp": "Asks GitHub again for the gh account and the comments to reply to (for example after gh auth switch).",
+      "replyTo": "Reply to the comment by",
+      "resolvedThread": "discussion already resolved",
+      "noThread": "The original comment is not in a code discussion, so it cannot be replied to directly: Regia does not publish it as a general comment. Copy the text if you want to reply by hand.",
+      "threadUnknown": "Target comment not verified.",
+      "publishAs": "Publish as @{account}",
+      "publishedAs": "Published as @{account}",
+      "copy": "Copy the text",
+      "copied": "Text copied.",
+      "publish": "Publish on the PR"
     }
   },
   "actions": {
@@ -160,6 +210,10 @@
     "consenti_cartella": {
       "label": "Allow {path} and resume",
       "help": "The phase resumes the same session and can also work in this folder. The folder is added to the additional folders of the saved workflow."
+    },
+    "conferma_pr": {
+      "label": "Confirm PR",
+      "help": "The phase reads the comments of this PR. The choice holds for the whole run, even if the phase is redone."
     }
   },
   "events": {
@@ -602,6 +656,11 @@
         "window": "Also in a separate window (scrcpy)",
         "windowHint": "Handy on a second monitor. Requires scrcpy, which Regia can install."
       }
+    },
+    "pr": {
+      "url": "PR URL",
+      "urlHint": "Pull request to read (GitHub or Azure DevOps). Empty: the PR URL written in the goal is used or, if there is none, the PR of the branch open in the project, which you will be shown to confirm before going on.",
+      "placeholder": "https://github.com/organization/repo/pull/123"
     }
   },
   "settings": {
@@ -718,6 +777,9 @@
       "other": "{count} images not downloaded (limits or access)."
     },
     "runTitle": "User story",
-    "runError": "User story not read:"
+    "runError": "User story not read:",
+    "extraLabel": "User story {n}",
+    "add": "Add another user story",
+    "remove": "Remove this user story"
   }
 }

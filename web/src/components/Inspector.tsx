@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { AppWindow, CircleCheck, Download, FolderPlus, Loader2, Globe, TextSearch, FileCode2, Info, Lock, PencilLine, RefreshCw, RotateCcw, ScrollText, Sparkles, Terminal, Trash2, TriangleAlert, CircleAlert, X } from 'lucide-react';
+import { AppWindow, BookPlus, CircleCheck, Download, FolderPlus, Loader2, Globe, TextSearch, FileCode2, Info, Lock, PencilLine, RefreshCw, RotateCcw, ScrollText, Sparkles, Terminal, Trash2, TriangleAlert, CircleAlert, X } from 'lucide-react';
 import { KNOWN_TOOLS, READY_CHECKS, WRITE_TOOLS, type LaunchPlan, type PhaseConfig, type ShowConfig, type PhaseKind, type ScrcpyStatus, type SkillInfo, type ValidationIssue, type Workflow, type WorkflowSettings } from '../../../shared/types.ts';
 import { isCustomTools, PERMISSION_LEVELS, permissionLevel, toolsForLevel } from '../../../shared/permissions.ts';
 import { phasePreset } from '../../../shared/presets.ts';
@@ -380,6 +380,11 @@ export function PhaseInspector({ cfg, settings, issues, onChange, onDelete }: { 
 
       {!server && (
         <Section title={human ? t('inspector.task.titleHuman') : t('inspector.task.title')}>
+          {cfg.pr && (
+            <Field label={t('inspector.pr.url')} hint={t('inspector.pr.urlHint')}>
+              <input className="mono" value={cfg.pr.url} onChange={(e) => set('pr', { url: e.target.value })} placeholder={t('inspector.pr.placeholder')} />
+            </Field>
+          )}
           {agent && <Field label={t('inspector.task.role')}><input value={cfg.role} onChange={(e) => set('role', e.target.value)} placeholder={t('inspector.task.rolePlaceholder')} /></Field>}
           <Field label={human ? t('inspector.task.instructionsHuman') : t('inspector.task.instructions')} hint={agent ? t('inspector.task.instructionsHint') : undefined}>
             <textarea rows={human ? 4 : 7} value={cfg.instructions} onChange={(e) => set('instructions', e.target.value)} />
@@ -526,6 +531,13 @@ export function WorkflowSettingsForm({ wf, groups = [], onChange, onShowRules }:
           <textarea id="wf-goal" rows={5} value={s.goal} onChange={(e) => set('goal', e.target.value)} />
         </Field>
         <StoryField value={s.story ?? ''} onChange={(v) => set('story', v.trim() ? v : undefined)} />
+        {/* Altre user story (es. più US coperte dalla stessa PR): stesse regole della principale. */}
+        {(s.extraStories ?? []).map((url, i, all) => (
+          <StoryField key={i} value={url} label={t('story.extraLabel', { n: i + 2 })}
+            onChange={(v) => set('extraStories', all.map((x, j) => (j === i ? v : x)))}
+            onRemove={() => { const rest = all.filter((_, j) => j !== i); set('extraStories', rest.length ? rest : undefined); }} />
+        ))}
+        <button className="btn sm ghost" onClick={() => set('extraStories', [...(s.extraStories ?? []), ''])}><BookPlus />{t('story.add')}</button>
         <Field label={t('settings.project.description')}><textarea rows={2} value={wf.description} onChange={(e) => onChange({ ...wf, description: e.target.value })} /></Field>
         <Field label={t('manage.group')} hint={t('manage.groupHint')}>
           <input list="settings-groups" value={wf.group ?? ''} onChange={(e) => onChange({ ...wf, group: e.target.value || undefined })} placeholder={t('manage.groupPlaceholder')} />
