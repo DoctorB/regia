@@ -563,6 +563,43 @@ test('punti della PR: elenco per priorità, scelti nell\'approvazione e passati 
   eng.cancel();
 });
 
+test('punti della PR: con controlli ancora in corso su GitHub Regia aspetta, avvisa e poi prosegue da sola', async () => {
+  const tpl = fromTemplate(templates.find((t) => t.id === 'correggi-punti-pr')!);
+  tpl.settings.story = STORY_URL;
+  tpl.nodes.find((n) => n.id === 'pr')!.data.pr = { url: 'https://github.com/o/r/pull/7' };
+  // Intervallo lungo durante l'attesa, per vederla; gli agenti simulati restano veloci.
+  const speed = process.env.REGIA_MOCK_SPEED;
+  process.env.REGIA_MOCK_SPEED = '1000';
+  const eng = startRun(tpl, 'prova');
+  const run = eng.run;
+  try {
+    await waitFor(() => run.nodes.pr.pendingActions?.includes('procedi') ?? false);
+  } finally {
+    process.env.REGIA_MOCK_SPEED = speed;
+  }
+  // In attesa, non ferma: l'esecuzione resta in corso, il messaggio dice cosa gira e che si prosegue da soli.
+  assert.equal(run.nodes.pr.status, 'attiva');
+  assert.equal(run.status, 'in_corso');
+  assert.equal(run.nodes.pr.attempts.length, 0);
+  assert.deepEqual(run.nodes.pr.pendingActions, ['procedi', 'annulla']);
+  assert.match(run.nodes.pr.pendingReason!, /Revisione automatica \(simulata\)[\s\S]*prosegue da sola/);
+  assert.ok(run.events.some((e) => e.msg?.key === 'events.prChecksWaiting'));
+  // "Prosegui senza aspettare": la fase legge subito la PR.
+  await eng.human('pr', 'procedi');
+  await waitFor(() => run.nodes.scelta.status === 'attesa_intervento');
+  assert.equal(run.nodes.pr.attempts.length, 1);
+  assert.equal(run.nodes.pr.pendingActions, undefined);
+  assert.ok(run.events.some((e) => e.msg?.key === 'events.prChecksSkipped'));
+  eng.cancel();
+
+  // Senza intervento: appena i controlli finiscono la fase parte da sola.
+  const e2 = startRun(tpl, 'prova');
+  await waitFor(() => e2.run.nodes.scelta.status === 'attesa_intervento');
+  assert.ok(e2.run.events.some((e) => e.msg?.key === 'events.prChecksWaiting'));
+  assert.ok(e2.run.events.some((e) => e.msg?.key === 'events.prChecksDone'));
+  e2.cancel();
+});
+
 test('punti della PR senza URL: PR del branch corrente mostrata e confermata prima di procedere', async () => {
   const { phaseSnippets } = await import('../../shared/presets.ts');
   const tpl = fromTemplate(templates.find((t) => t.id === 'correggi-punti-pr')!);

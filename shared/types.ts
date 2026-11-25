@@ -565,7 +565,7 @@ export interface ResumeCheck {
   headChanged: boolean;
 }
 
-export type HumanAction = 'approva' | 'respingi' | 'consenti' | 'consenti_cartella' | 'conferma_pr' | 'riprova' | 'riprendi' | 'salta' | 'annulla' | 'installa_node' | 'installa_dipendenze';
+export type HumanAction = 'approva' | 'respingi' | 'consenti' | 'consenti_cartella' | 'conferma_pr' | 'procedi' | 'riprova' | 'riprendi' | 'salta' | 'annulla' | 'installa_node' | 'installa_dipendenze';
 
 /** Risposta a un commento della PR, preparata dall'agente e pubblicata da Regia solo dopo la conferma della persona. */
 export interface PrReply {

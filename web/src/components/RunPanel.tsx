@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Activity, Bot, CircleAlert, FolderPlus, Loader2, MessageCircleQuestion, SendHorizontal, CircleCheck, Clock, Coins, Copy, CornerDownRight, Download, ExternalLink, FileText, Flag, Gauge, Globe, Hand, Info, Lightbulb, ListTree,
-  CircleUserRound, GitPullRequest, MessageSquareText, OctagonX, Pause, Play, Recycle, RotateCcw, ShieldCheck, SkipForward, Square, Terminal, TriangleAlert, Undo2, Workflow as WorkflowIcon, X,
+  CircleUserRound, FastForward, GitPullRequest, MessageSquareText, OctagonX, Pause, Play, Recycle, RotateCcw, ShieldCheck, SkipForward, Square, Terminal, TriangleAlert, Undo2, Workflow as WorkflowIcon, X,
   type LucideIcon,
 } from 'lucide-react';
 import { isAgentKind, RESUMABLE, type EventKind, type HumanAction, type Insight, type PrReply, type PrReplyContext, type PrThreadInfo, type Run, type RunSummary } from '../../../shared/types.ts';
@@ -29,6 +29,7 @@ const ACTION: Record<HumanAction, { icon: LucideIcon; cls?: string; help?: boole
   consenti: { icon: ShieldCheck, cls: 'primary', help: true },
   consenti_cartella: { icon: FolderPlus, cls: 'primary', help: true },
   conferma_pr: { icon: GitPullRequest, cls: 'primary', help: true },
+  procedi: { icon: FastForward, help: true },
 };
 
 // Etichette in locales/<lingua>/run.json (events.kind.<tipo>).
@@ -371,12 +372,12 @@ function InterventionCard({ run, nodeId, label, readOnly = false, onGranted }: {
   const primary = n.pendingActions!.filter((a) => a !== 'annulla');
   const reason = tm(n.pendingMsg, n.pendingReason);
   return (
-    <div className={`card intervention ${isApproval || n.pendingActions?.includes('conferma_pr') ? '' : 'tone-bad'}`}>
+    <div className={`card intervention ${isApproval || n.pendingActions?.includes('conferma_pr') || n.pendingActions?.includes('procedi') ? '' : 'tone-bad'}`}>
       <div className="card-head">
         <KindTile kind={node.data.kind} />
         <div className="grow">
           <div className="card-title">{label}</div>
-          <div className="card-sub">{isApproval ? t('run.intervention.awaitingApproval') : statusLabel(n.status)}</div>
+          <div className="card-sub">{isApproval ? t('run.intervention.awaitingApproval') : n.status === 'attiva' && n.pendingActions?.includes('procedi') ? t('run.intervention.waitingPrChecks') : statusLabel(n.status)}</div>
         </div>
       </div>
       {reason && <p className="reason">{reason}</p>}

@@ -81,7 +81,8 @@
       "approveConflicts": {
         "one": "Il punto {points} è in contrasto con la user story: la correzione non lo applicherà. Approvare comunque?",
         "other": "I punti {points} sono in contrasto con la user story: la correzione non li applicherà. Approvare comunque?"
-      }
+      },
+      "waitingPrChecks": "In attesa dei controlli della PR"
     },
     "service": {
       "stop": "Ferma",
@@ -214,6 +215,10 @@
     "conferma_pr": {
       "label": "Conferma la PR",
       "help": "La fase legge i commenti di questa PR. La scelta vale per tutta l'esecuzione, anche se la fase viene rifatta."
+    },
+    "procedi": {
+      "label": "Prosegui senza aspettare",
+      "help": "Legge subito i commenti della PR, senza aspettare i controlli ancora in corso: i commenti che il bot di revisione pubblicherà dopo non saranno nell'elenco."
     }
   },
   "events": {

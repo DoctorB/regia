@@ -81,7 +81,8 @@
       "approveConflicts": {
         "one": "Point {points} conflicts with the user story: the fix will not apply it. Approve anyway?",
         "other": "Points {points} conflict with the user story: the fix will not apply them. Approve anyway?"
-      }
+      },
+      "waitingPrChecks": "Waiting for the PR checks"
     },
     "service": {
       "stop": "Stop",
@@ -214,6 +215,10 @@
     "conferma_pr": {
       "label": "Confirm PR",
       "help": "The phase reads the comments of this PR. The choice holds for the whole run, even if the phase is redone."
+    },
+    "procedi": {
+      "label": "Go on without waiting",
+      "help": "Reads the PR comments right away, without waiting for the checks still running: comments the review bot publishes later will not be in the list."
     }
   },
   "events": {

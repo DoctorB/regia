@@ -28,6 +28,48 @@ export function parseGithubPr(url: string): { owner: string; repo: string; numbe
 
 export type PrPost = { ok: true; url?: string } | { ok: false; reason: Msg };
 
+export type PrChecks = { ok: true; pending: string[]; failed: string[] } | { ok: false; reason: Msg };
+
+/**
+ * Controlli della PR (GitHub Actions, bot di revisione, build) ancora in corso e falliti. Solo GitHub: altrove
+ * nessun controllo da aspettare. In prova il primo giro trova un controllo in corso, così l'attesa si vede.
+ */
+export async function prChecks(cwd: string, prUrl: string, simulate: boolean, round = 0): Promise<PrChecks> {
+  if (!parseGithubPr(prUrl)) return { ok: true, pending: [], failed: [] };
+  if (simulate) return { ok: true, pending: round === 0 ? ['Revisione automatica (simulata)'] : [], failed: [] };
+  // gh pr checks esce con un codice diverso da 0 anche solo perché qualcosa è in corso: conta il JSON.
+  const r = await exec('gh', ['pr', 'checks', prUrl, '--json', 'name,workflow,bucket'], cwd);
+  let checks: PrChecks;
+  try {
+    const list = JSON.parse(r.out) as { name?: string; workflow?: string; bucket?: string }[];
+    const name = (c: { name?: string; workflow?: string }) => [c.workflow, c.name].filter(Boolean).join(' / ') || '?';
+    checks = { ok: true, pending: list.filter((c) => c.bucket === 'pending').map(name), failed: list.filter((c) => c.bucket === 'fail').map(name) };
+  } catch {
+    if (!r.ok && /no checks reported/i.test(r.err)) checks = { ok: true, pending: [], failed: [] };
+    else return { ok: false, reason: !r.ok && r.missing ? msg('interventions.pr.toolMissing', { tool: 'gh' }) : msg('interventions.pr.checksUnknown', { detail: r.ok ? '' : r.err }) };
+  }
+  // I job che dipendono da altri (es. il bot di revisione dopo build e test) compaiono tra i controlli solo quando
+  // partono: finché il loro workflow è in corso, però, la sua esecuzione lo è. Si aspettano anche quelle.
+  const running = await runningWorkflows(cwd, prUrl);
+  return { ...checks, pending: [...new Set([...checks.pending, ...running])] };
+}
+
+/** Workflow di GitHub Actions ancora in corso (o in coda) sull'ultimo commit della PR; nessuno se non si leggono. */
+async function runningWorkflows(cwd: string, prUrl: string): Promise<string[]> {
+  const head = await exec('gh', ['pr', 'view', prUrl, '--json', 'headRefOid', '--jq', '.headRefOid'], cwd);
+  const sha = head.ok ? head.out.trim() : '';
+  if (!/^[0-9a-f]{40}$/i.test(sha)) return [];
+  const pr = parseGithubPr(prUrl);
+  if (!pr) return [];
+  const runs = await exec('gh', ['run', 'list', '--repo', `${pr.owner}/${pr.repo}`, '--commit', sha, '--limit', '50', '--json', 'workflowName,status'], cwd);
+  try {
+    const list = JSON.parse(runs.out) as { workflowName?: string; status?: string }[];
+    return list.filter((x) => x.status && x.status !== 'completed').map((x) => `${x.workflowName ?? '?'} (workflow)`);
+  } catch {
+    return [];
+  }
+}
+
 const THREADS_QUERY = 'query($ids:[ID!]!){viewer{login} nodes(ids:$ids){... on PullRequestReviewThread{id path line isResolved pullRequest{number repository{nameWithOwner}} comments(first:1){nodes{author{login} body url}}}}}';
 
 /**

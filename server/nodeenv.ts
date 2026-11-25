@@ -214,7 +214,10 @@ export function runOnce(command: string, args: string[] | null, cwd: string, env
 }
 
 /** msg: spiegazione localizzabile; message: lo stesso testo nella lingua richiesta. */
-export interface Diagnosis { kind: 'node' | 'dipendenze' | 'porta' | 'permessi'; msg: Msg; message: string; requiredRange?: string }
+export interface Diagnosis { kind: 'node' | 'dipendenze' | 'porta' | 'permessi' | 'memoria'; msg: Msg; message: string; requiredRange?: string }
+
+/** Memoria esaurita: Java/Gradle (anche il daemon che sparisce dopo un crash della JVM) e Node. */
+const MEMORY_EXHAUSTED = /insufficient memory for the Java Runtime|OutOfMemoryError|Native memory allocation \(\w+\) failed|Gradle build daemon disappeared unexpectedly|GC overhead limit exceeded|JavaScript heap out of memory|paging file is too small/i;
 
 /** Riconosce le cause più comuni di avvio fallito dall'output. */
 export function diagnose(log: string[], lang = 'it'): Diagnosis | null {
@@ -241,7 +244,12 @@ export function diagnose(log: string[], lang = 'it'): Diagnosis | null {
   if (/EADDRINUSE|address already in use|port \d+ is (already )?in use/i.test(text)) {
     return found('porta', msg('nodeenv.diag.port'));
   }
-  if (/EACCES|EPERM|permission denied/i.test(text)) {
+  // Prima dei permessi: un crash per memoria può lasciare nel log righe che sembrano altro.
+  if (MEMORY_EXHAUSTED.test(text)) {
+    return found('memoria', msg(/gradle/i.test(text) ? 'nodeenv.diag.memoryGradle' : 'nodeenv.diag.memory'));
+  }
+  // Codici di errore esatti: senza confini di parola "EPERM" si trovava dentro nomi come "BlePermission".
+  if (/\b(?:EACCES|EPERM)\b/.test(text) || /permission denied|access is denied/i.test(text)) {
     return found('permessi', msg('nodeenv.diag.permissions'));
   }
   return null;

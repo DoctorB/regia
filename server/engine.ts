@@ -31,7 +31,7 @@ import { pushLog, startService, waitForUrl, type ServiceHandle } from './service
 import { describeTree, logsDir, processTree, ServiceTrace } from './servicetrace.ts';
 import { depsPlan, diagnose, envWithNode, needsDeps, resolveNode, runOnce, type InstallPlan } from './nodeenv.ts';
 import { openBrowser, planLaunch } from './launch.ts';
-import { detectPr, postPrReply, prReplyContext } from './pr.ts';
+import { detectPr, postPrReply, prChecks, prReplyContext } from './pr.ts';
 
 const MAX_EVENTS = 6000;
 /** Punti proposti al massimo da una revisione. */
@@ -827,6 +827,7 @@ export class RunEngine {
   private startNode(n: WorkflowNode, reason: Attempt['reason']) {
     if (this.run.status === 'sospesa') return Promise.resolve();
     if (this.needsPrDetection(n)) return this.detectPrFor(n);
+    if (n.data.pr) return this.startPrPhase(n, reason);
     if (n.data.kind === 'collaudo') return this.runCollaudo(n, reason);
     return n.data.kind === 'server' ? this.runService(n, reason) : this.runAgent(n, reason);
   }
@@ -860,6 +861,78 @@ export class RunEngine {
     this.nodeChanged(nodeId);
     this.persist();
     if (!res.ok) throw this.fail(res.reason);
+  }
+
+  /** Fasi "Punti della PR" per cui la persona ha scelto di non aspettare i controlli ancora in corso. */
+  private prSkip = new Set<string>();
+
+  /** Fase "Punti della PR": prima aspetta che i controlli della PR (bot di revisione, build) siano finiti. */
+  private async startPrPhase(n: WorkflowNode, reason: Attempt['reason']) {
+    if (await this.waitPrChecks(n)) await this.runAgent(n, reason);
+  }
+
+  /**
+   * Aspetta che finiscano i controlli della PR ancora in corso, mostrando a chi supervisiona cosa sta girando:
+   * leggere i commenti prima che il bot di revisione abbia finito darebbe un elenco incompleto. Ricontrolla a
+   * intervalli, senza limite di tempo (build e bot possono durare a lungo); la persona può proseguire subito.
+   * true = si può leggere la PR; false = attesa interrotta da annullamento o sospensione.
+   */
+  private async waitPrChecks(n: WorkflowNode): Promise<boolean> {
+    const st = this.run.nodes[n.id];
+    const url = this.resolvedPrUrl(n);
+    const sim = this.run.mode === 'prova';
+    const where = { nodeId: n.id };
+    const key = `prwait:${n.id}`;
+    const interval = sim ? Number(process.env.REGIA_MOCK_SPEED ?? 600) * 3 : PR_CHECKS_INTERVAL_MS;
+    const ctrl = new AbortController();
+    this.controllers.set(key, ctrl);
+    this.prSkip.delete(n.id);
+    this.running.add(n.id);
+    let waiting = false;
+    const stopWaiting = () => {
+      st.pendingActions = undefined;
+      this.setPending(st, undefined);
+      st.activity = undefined;
+    };
+    try {
+      for (let round = 0; ; round++) {
+        if (this.prSkip.has(n.id)) { stopWaiting(); return true; }
+        if (ctrl.signal.aborted || ['annullata', 'sospesa'].includes(this.run.status)) return false;
+        st.status = 'attiva';
+        if (!waiting) { st.activity = this.t('events.activity.checkingPrChecks'); this.nodeChanged(n.id); }
+        const res = await prChecks(this.wf.settings.projectDir, url, sim, round);
+        if (this.prSkip.has(n.id)) { stopWaiting(); return true; }
+        if (ctrl.signal.aborted || ['annullata', 'sospesa'].includes(this.run.status)) return false;
+        if (!res.ok) {
+          // Stato non leggibile: si prosegue, segnalandolo; non è un motivo per bloccare il lavoro.
+          stopWaiting();
+          this.say('fase', msg('events.prChecksUnknown', { label: n.data.label, reason: this.tx(res.reason) }), where);
+          return true;
+        }
+        if (!res.pending.length) {
+          stopWaiting();
+          if (waiting) this.say('fase', msg('events.prChecksDone', { label: n.data.label, failed: res.failed.length ? res.failed.join(', ') : '-' }), where);
+          return true;
+        }
+        const checks = res.pending.join(', ');
+        if (!waiting) this.say('intervento', msg('events.prChecksWaiting', { label: n.data.label, checks }), where);
+        waiting = true;
+        st.pendingActions = ['procedi', 'annulla'];
+        const time = new Date().toLocaleTimeString(this.lang, { hour: '2-digit', minute: '2-digit' });
+        this.setPending(st, msg('interventions.pr.checksWaiting', { checks, count: res.pending.length, time }));
+        st.activity = this.t('events.activity.waitingPrChecks', { count: res.pending.length });
+        this.nodeChanged(n.id);
+        this.updateRunStatus();
+        await new Promise<void>((resolve) => {
+          const timer = setTimeout(resolve, interval);
+          ctrl.signal.addEventListener('abort', () => { clearTimeout(timer); resolve(); }, { once: true });
+        });
+      }
+    } finally {
+      this.controllers.delete(key);
+      this.running.delete(n.id);
+      this.prSkip.delete(n.id);
+    }
   }
 
   /** URL della PR letta dalla fase: della fase, confermato in questa esecuzione o scritto nell'obiettivo. */
@@ -1788,7 +1861,21 @@ export class RunEngine {
       st.detectedPr = undefined;
       st.status = 'in_attesa';
       this.nodeChanged(nodeId);
-      void this.runAgent(n, st.attempts.length ? 'riprova' : 'iniziale');
+      void this.startPrPhase(n, st.attempts.length ? 'riprova' : 'iniziale');
+      return;
+    }
+
+    if (action === 'procedi') {
+      // Controlli della PR ancora in corso: si legge la PR subito, senza aspettarli.
+      this.say('intervento', msg('events.prChecksSkipped', { label: n.data.label }), { nodeId });
+      if (this.controllers.has(`prwait:${nodeId}`)) {
+        this.prSkip.add(nodeId);
+        this.controllers.get(`prwait:${nodeId}`)?.abort();
+      } else {
+        st.status = 'in_attesa';
+        this.nodeChanged(nodeId);
+        void this.runAgent(n, st.attempts.length ? 'riprova' : 'iniziale');
+      }
       return;
     }
 
@@ -1881,6 +1968,9 @@ type StopReason = 'completed' | 'restart' | 'startFailed' | 'manual' | 'cancelle
  * Le parti lette da Regia restano invariate in ogni lingua: il blocco ```regia, le chiavi esito/sintesi/decisioni
  * e i valori ok/ko/bloccato. Le righe di decisione iniziano con "DECISIONE:" (it) o "DECISION:" (en).
  */
+/** Attesa dei controlli della PR ancora in corso: ogni quanto ricontrollare (senza limite di tempo). */
+const PR_CHECKS_INTERVAL_MS = 30_000;
+
 /** Indirizzo di una pull request (GitHub .../pull/N, Azure DevOps .../pullrequest/N), non un link qualsiasi. */
 export const PR_URL = /https?:\/\/\S+\/(?:pull|pullrequest)\/\d+/i;
 

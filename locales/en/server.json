@@ -102,7 +102,12 @@
       "checking": "Checking {url}…",
       "detectingDevice": "Looking for the project and the device…",
       "detectingProject": "Looking for the project…",
-      "detectingPr": "Looking for the PR of the current branch…"
+      "detectingPr": "Looking for the PR of the current branch…",
+      "checkingPrChecks": "Checking the PR status on GitHub…",
+      "waitingPrChecks": {
+        "one": "Waiting for one PR check",
+        "other": "Waiting for {count} PR checks"
+      }
     },
     "service": {
       "withLabel": "{label}: {text}",
@@ -185,7 +190,11 @@
     "prDetected": "\"{label}\": found the PR of branch \"{branch}\" ({url}), waiting for confirmation.",
     "prNotDetected": "\"{label}\": PR of the current branch not found. {reason}",
     "prReplyPublished": "\"{label}\": reply published on the PR as @{account} for {ref} ({url}).",
-    "prReplyFailed": "\"{label}\": reply for {ref} not published: {error}"
+    "prReplyFailed": "\"{label}\": reply for {ref} not published: {error}",
+    "prChecksWaiting": "\"{label}\": the PR still has checks running ({checks}); Regia waits for them to finish and then goes on.",
+    "prChecksDone": "\"{label}\": PR checks finished, reading the comments. Failed checks: {failed}.",
+    "prChecksSkipped": "\"{label}\": the person chose not to wait for the PR checks.",
+    "prChecksUnknown": "\"{label}\": PR checks status not available, going on. {reason}"
   },
   "interventions": {
     "declaredKo": "Negative outcome declared: {summary}",
@@ -227,7 +236,12 @@
       "replyThreadNotFound": "The given discussion does not exist on GitHub or is not accessible with this account.",
       "replyThreadOtherPr": "The given discussion belongs to another PR: reply not published.",
       "replyAccountChanged": "The gh account has changed (shown @{expected}, now @{actual}): check the account again and confirm again.",
-      "accountUnknown": "Could not find out which GitHub account gh would publish with. {detail}"
+      "accountUnknown": "Could not find out which GitHub account gh would publish with. {detail}",
+      "checksWaiting": {
+        "one": "The PR still has a check or workflow running on GitHub: {checks}.\nRegia waits for it to finish, for as long as needed, so the list of points also includes the review bot comments (which runs after build and tests), and then goes on with the workflow by itself. Nothing to do: it checks again every 30 seconds (last check at {time}).",
+        "other": "The PR still has {count} checks or workflows running on GitHub: {checks}.\nRegia waits for them to finish, for as long as needed, so the list of points also includes the review bot comments (which runs after build and tests), and then goes on with the workflow by itself. Nothing to do: it checks again every 30 seconds (last check at {time})."
+      },
+      "checksUnknown": "Could not read the status of the PR checks. {detail}"
     }
   },
   "agent": {
@@ -414,6 +428,8 @@
       "nodeRange": "The Node version in use is not supported by the project (required: {range}).",
       "deps": "A module or command is missing: the dependencies are probably not installed or incomplete.",
       "port": "The port is already in use: another server (perhaps a previous preview) is probably still running. Close it, or set a different port in the command.",
+      "memory": "Out of memory: the process used up the computer's RAM. Close programs that use a lot of it and try again.",
+      "memoryGradle": "Out of memory: Gradle (Java) used up the computer's RAM, often because several Gradle daemons are running at once or because org.gradle.jvmargs asks for more memory than is available. Run \"gradlew --stop\", close Android Studio and emulators if you don't need them, and lower -Xmx (e.g. -Xmx6g) in gradle.properties, even just in the personal file in your user's .gradle folder. Crash details are in the hs_err_pid*.log files in the project folder.",
       "permissions": "Insufficient permissions to start the command or for a port/folder it uses."
     }
   },
@@ -460,7 +476,8 @@
         "one": "{count} device connected, using {device}.",
         "other": "{count} devices connected, using {device}. You can pick another one in the phase."
       },
-      "flavor": "the project has product flavors: installing the {variant} variant (other flavors: {others})."
+      "flavor": "the project has product flavors: installing the {variant} variant (other flavors: {others}).",
+      "gradleStop": "before installing, any Gradle daemons still running are stopped so memory doesn't run out (Android Studio starts a new one on its own when needed)."
     }
   },
   "launch": {

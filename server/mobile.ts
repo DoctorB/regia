@@ -360,7 +360,11 @@ export function mobileCommand(p: Project, platform: MobilePlatform, device: Mobi
       // Con dei product flavor il task va scritto per intero (es. installGlobalDebug), altrimenti è ambiguo.
       const variant = (p.flavors?.chosen ?? []).map(cap).join('');
       if (p.flavors?.chosen.length) notes.push(msg('mobile.note.flavor', { variant: `${variant}${cap(build)}`, others: p.flavors.others.join(', ') || '—' }));
-      let command = `${gradle} :${p.module ?? 'app'}:install${variant}${cap(build)}`;
+      // Prima ferma i daemon Gradle rimasti attivi (es. quelli dei test, avviati con altra memoria): insieme al
+      // nuovo possono esaurire la RAM e far cadere la build. L'esito di --stop non conta.
+      const stop = WIN ? `${gradle} --stop & ` : `${gradle} --stop; `;
+      notes.push(msg('mobile.note.gradleStop'));
+      let command = `${stop}${gradle} :${p.module ?? 'app'}:install${variant}${cap(build)}`;
       // L'apertura non deve far fallire la fase: l'installazione è già riuscita.
       if (p.appId) command += ` && (${q(adbPath())} -s ${id} shell monkey -p ${p.appId} -c android.intent.category.LAUNCHER 1 || exit 0)`;
       else notes.push(msg('mobile.note.noLaunch'));

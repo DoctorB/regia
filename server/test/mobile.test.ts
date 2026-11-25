@@ -109,7 +109,8 @@ test('comandi: compilano, installano e aprono l\'app sul dispositivo scelto', ()
   assert.equal(mobileCommand(cap, 'android', phone, 'debug').command, 'npm run build && npx cap sync android && npx cap run android --target R58N123');
 
   const native = mobileCommand(findMobileProject(path.join(tmp, 'native'))!, 'android', phone, 'debug');
-  assert.match(native.command, /^(\.\\gradlew\.bat|\.\/gradlew) :app:installDebug && \(.*adb(\.exe)?"? -s R58N123 shell monkey -p it\.example\.app .* \|\| exit 0\)$/);
+  // Prima dell'installazione si fermano i daemon Gradle rimasti attivi (memoria); il loro esito non conta.
+  assert.match(native.command, /^(\.\\gradlew\.bat --stop & \.\\gradlew\.bat|\.\/gradlew --stop; \.\/gradlew) :app:installDebug && \(.*adb(\.exe)?"? -s R58N123 shell monkey -p it\.example\.app .* \|\| exit 0\)$/);
   assert.deepEqual(native.env, { ANDROID_SERIAL: 'R58N123' });
 });
 
@@ -165,4 +166,19 @@ test('fase Installa su dispositivo: valida senza comando, simulata in modalità 
   assert.equal(path.basename(svc.cwd), 'mobile');
   assert.ok(eng.run.events.some((e) => e.msg?.key === 'events.service.mobilePlanSim'));
   eng.cancel();
+});
+
+test('diagnosi: memoria esaurita di Gradle, niente falsi "permessi"', async () => {
+  const { diagnose } = await import('../nodeenv.ts');
+  // Il caso reale: build Gradle caduta per memoria, con nomi di classi che contengono "ePerm".
+  const crash = ['> Task :feature:ble:compileKotlin', 'w: BlePermissionHelper.kt: deprecated', 'FAILURE: Build failed with an exception.', 'Gradle build daemon disappeared unexpectedly (it may have been killed or may have crashed)'];
+  const d = diagnose(crash, 'it');
+  assert.equal(d?.kind, 'memoria');
+  assert.match(d!.message, /gradlew --stop/);
+  assert.equal(diagnose(['java.lang.OutOfMemoryError: Java heap space'], 'en')?.kind, 'memoria');
+  assert.equal(diagnose(['FATAL ERROR: Reached heap limit Allocation failed - JavaScript heap out of memory'], 'it')?.msg.key, 'nodeenv.diag.memory');
+  // "EPERM" dentro una parola non è un errore di permessi; il codice vero sì.
+  assert.equal(diagnose(['class BlePermissionHelper', 'requirePermission()'], 'it'), null);
+  assert.equal(diagnose(["Error: EPERM: operation not permitted, open 'x'"], 'it')?.kind, 'permessi');
+  assert.equal(diagnose(['Access is denied.'], 'it')?.kind, 'permessi');
 });

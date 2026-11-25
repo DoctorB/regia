@@ -102,7 +102,12 @@
       "checking": "Verifica di {url}…",
       "detectingDevice": "Ricerca del progetto e del dispositivo…",
       "detectingProject": "Ricerca del progetto…",
-      "detectingPr": "Cerco la PR del branch corrente…"
+      "detectingPr": "Cerco la PR del branch corrente…",
+      "checkingPrChecks": "Controllo lo stato della PR su GitHub…",
+      "waitingPrChecks": {
+        "one": "In attesa di un controllo della PR",
+        "other": "In attesa di {count} controlli della PR"
+      }
     },
     "service": {
       "withLabel": "{label}: {text}",
@@ -185,7 +190,11 @@
     "prDetected": "\"{label}\": trovata la PR del branch \"{branch}\" ({url}), in attesa di conferma.",
     "prNotDetected": "\"{label}\": PR del branch corrente non trovata. {reason}",
     "prReplyPublished": "\"{label}\": risposta pubblicata sulla PR come @{account} per {ref} ({url}).",
-    "prReplyFailed": "\"{label}\": risposta per {ref} non pubblicata: {error}"
+    "prReplyFailed": "\"{label}\": risposta per {ref} non pubblicata: {error}",
+    "prChecksWaiting": "\"{label}\": la PR ha ancora controlli in corso ({checks}); Regia aspetta che finiscano e poi prosegue.",
+    "prChecksDone": "\"{label}\": controlli della PR finiti, si leggono i commenti. Controlli falliti: {failed}.",
+    "prChecksSkipped": "\"{label}\": la persona ha scelto di non aspettare i controlli della PR.",
+    "prChecksUnknown": "\"{label}\": stato dei controlli della PR non disponibile, si prosegue. {reason}"
   },
   "interventions": {
     "declaredKo": "Esito negativo dichiarato: {summary}",
@@ -227,7 +236,12 @@
       "replyThreadNotFound": "La discussione indicata non esiste su GitHub o non è accessibile con questo account.",
       "replyThreadOtherPr": "La discussione indicata appartiene a un'altra PR: risposta non pubblicata.",
       "replyAccountChanged": "L'account di gh è cambiato (mostrato @{expected}, ora @{actual}): ricontrolla l'account e conferma di nuovo.",
-      "accountUnknown": "Non è stato possibile sapere con quale account di GitHub pubblicherebbe gh. {detail}"
+      "accountUnknown": "Non è stato possibile sapere con quale account di GitHub pubblicherebbe gh. {detail}",
+      "checksWaiting": {
+        "one": "La PR ha ancora un controllo o workflow in corso su GitHub: {checks}.\nRegia aspetta che finisca, per tutto il tempo necessario, così l'elenco dei punti comprende anche i commenti del bot di revisione (che parte dopo build e test), e poi prosegue da sola con il workflow. Non serve fare nulla: ricontrolla ogni 30 secondi (ultimo controllo alle {time}).",
+        "other": "La PR ha ancora {count} controlli o workflow in corso su GitHub: {checks}.\nRegia aspetta che finiscano, per tutto il tempo necessario, così l'elenco dei punti comprende anche i commenti del bot di revisione (che parte dopo build e test), e poi prosegue da sola con il workflow. Non serve fare nulla: ricontrolla ogni 30 secondi (ultimo controllo alle {time})."
+      },
+      "checksUnknown": "Non è stato possibile leggere lo stato dei controlli della PR. {detail}"
     }
   },
   "agent": {
@@ -414,6 +428,8 @@
       "nodeRange": "La versione di Node in uso non è supportata dal progetto (richiesta: {range}).",
       "deps": "Manca un modulo o un comando: probabilmente le dipendenze non sono installate o sono incomplete.",
       "port": "La porta è già occupata: probabilmente un altro server (forse una precedente anteprima) è ancora attivo. Chiudilo, oppure indica nel comando una porta diversa.",
+      "memory": "Memoria insufficiente: il processo ha esaurito la RAM del computer. Chiudi i programmi che ne usano molta e riprova.",
+      "memoryGradle": "Memoria insufficiente: Gradle (Java) ha esaurito la RAM del computer, spesso perché più daemon Gradle sono attivi insieme o perché org.gradle.jvmargs chiede più memoria di quella disponibile. Esegui \"gradlew --stop\", chiudi Android Studio ed emulatori se non servono, e abbassa -Xmx (ad es. -Xmx6g) in gradle.properties, anche solo nel file personale nella cartella .gradle del tuo utente. I dettagli del crash sono nei file hs_err_pid*.log nella cartella del progetto.",
       "permissions": "Permessi insufficienti per avviare il comando o per una porta/cartella che usa."
     }
   },
@@ -460,7 +476,8 @@
         "one": "{count} dispositivo collegato, uso {device}.",
         "other": "{count} dispositivi collegati, uso {device}. Puoi sceglierne un altro nella fase."
       },
-      "flavor": "il progetto ha dei product flavor: viene installata la variante {variant} (altri flavor: {others})."
+      "flavor": "il progetto ha dei product flavor: viene installata la variante {variant} (altri flavor: {others}).",
+      "gradleStop": "prima dell'installazione vengono fermati i daemon Gradle rimasti attivi, per non esaurire la memoria (Android Studio ne riavvia uno da solo quando serve)."
     }
   },
   "launch": {
