@@ -1,0 +1,20 @@
+{
+  "id": "criteri-accettazione",
+  "name": "Criteri di accettazione da una user story",
+  "description": "Legge la user story collegata e propone gli acceptance criteria in una pagina HTML da copiare: confronto con quelli già presenti e note sulle specifiche mancanti. Nessun file viene modificato.",
+  "goalHint": "Facoltativo: su cosa concentrarsi, oppure \"formato Gherkin\" per avere i criteri come Given/When/Then. Obbligatorio collegare la user story nelle impostazioni del workflow.",
+  "settings": { "maxParallel": 1, "loadProjectSettings": true, "applyGeneralRules": true },
+  "nodes": [
+    { "id": "criteri", "position": { "x": 0, "y": 120 }, "data": {
+      "label": "Criteri di accettazione", "kind": "analisi", "role": "Analista funzionale: ricava dalla user story criteri di accettazione chiari e verificabili, senza modificare il codice.",
+      "instructions": "Ricava i criteri di accettazione della user story collegata, confrontali con quelli già presenti e segnala le specifiche che mancano per fissarli. Guarda il codice solo per capire il comportamento attuale e i vincoli che la user story dà per scontati. Se l'obiettivo chiede il formato Gherkin, scrivi i criteri come Given/When/Then.",
+      "model": "sonnet", "allowedTools": ["Read", "Glob", "Grep"], "maxTurns": 25, "contextMode": "sintesi", "reuseResult": false, "criteriAccettazione": true } },
+    { "id": "revisione", "position": { "x": 300, "y": 120 }, "data": {
+      "label": "Revisione dei criteri", "kind": "approvazione", "role": "",
+      "instructions": "Apri la pagina dei criteri e rileggili. Approva se vanno bene; altrimenti respingi spiegando cosa cambiare (criteri da aggiungere, togliere o riformulare, risposte alle specifiche mancanti): la fase riprende dal punto in cui era e la pagina si aggiorna.",
+      "model": "", "allowedTools": [], "contextMode": "sintesi", "reuseResult": false } }
+  ],
+  "edges": [
+    { "id": "e1", "source": "criteri", "target": "revisione" }
+  ]
+}

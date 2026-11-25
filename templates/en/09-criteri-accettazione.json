@@ -1,0 +1,20 @@
+{
+  "id": "criteri-accettazione",
+  "name": "Acceptance criteria from a user story",
+  "description": "Reads the linked user story and proposes the acceptance criteria in an HTML page ready to copy: comparison with those already there and notes on missing specifications. No file is modified.",
+  "goalHint": "Optional: what to focus on, or \"Gherkin format\" to get the criteria as Given/When/Then. Linking the user story in the workflow settings is required.",
+  "settings": { "maxParallel": 1, "loadProjectSettings": true, "applyGeneralRules": true },
+  "nodes": [
+    { "id": "criteri", "position": { "x": 0, "y": 120 }, "data": {
+      "label": "Acceptance criteria", "kind": "analisi", "role": "Functional analyst: derives clear, testable acceptance criteria from the user story, without changing the code.",
+      "instructions": "Derive the acceptance criteria of the linked user story, compare them with those already there and point out the specifications missing to settle them. Look at the code only to understand the current behaviour and the constraints the user story takes for granted. If the goal asks for the Gherkin format, write the criteria as Given/When/Then.",
+      "model": "sonnet", "allowedTools": ["Read", "Glob", "Grep"], "maxTurns": 25, "contextMode": "sintesi", "reuseResult": false, "criteriAccettazione": true } },
+    { "id": "revisione", "position": { "x": 300, "y": 120 }, "data": {
+      "label": "Criteria review", "kind": "approvazione", "role": "",
+      "instructions": "Open the criteria page and read them. Approve if they are fine; otherwise reject saying what to change (criteria to add, remove or rephrase, answers to the missing specifications): the phase resumes where it was and the page is updated.",
+      "model": "", "allowedTools": [], "contextMode": "sintesi", "reuseResult": false } }
+  ],
+  "edges": [
+    { "id": "e1", "source": "criteri", "target": "revisione" }
+  ]
+}

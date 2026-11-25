@@ -23,6 +23,7 @@ import { scrcpyStatus, startMirror, type MirrorHandle } from './scrcpy.ts';
 import { startMirrorStream, type MirrorStream } from './mirror.ts';
 import { report } from './reports.ts';
 import { storyDir, storyPrompt } from './story.ts';
+import { criteriaText, parseCriteria } from './criteria.ts';
 import { gitState } from './folder.ts';
 import { cacheTtlMs, interruptedSummary, interruptNodes, isInterruptedNote } from './resume.ts';
 import { AttemptAccounting, sumTotals, type SessionSnapshot } from './usage.ts';
@@ -395,7 +396,7 @@ export class RunEngine {
     const p = { label: n.data.label, minutes: Math.max(0, Math.round(idle / 60000)) };
     if (intr.sessionId && idle < cacheTtlMs()) {
       this.say('fase', msg('events.interrupted.session', p), { nodeId: n.id });
-      const prompt = this.t('agent.interrupted.session', { label: n.data.label, protocol: agentProtocol(this.lang, n.data.kind) });
+      const prompt = this.t('agent.interrupted.session', { label: n.data.label, protocol: agentProtocol(this.lang, n.data.kind, n.data.criteriAccettazione) });
       return this.runAgent(n, 'ripresa_dopo_interruzione', { sessionId: intr.sessionId, feedback: intr.feedback ?? '', prompt }, { feedback: intr.feedback, fallback: intr });
     }
     this.say('fase', msg(intr.sessionId ? 'events.interrupted.summary' : 'events.interrupted.noSession', p), { nodeId: n.id });
@@ -477,7 +478,7 @@ export class RunEngine {
       n.data.pr ? prPrompt(this.prUrlFor(n), this.t) : '',
       ctx,
       extra,
-      agentProtocol(this.lang, n.data.kind),
+      agentProtocol(this.lang, n.data.kind, n.data.criteriAccettazione),
     ].filter(Boolean).join('\n\n');
   }
 
@@ -521,7 +522,7 @@ export class RunEngine {
     const st = this.run.nodes[n.id];
     const d = n.data;
     const prompt = resume
-      ? resume.prompt ?? this.t('agent.feedback', { feedback: resume.feedback, label: d.label, protocol: agentProtocol(this.lang, d.kind) })
+      ? resume.prompt ?? this.t('agent.feedback', { feedback: resume.feedback, label: d.label, protocol: agentProtocol(this.lang, d.kind, d.criteriAccettazione) })
       : this.buildPrompt(n, opts.extra);
 
     let key: string | undefined;
@@ -759,7 +760,7 @@ export class RunEngine {
       this.say('fase', msg('events.turnsContinue', { label: d.label, max: String(d.maxTurns ?? '?') }), where);
       this.nodeChanged(n.id);
       this.runChanged();
-      void this.runAgent(n, 'proseguimento', { sessionId: a.sessionId, feedback: '', prompt: this.t('agent.continueTurns', { protocol: agentProtocol(this.lang, d.kind) }) });
+      void this.runAgent(n, 'proseguimento', { sessionId: a.sessionId, feedback: '', prompt: this.t('agent.continueTurns', { protocol: agentProtocol(this.lang, d.kind, d.criteriAccettazione) }) });
       return;
     } else if (a.status === 'errore') {
       st.status = 'fallita';
@@ -795,6 +796,7 @@ export class RunEngine {
           + (declared.punti?.length ? `\n${this.t('agent.output.points')}\n${declared.punti.map((x, i) => `- [${this.t(`agent.output.priority.${declared.priorita?.[i] ?? 'alta'}`)}] ${x}`).join('\n')}` : '')
           + (declared.puntiOmessi?.length ? `\n${this.t('agent.output.pointsOmitted', { count: declared.puntiOmessi.length })}` : '')
           + (declared.manuali?.length ? `\n${this.t('agent.output.manual')}\n${declared.manuali.map((x) => `- ${x}`).join('\n')}` : '')
+          + (declared.criteri ? `\n${criteriaText(declared.criteri, this.t)}` : '')
         : clip(a.resultText ?? '', 3000);
       if (!declared) this.say('fase', msg('events.noOutcomeBlock', { label: d.label }), where);
       // I punti scartati non compaiono altrove: il blocco di esito è tolto dal testo mostrato negli eventi.
@@ -1980,8 +1982,10 @@ export function prPrompt(url: string, t: Translate): string {
   return t('agent.pr', { url: u || t('agent.prFromGoal') });
 }
 
-export function agentProtocol(lang = 'it', kind?: WorkflowNode['data']['kind']): string {
+export function agentProtocol(lang = 'it', kind?: WorkflowNode['data']['kind'], criteria = false): string {
   const t = serverT(lang);
+  // Criteri di accettazione: niente punti da scegliere, ma criteri, confronto con la user story e specifiche mancanti.
+  if (criteria) return `${t('agent.protocol')}\n${t('agent.protocolCriteria')}`;
   // Le revisioni elencano a parte le modifiche proposte: chi approva sceglie quali far applicare.
   if (kind === 'revisione') return `${t('agent.protocol')}\n${t('agent.protocolPoints', { max: MAX_POINTS })}`;
   // Il collaudo usa gli stessi punti per le anomalie, più gli scenari da provare a mano.
@@ -2124,6 +2128,7 @@ export function parseDeclared(text: unknown): DeclaredOutcome | undefined {
       ? j.manuali.map((x: unknown) => redact(String(x ?? '')).trim().slice(0, 500)).filter(Boolean).slice(0, MAX_POINTS)
       : [];
     const puntiOmessi = all.slice(MAX_POINTS, 100);
+    const criteri = parseCriteria(j.criteri);
     return {
       esito,
       sintesi: redact(String(j.sintesi ?? '')).slice(0, 2000),
@@ -2134,6 +2139,7 @@ export function parseDeclared(text: unknown): DeclaredOutcome | undefined {
       ...(sistemati.length ? { sistemati } : {}),
       ...(puntiOmessi.length ? { puntiOmessi } : {}),
       ...(manuali.length ? { manuali } : {}),
+      ...(criteri ? { criteri } : {}),
       // Il permesso conta solo se la fase si è fermata.
       ...(esito !== 'ok' && (j.permesso === 'modifica' || j.permesso === 'internet') ? { permesso: j.permesso as PermissionLevel } : {}),
       ...(esito !== 'ok' && typeof j.cartella === 'string' && path.isAbsolute(j.cartella.trim()) ? { cartella: j.cartella.trim().slice(0, 500) } : {}),

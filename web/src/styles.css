@@ -839,3 +839,6 @@ input[type="checkbox"] { width: 16px; height: 16px; min-height: 0; accent-color:
 .story-sec > summary { cursor: pointer; font-size: 12.5px; font-weight: 600; color: var(--text-2); }
 .story-sec p { margin: 6px 0 0; font-size: 13px; max-height: 240px; overflow: auto; }
 .story-shots img { aspect-ratio: 4 / 3; object-position: center; }
+.criteria-links { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 4px 0 6px; }
+.criteria-links > span { flex: 1 1 100%; color: var(--text-2); }
+.criteria-links a.btn { text-decoration: none; }

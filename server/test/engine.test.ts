@@ -54,9 +54,15 @@ test('tutti i preset sono validi una volta impostata la cartella', () => {
       assert.deepEqual(validateWorkflow(wf, 'prova').filter((i) => i.level === 'errore').map((i) => i.msg?.key), ['validate.prNeedsStory'], t.id);
       wf.settings.story = STORY_URL;
     }
+    // Anche i criteri di accettazione si ricavano dalla user story.
+    if (wf.nodes.some((n) => n.data.criteriAccettazione)) {
+      assert.deepEqual(validateWorkflow(wf, 'prova').filter((i) => i.level === 'errore').map((i) => i.msg?.key), ['validate.criteriaNeedsStory'], t.id);
+      wf.settings.story = STORY_URL;
+    }
     const errors = validateWorkflow(wf, 'prova').filter((i) => i.level === 'errore');
     assert.deepEqual(errors, [], t.id);
   }
+  assert.ok(templates.some((t) => t.id === 'criteri-accettazione'));
 });
 
 test('ciclo rilevato dalla validazione', () => {
@@ -1077,4 +1083,21 @@ test('turni esauriti: l\'agente prosegue da solo una volta, poi la fase si ferma
   assert.deepEqual(ko.run.nodes.crea.attempts.map((a) => a.reason), ['iniziale', 'proseguimento']);
   assert.ok(ko.run.nodes.crea.pendingActions?.includes('riprendi'));
   ko.cancel();
+});
+
+test('criteri di accettazione: la fase restituisce i criteri, l\'approvazione li vede e con Respingi la fase li rifà', async () => {
+  const wf = fromTemplate(templates.find((t) => t.id === 'criteri-accettazione')!);
+  wf.settings.story = STORY_URL;
+  const eng = startRun(wf, 'prova');
+  const run = eng.run;
+  await waitFor(() => run.nodes.revisione.status === 'attesa_intervento');
+  const c = run.nodes.criteri.attempts.at(-1)!.declared!.criteri!;
+  assert.deepEqual(c.proposti.map((x) => x.stato), ['coperto', 'nuovo', 'diverso', 'da_confermare']);
+  assert.equal(c.note[0].criteri?.[0], 'AC4');
+  // Il riassunto dei criteri passa alle fasi successive (e al rapporto) anche come testo.
+  assert.match(run.nodes.criteri.output!, /Criteri di accettazione proposti:[\s\S]*AC4 \[Da confermare\][\s\S]*Specifiche mancanti nella user story:/);
+  await eng.human('revisione', 'respingi', 'Aggiungi un criterio sul limite di lunghezza del nome');
+  await waitFor(() => run.nodes.criteri.attempts.length === 2 && run.nodes.revisione.status === 'attesa_intervento');
+  assert.ok(run.nodes.criteri.attempts[1].declared?.criteri);
+  eng.cancel();
 });

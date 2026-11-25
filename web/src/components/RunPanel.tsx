@@ -208,6 +208,10 @@ function StatusTab({ run, ordered, label, selectedNode, onSelectNode, onGranted 
   const uats = ordered.map((id) => run.nodes[id])
     .filter((n) => n?.uat && !n.pendingActions?.length)
     .filter((n) => !run.snapshot.edges.some((e) => e.source === n.nodeId && run.nodes[e.target]?.pendingActions?.includes('approva')));
+  // Criteri di accettazione pronti: la pagina resta raggiungibile anche dopo l'approvazione (nell'approvazione è già mostrata).
+  const criteria = ordered.map((id) => run.nodes[id])
+    .filter((n) => n?.attempts.some((a) => a.declared?.criteri) && !n.pendingActions?.length)
+    .filter((n) => !run.snapshot.edges.some((e) => e.source === n.nodeId && run.nodes[e.target]?.pendingActions?.includes('approva')));
   return (
     <div className="stack">
       {resumable && (
@@ -222,6 +226,7 @@ function StatusTab({ run, ordered, label, selectedNode, onSelectNode, onGranted 
       {pending.map((n) => <InterventionCard key={`${run.id}:${n.nodeId}`} run={run} nodeId={n.nodeId} label={label(n.nodeId)} readOnly={resumable} onGranted={onGranted} />)}
       {services.map((n) => <ServiceCard key={n.nodeId} run={run} nodeId={n.nodeId} />)}
       {uats.map((n) => <UatCard key={n.nodeId} run={run} nodeId={n.nodeId} label={label(n.nodeId)} />)}
+      {criteria.map((n) => <CriteriaCard key={n.nodeId} run={run} nodeId={n.nodeId} label={label(n.nodeId)} />)}
       {run.notes.map((n, i) => <div key={i} className="callout tone-warn"><TriangleAlert /><span>{n}</span></div>)}
       {run.rateLimit && run.rateLimit.status !== 'allowed' && (
         <div className="callout tone-warn"><Gauge /><span>{t('run.rateLimit', { status: run.rateLimit.status })}{run.rateLimit.type ? ` (${run.rateLimit.type})` : ''}{run.rateLimit.utilization !== undefined ? t('run.rateLimitUsage', { pct: Math.round(run.rateLimit.utilization * 100) }) : ''}.</span></div>
@@ -394,8 +399,9 @@ function InterventionCard({ run, nodeId, label, readOnly = false, onGranted }: {
               <KindTile kind={pn.data.kind} size="sm" /><strong>{pn.data.label}</strong>
               {last?.declared && <span className={`pill ${last.declared.esito === 'ok' ? 'tone-good' : 'tone-bad'}`}>{t('run.intervention.outcome', { esito: last.declared.esito })}</span>}
             </summary>
-            {/* Con dei punti da scegliere qui sotto, la sintesi basta: i punti non si ripetono. */}
-            <p className="pre">{(points.some((g) => g.nodeId === p.nodeId) ? last?.declared?.sintesi : p.output) ?? t('run.intervention.noOutput')}</p>
+            <CriteriaLinks run={run} nodeId={p.nodeId} />
+            {/* Con dei punti da scegliere qui sotto, o con la pagina dei criteri, la sintesi basta. */}
+            <p className="pre">{(points.some((g) => g.nodeId === p.nodeId) || last?.declared?.criteri ? last?.declared?.sintesi : p.output) ?? t('run.intervention.noOutput')}</p>
             {points.some((g) => g.nodeId === p.nodeId) && last?.declared?.manuali?.length ? (
               <p className="pre">{`${t('run.uat.manual')}\n${last.declared.manuali.map((x) => `- ${x}`).join('\n')}`}</p>
             ) : null}
@@ -596,6 +602,38 @@ function UatCard({ run, nodeId, label }: { run: Run; nodeId: string; label: stri
         <div className="grow"><div className="card-title">{label}</div><div className="card-sub">{n.activity ?? statusLabel(n.status)}</div></div>
       </div>
       <UatEvidence run={run} nodeId={nodeId} findings />
+    </div>
+  );
+}
+
+/** Criteri di accettazione di una fase: conteggi e collegamenti alla pagina HTML (da aprire o scaricare). */
+function CriteriaLinks({ run, nodeId }: { run: Run; nodeId: string }) {
+  const { t } = useI18n();
+  const c = run.nodes[nodeId]?.attempts.filter((a) => a.declared?.criteri).at(-1)?.declared?.criteri;
+  if (!c) return null;
+  const pending = c.proposti.filter((x) => x.stato === 'da_confermare').length;
+  const src = `/api/runs/${run.id}/criteria/${nodeId}`;
+  return (
+    <div className="criteria-links">
+      <span className="small">
+        {[t('run.criteria.proposed', { count: c.proposti.length }), pending ? t('run.criteria.pending', { count: pending }) : '', c.note.length ? t('run.criteria.gaps', { count: c.note.length }) : ''].filter(Boolean).join(' · ')}
+      </span>
+      <a className="btn sm primary" href={src} target="_blank" rel="noreferrer"><ExternalLink />{t('run.criteria.open')}</a>
+      <a className="btn sm" href={`${src}?download=1`}><Download />{t('run.criteria.download')}</a>
+    </div>
+  );
+}
+
+function CriteriaCard({ run, nodeId, label }: { run: Run; nodeId: string; label: string }) {
+  const n = run.nodes[nodeId];
+  const kind = run.snapshot.nodes.find((x) => x.id === nodeId)?.data.kind ?? 'analisi';
+  return (
+    <div className="card uat-card">
+      <div className="card-head">
+        <KindTile kind={kind} />
+        <div className="grow"><div className="card-title">{label}</div><div className="card-sub">{n.activity ?? statusLabel(n.status)}</div></div>
+      </div>
+      <CriteriaLinks run={run} nodeId={nodeId} />
     </div>
   );
 }

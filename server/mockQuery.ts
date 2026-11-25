@@ -273,11 +273,28 @@ export async function* mockQuery(o: MockOptions): AsyncGenerator<Record<string, 
       { motivo: 'sistemato', riferimento: '[MAJOR] src/api.ts:30', thread: 'PRRT_simulato1', testo: t('mock.pr.replyFixed') },
       { motivo: 'contrasto', riferimento: '[MAJOR] src/utils.ts:18', testo: t('mock.pr.replyConflict') },
     ],
-  } : {}), ...(uat && !blockFirst ? { manuali: [t('mock.uat.manual')] } : {}) }, null, 1)}\n\`\`\``;
+  } : {}), ...(uat && !blockFirst ? { manuali: [t('mock.uat.manual')] } : {}), ...(p.criteriAccettazione && !blockFirst ? { criteri: mockCriteria(t) } : {}) }, null, 1)}\n\`\`\``;
   const fid = `msg_sim_${randomUUID().slice(0, 12)}`;
   const usage = { input_tokens: 20, output_tokens: 1, cache_creation_input_tokens: 400, cache_read_input_tokens: ctx };
   mainInput += 20; mainCC += 400; mainCR += ctx; mainOutput += 260;
   charge(model, 20, 260, 400, ctx);
   yield { type: 'assistant', parent_tool_use_id: null, session_id: sessionId, uuid: randomUUID(), message: { id: fid, model, role: 'assistant', content: [{ type: 'text', text: finalText }], usage } };
   yield result('success', finalText);
+}
+
+/** Criteri di accettazione simulati: uno per stato, una valutazione dei criteri della user story e una specifica mancante. */
+function mockCriteria(t: Translate) {
+  return {
+    proposti: [
+      { id: 'AC1', testo: t('mock.criteria.ac1'), stato: 'coperto', origine: t('mock.criteria.origin1'), acUs: t('mock.criteria.storyAc1') },
+      { id: 'AC2', testo: t('mock.criteria.ac2'), stato: 'nuovo', origine: t('mock.criteria.origin2') },
+      { id: 'AC3', testo: t('mock.criteria.ac3'), stato: 'diverso', acUs: t('mock.criteria.storyAc2'), nota: t('mock.criteria.note3') },
+      { id: 'AC4', testo: t('mock.criteria.ac4'), stato: 'da_confermare', nota: t('mock.criteria.note4') },
+    ],
+    esistenti: [
+      { testo: t('mock.criteria.storyAc1'), valutazione: 'ok' },
+      { testo: t('mock.criteria.storyAc2'), valutazione: 'vago', nota: t('mock.criteria.vague') },
+    ],
+    note: [{ argomento: t('mock.criteria.gapTopic'), domanda: t('mock.criteria.gapQuestion'), criteri: ['AC4'] }],
+  };
 }

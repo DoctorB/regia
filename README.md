@@ -26,6 +26,7 @@ Regia is a local app for designing development workflows as a diagram, running t
 - **Design principles**: turn on KISS, YAGNI, DRY or SOLID for a workflow; each phase gets guidance suited to its task and approvals get a checklist, without touching your instructions.
 - **Additional folders**: besides the project, phases can read and write in folders you list in the workflow, such as another repository or a shared output folder; every other folder stays off limits.
 - **Linked user story**: paste the address of an Azure DevOps work item or a GitHub issue; at every run Regia reads it, images included, and gives description and acceptance criteria to the agents. No setup: access comes from Git, which opens the Microsoft login once if needed.
+- **Acceptance criteria from a user story**: a ready-made phase and preset read the linked user story and propose testable acceptance criteria, compared with those already in the story, with notes on the specifications that are missing to settle them. The result is an HTML page with buttons to copy the criteria into Azure DevOps (formatted) or GitHub (Markdown).
 - **Skills**: phases can use the skills of the project (`.claude/skills`, or `.agents/skills` shared with other coding tools) or your personal ones, chosen per phase.
 - **Trial mode**: explore everything with simulated agents, at no cost.
 - **Update notice**: the version in use is shown in the interface, with a notice when a newer one is on GitHub (update with `git pull`).

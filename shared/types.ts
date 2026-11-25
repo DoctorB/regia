@@ -53,6 +53,11 @@ export interface PhaseConfig {
    * URL vuoto = l'URL indicato nell'obiettivo del workflow.
    */
   pr?: { url: string };
+  /**
+   * Solo fase di analisi "Criteri di accettazione": dalla user story collegata ricava gli acceptance criteria, li
+   * confronta con quelli già presenti e segnala le specifiche mancanti; Regia ne fa una pagina HTML da copiare.
+   */
+  criteriAccettazione?: boolean;
 }
 
 /** Dove mostrare il risultato: sul telefono (APK o build iOS), nel browser, come app desktop. */
@@ -336,6 +341,41 @@ export interface DeclaredOutcome {
   cartella?: string;
   /** Solo collaudi: scenari che non si possono verificare in automatico (hardware, biometria…), da provare a mano. */
   manuali?: string[];
+  /** Solo fase "Criteri di accettazione": criteri proposti, confronto con quelli della user story, specifiche mancanti. */
+  criteri?: AcceptanceCriteria;
+}
+
+/** Criterio proposto rispetto a quelli già nella user story: nuovo, già coperto, diverso, oppure da confermare (mancano specifiche). */
+export type CriterionStatus = 'nuovo' | 'coperto' | 'diverso' | 'da_confermare';
+
+/** Acceptance criterion proposto dalla fase "Criteri di accettazione". */
+export interface AcceptanceCriterion {
+  /** AC1, AC2… */
+  id: string;
+  /** Frase verificabile: "Quando…, allora…". */
+  testo: string;
+  stato: CriterionStatus;
+  /** Punto della descrizione (o del codice) da cui nasce. */
+  origine?: string;
+  /** Criterio della user story a cui corrisponde, se c'è. */
+  acUs?: string;
+  nota?: string;
+}
+
+/** Valutazione di un criterio già scritto nella user story. */
+export type StoryCriterionVerdict = 'ok' | 'vago' | 'non_verificabile' | 'in_contrasto' | 'non_coperto';
+
+export interface StoryCriterionReview { testo: string; valutazione: StoryCriterionVerdict; nota?: string }
+
+/** Specifica che manca nella user story per fissare un criterio: la domanda da fare a chi l'ha scritta. */
+export interface SpecGap { argomento: string; domanda: string; criteri?: string[] }
+
+/** Risultato della fase "Criteri di accettazione". */
+export interface AcceptanceCriteria {
+  proposti: AcceptanceCriterion[];
+  /** Criteri già presenti nella user story, valutati uno per uno. */
+  esistenti: StoryCriterionReview[];
+  note: SpecGap[];
 }
 
 /** Punti proposti da una fase a monte, mostrati come checklist nell'approvazione. */

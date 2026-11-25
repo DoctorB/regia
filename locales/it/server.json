@@ -314,7 +314,8 @@
       "images": "## Immagini\nI segnaposto [immagine n] nel testo corrispondono a questi file. Aprili con Read solo quando servono (ad esempio un mockup da confrontare con la schermata): ogni immagine consuma token."
     },
     "pr": "# Pull request da leggere\n{url}\n\nLeggi la pull request e tutti i suoi commenti, senza modificare file e senza rispondere sulla PR.\n- GitHub: dettagli e commenti generali con `gh pr view <url> --comments`; le discussioni sulle righe di codice, con il loro stato, con GraphQL (le API REST non dicono se una discussione è risolta):\n  `gh api graphql -F owner=<proprietario> -F name=<repo> -F number=<numero> -f query='query($owner:String!,$name:String!,$number:Int!){repository(owner:$owner,name:$name){pullRequest(number:$number){reviewThreads(first:100){nodes{id isResolved isOutdated path line comments(first:20){nodes{author{login} body}}}}}}}'`\n- Azure DevOps: `az repos pr show --id <numero>` e i thread con `az devops invoke --area git --resource pullRequestThreads --route-parameters project=<progetto> repositoryId=<repo> pullRequestId=<numero>`; considera solo i thread con stato active o pending.\n- Altrimenti apri l'indirizzo con WebFetch.\nSe lo strumento necessario non è installato o non sei autenticato, fermati con esito \"bloccato\" e spiega cosa serve.\n\nCome scegliere i punti:\n1. Escludi le discussioni risolte (isResolved), quelle superate da commit successivi (isOutdated) e i messaggi senza una richiesta di modifica.\n2. Un commento che elenca più segnalazioni (ad esempio il riepilogo di un bot di revisione) diventa un punto per ogni segnalazione.\n3. Per ogni segnalazione rimasta verifica sul codice attuale del progetto (branch corrente, comprese le modifiche non ancora committate) che il problema ci sia ancora: non fidarti della descrizione del commento né delle risposte, apri i file citati e cerca con Grep i nomi coinvolti (chiavi, funzioni, file di risorse) in tutto il progetto. Se risulta già sistemata, non metterla nei punti: aggiungila alla chiave \"sistemati\" del blocco di esito, una voce per segnalazione (gravità, file, problema e perché risulta sistemata).\n4. Non scartare segnalazioni aperte in base alla tua valutazione (ad esempio WARNING non introdotti dalla PR): decide chi approva.\n\nOgni punto è un oggetto {\"testo\": \"file e riga, problema, correzione da fare, autore del commento, e alla fine Verificato: cosa hai controllato nel codice per confermare che il problema c'è ancora\", \"gravita\": \"BLOCKER\" | \"CRITICAL\" | \"MAJOR\" | \"MINOR\" | \"WARNING\" | \"INFO\" | \"NIT\", \"priorita\": \"alta\" | \"bassa\"}. Usa la gravità indicata nel commento; se manca, deducila (bug e modifiche richieste esplicitamente: MAJOR; suggerimenti facoltativi: MINOR o NIT). Regia ordina i punti per gravità, dal BLOCKER in giù. Unisci i commenti duplicati.\nControlla con git che il branch corrente sia quello della PR: se non lo è, segnalalo nella sintesi, senza cambiare branch. Nella sintesi indica titolo, autore e branch della PR, quanti punti aperti hai trovato per gravità e quanti già sistemati.\n\nLe user story collegate (sopra) sono il riferimento: le correzioni devono rispettarne specifiche e criteri di accettazione (di tutte, se sono più di una). Se la correzione chiesta da un commento li contraddice, mantieni il punto, inizia il testo con \"In contrasto con la US:\", spiega perché e aggiungi all'oggetto \"contrastoUs\": true, così chi approva può decidere.\n\nRisposte sulla PR: per ogni segnalazione già sistemata e per ogni punto in contrasto con la US prepara una risposta da pubblicare sotto il commento originale, nella chiave \"risposte\" del blocco di esito: [{\"motivo\": \"sistemato\" | \"contrasto\", \"riferimento\": \"gravità e file:riga\", \"thread\": \"id della discussione del commento a cui rispondi (campo id di reviewThreads)\", \"testo\": \"la risposta\"}]. Il testo è breve, cortese e nella lingua del commento a cui rispondi: per \"sistemato\" indica dove e come risulta sistemato (file e, se lo conosci, il commit); per \"contrasto\" cita il criterio di accettazione della user story che la modifica contraddirebbe. La risposta viene pubblicata solo sotto quel commento: se la segnalazione viene da un commento generale (non in una discussione sul codice), lascia \"thread\" vuoto e Regia non la pubblicherà. Non pubblicare niente tu: Regia pubblica una risposta solo se chi approva la conferma.",
-    "prFromGoal": "(l'URL della PR indicato nell'obiettivo del workflow)"
+    "prFromGoal": "(l'URL della PR indicato nell'obiettivo del workflow)",
+    "protocolCriteria": "- Sei in una fase che ricava i criteri di accettazione della user story collegata: aggiungi al blocco la chiave \"criteri\" con {\"proposti\": [...], \"esistenti\": [...], \"note\": [...]}.\n- \"proposti\": l'elenco completo dei criteri che la user story dovrebbe avere, al massimo 40, ciascuno {\"id\": \"AC1\", \"testo\": \"...\", \"stato\": \"...\", \"origine\": \"...\", \"acUs\": \"...\", \"nota\": \"...\"}. Il testo è una frase verificabile nella forma \"Quando <situazione o azione>, allora <risultato osservabile>\", in linguaggio semplice e senza dettagli di implementazione, un comportamento per criterio. Copri il percorso principale, i casi d'errore e i casi limite che la user story lascia intendere. \"stato\": \"coperto\" se un criterio della user story dice già la stessa cosa (riportalo in \"acUs\"), \"diverso\" se c'è ma dice altro o è incompleto (riportalo in \"acUs\" e spiega la differenza in \"nota\"), \"nuovo\" se nella user story manca, \"da_confermare\" se dipende da una specifica che la user story non dà: scrivi il criterio con l'ipotesi più ragionevole e dichiarala in \"nota\". \"origine\": il punto della descrizione (o il comportamento del codice) da cui nasce il criterio.\n- \"esistenti\": ogni criterio già scritto nella user story, con il suo testo, e \"valutazione\": \"ok\", \"vago\", \"non_verificabile\", \"in_contrasto\" (con la descrizione, con altri criteri o con il codice) oppure \"non_coperto\" (la descrizione non lo giustifica), con una \"nota\" breve quando non è \"ok\". Se la user story non ne ha, lista vuota.\n- \"note\": le specifiche che mancano nella user story per fissare i criteri (regole, messaggi, limiti, permessi, casi d'errore, piattaforme…), ciascuna {\"argomento\": \"...\", \"domanda\": \"domanda precisa da fare a chi ha scritto la user story\", \"criteri\": [\"AC4\"]}. Non inventare specifiche: meglio una domanda in più.\n- Leggi il codice solo quanto serve a capire il comportamento attuale e i vincoli che la user story dà per scontati; non modificare file. Scrivi i criteri nella lingua della user story. Specifiche mancanti non rendono il compito non riuscito: usa \"ok\"; \"bloccato\" solo se la user story manca o è vuota."
   },
   "mock": {
     "decisions": {
@@ -363,6 +364,21 @@
       "fixed": "[MAJOR] src/api.ts:30 — timeout non gestito: già sistemato, la chiamata ora usa withTimeout (Revisore A).",
       "replyFixed": "Grazie della segnalazione: risulta già sistemato, la chiamata in src/api.ts ora usa withTimeout.",
       "replyConflict": "Questa modifica contraddirebbe un criterio di accettazione della user story (AC8): la lasciamo com'è."
+    },
+    "criteria": {
+      "ac1": "Quando l'utente salva il modulo con tutti i campi obbligatori compilati, allora i dati vengono salvati e compare un messaggio di conferma.",
+      "origin1": "Descrizione, primo paragrafo",
+      "storyAc1": "L'utente può salvare il modulo.",
+      "ac2": "Quando un campo obbligatorio è vuoto, allora il salvataggio non parte e il campo è evidenziato con un messaggio che spiega cosa manca.",
+      "origin2": "Descrizione: \"i campi obbligatori sono nome ed email\"",
+      "ac3": "Quando il salvataggio non riesce per un errore del server, allora i dati inseriti restano nel modulo e compare un messaggio che invita a riprovare.",
+      "storyAc2": "Gestire gli errori.",
+      "note3": "Il criterio della user story non dice cosa vede l'utente né cosa succede ai dati inseriti.",
+      "ac4": "Quando l'utente lascia la pagina con modifiche non salvate, allora gli viene chiesto di confermare.",
+      "note4": "Ipotesi: la descrizione non dice cosa succede uscendo senza salvare.",
+      "vague": "Non dice quali errori né cosa deve vedere l'utente.",
+      "gapTopic": "Uscita con modifiche non salvate",
+      "gapQuestion": "Se l'utente lascia la pagina con modifiche non salvate, va avvisato, si salva una bozza o le modifiche si perdono?"
     }
   },
   "api": {
@@ -408,7 +424,8 @@
     "scrcpyInstallFailed": "Installazione di scrcpy non riuscita: {error}",
     "prStoryUnreadable": "La user story collegata non si riesce a leggere, e correggendo i punti di una PR è obbligatoria: {error}",
     "prReplyNotFound": "Risposta non trovata.",
-    "prReplyAlreadyPublished": "Questa risposta è già stata pubblicata."
+    "prReplyAlreadyPublished": "Questa risposta è già stata pubblicata.",
+    "criteriaStoryUnreadable": "La user story collegata non si riesce a leggere, ed è da lì che si ricavano i criteri di accettazione: {error}"
   },
   "nodeenv": {
     "source": {
@@ -495,6 +512,59 @@
       "notFound": "Elemento non trovato: controlla l'indirizzo.",
       "network": "Servizio non raggiungibile: {detail}",
       "gh": "La CLI gh non ha risposto: {detail}"
+    }
+  },
+  "criteria": {
+    "title": "Criteri di accettazione",
+    "fileName": "criteri-accettazione",
+    "proposed": "Criteri proposti",
+    "comparison": "Confronto con i criteri della user story",
+    "gaps": "Specifiche mancanti",
+    "gapsHint": "La descrizione non basta per fissare questi aspetti: chiedili a chi ha scritto la user story. I criteri collegati sono scritti con l'ipotesi più ragionevole e segnati come da confermare.",
+    "copyFormatted": "Copia (formattato)",
+    "copyMarkdown": "Copia come testo",
+    "copyQuestions": "Copia le domande",
+    "copyHint": "\"Copia (formattato)\" mantiene elenco e grassetti quando incolli nel campo Acceptance Criteria di Azure DevOps; \"Copia come testo\" dà il Markdown per le issue GitHub. I criteri da confermare restano segnati.",
+    "copied": "Copiato",
+    "noneProposed": "Nessun criterio proposto.",
+    "storyHasNone": "La user story non ha criteri di accettazione: puoi incollare quelli proposti.",
+    "noComparison": "La user story ha dei criteri, ma la fase non li ha valutati.",
+    "origin": "Origine:",
+    "storyAc": "Nella user story:",
+    "note": "Nota:",
+    "related": "Criteri collegati:",
+    "footer": "Generato da Regia. Rileggi i criteri prima di copiarli nella user story.",
+    "status": {
+      "nuovo": "Nuovo",
+      "coperto": "Già nella US",
+      "diverso": "Diverso dalla US",
+      "da_confermare": "Da confermare"
+    },
+    "verdict": {
+      "ok": "Chiaro",
+      "vago": "Vago",
+      "non_verificabile": "Non verificabile",
+      "in_contrasto": "In contrasto",
+      "non_coperto": "Non giustificato dalla descrizione"
+    },
+    "count": {
+      "proposed": {
+        "one": "1 criterio",
+        "other": "{count} criteri"
+      },
+      "pending": {
+        "one": "1 da confermare",
+        "other": "{count} da confermare"
+      },
+      "gaps": {
+        "one": "1 specifica mancante",
+        "other": "{count} specifiche mancanti"
+      }
+    },
+    "text": {
+      "proposed": "Criteri di accettazione proposti:",
+      "storyIssues": "Criteri della user story da rivedere:",
+      "gaps": "Specifiche mancanti nella user story:"
     }
   }
 }

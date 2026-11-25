@@ -74,6 +74,13 @@ export function validateWorkflow(wf: Workflow, mode: 'prova' | 'reale' = 'prova'
     if (!story) err(msg('validate.prNeedsStory', { name: prNode.data.label || prNode.id }), prNode.id);
     else if (!parseStoryUrl(story)) err(msg('validate.storyInvalid'), prNode.id);
   }
+  // I criteri di accettazione si ricavano dalla user story: senza, la fase non ha nulla da leggere.
+  const acNode = wf.nodes.find((n) => n.data.criteriAccettazione);
+  if (acNode && !prNode) {
+    const story = wf.settings.story?.trim();
+    if (!story) err(msg('validate.criteriaNeedsStory', { name: acNode.data.label || acNode.id }), acNode.id);
+    else if (!parseStoryUrl(story)) err(msg('validate.storyInvalid'), acNode.id);
+  }
   // User story aggiuntive: ognuna deve essere un work item o una issue riconoscibile.
   for (const url of extraStoryUrls(wf.settings)) if (!parseStoryUrl(url)) err(msg('validate.extraStoryInvalid', { url }));
 

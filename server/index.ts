@@ -5,7 +5,8 @@ import express, { type NextFunction, type Request, type Response } from 'express
 import { msg, type Msg } from '../shared/i18n.ts';
 import type { ApiErrorBody, HumanAction, LaunchPlan, PointRef, Run, RunMode, ShowConfig, ValidationIssue, Workflow } from '../shared/types.ts';
 import { extraStoryUrls, RESUMABLE } from '../shared/types.ts';
-import { RegiaError, getEngine, planContinuation, resumeRun, startRun } from './engine.ts';
+import { RegiaError, getEngine, planContinuation, resumeRun, startRun, workflowLang } from './engine.ts';
+import { criteriaFileName, criteriaHtml } from './criteria.ts';
 import { envInfo } from './env.ts';
 import { versionInfo } from './version.ts';
 import { activePrinciples } from '../shared/principles.ts';
@@ -272,6 +273,25 @@ app.get('/api/runs/:id/logs/:file', (req, res) => {
   res.type('text/plain; charset=utf-8').sendFile(p);
 });
 
+// Criteri di accettazione di una fase, come pagina HTML (da aprire o, con ?download=1, da scaricare).
+app.get('/api/runs/:id/criteria/:nodeId', (req, res) => {
+  const { id, nodeId } = req.params;
+  if (!/^run_[\w-]+$/.test(id) || !/^[\w-]+$/.test(nodeId)) return void sendError(res, 400, msg('api.invalidAction'));
+  const run = getEngine(id)?.run ?? getRun(id);
+  const a = run?.nodes[nodeId]?.attempts.filter((x) => x.declared?.criteri).at(-1);
+  if (!run || !a?.declared?.criteri) return void sendError(res, 404, msg('api.phaseNotFound'));
+  const lang = workflowLang(run.snapshot);
+  const t = serverT(lang);
+  const html = criteriaHtml({
+    criteria: a.declared.criteri, story: run.story, summary: a.declared.sintesi, workflowName: run.snapshot.name,
+    generatedAt: a.endedAt ?? a.startedAt, lang, t,
+  });
+  // Pagina autonoma: solo i suoi stili e il suo script, nessuna risorsa esterna.
+  res.set('Content-Security-Policy', "default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'");
+  if (req.query.download) res.attachment(criteriaFileName(run.story, t));
+  res.type('text/html; charset=utf-8').send(html);
+});
+
 app.get('/api/runs/:id', (req, res) => {
   const run = getEngine(req.params.id)?.run ?? getRun(req.params.id);
   if (!run) return void sendError(res, 404, msg('api.runNotFound'));
@@ -324,7 +344,8 @@ app.post('/api/runs', h(async (req, res) => {
     if (!reference) return void sendError(res, 400, msg('api.referenceNotFound'));
   }
   // User story collegata: letta a ogni avvio (può essere cambiata); se non si legge, si parte lo stesso.
-  // Eccezione: correggendo i punti di una PR la user story è il riferimento obbligatorio, e senza non si parte
+  // Eccezione: correggendo i punti di una PR o ricavando i criteri di accettazione la user story è il riferimento
+  // obbligatorio, e senza non si parte
   // (in prova sì, per poter provare il percorso anche con un indirizzo di esempio).
   let story: Parameters<typeof startRun>[4];
   if (wf.settings.story?.trim()) {
@@ -333,6 +354,8 @@ app.post('/api/runs', h(async (req, res) => {
     } catch (e) {
       const error = storyErrorMsg(e);
       if (mode === 'reale' && wf.nodes.some((n) => n.data.pr)) return void sendError(res, 400, msg('api.prStoryUnreadable', { error: serverT(systemLanguage())(error.key, error.params) }));
+      // Anche i criteri di accettazione si ricavano dalla user story: senza, la fase non avrebbe nulla da leggere.
+      if (mode === 'reale' && wf.nodes.some((n) => n.data.criteriAccettazione)) return void sendError(res, 400, msg('api.criteriaStoryUnreadable', { error: serverT(systemLanguage())(error.key, error.params) }));
       story = { error };
     }
   }

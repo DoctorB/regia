@@ -45,6 +45,11 @@ const SNIPPETS: { id: string; base: Base }[] = [
     id: 'pr-commenti',
     base: { kind: 'revisione', model: 'sonnet', allowedTools: ['Read', 'Glob', 'Grep', 'Bash', 'WebFetch'], maxTurns: 25, contextMode: 'sintesi', reuseResult: false, pr: { url: '' } },
   },
+  // Ricava dalla user story i criteri di accettazione; Regia ne fa una pagina HTML da copiare nella user story.
+  {
+    id: 'criteri-accettazione',
+    base: { kind: 'analisi', model: 'sonnet', allowedTools: ['Read', 'Glob', 'Grep'], maxTurns: 25, contextMode: 'sintesi', reuseResult: false, criteriAccettazione: true },
+  },
   {
     id: 'pubblicazione',
     base: { kind: 'personalizzata', model: 'sonnet', allowedTools: ['Read', 'Glob', 'Grep', 'Bash'], maxTurns: 15, contextMode: 'sintesi', reuseResult: false },

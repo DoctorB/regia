@@ -168,6 +168,22 @@
       "copy": "Copia il testo",
       "copied": "Testo copiato.",
       "publish": "Pubblica sulla PR"
+    },
+    "criteria": {
+      "open": "Apri la pagina",
+      "download": "Scarica l'HTML",
+      "proposed": {
+        "one": "1 criterio",
+        "other": "{count} criteri"
+      },
+      "pending": {
+        "one": "1 da confermare",
+        "other": "{count} da confermare"
+      },
+      "gaps": {
+        "one": "1 specifica mancante",
+        "other": "{count} specifiche mancanti"
+      }
     }
   },
   "actions": {

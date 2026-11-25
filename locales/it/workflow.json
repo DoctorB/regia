@@ -41,7 +41,8 @@
     "prUrlInvalid": "L'URL della PR della fase \"{name}\" deve iniziare con http:// o https://.",
     "prNeedsStory": "La fase \"{name}\" corregge i punti di una PR: collega la user story (Impostazioni del workflow → User story), così le correzioni rispettano specifiche e criteri di accettazione.",
     "storyInvalid": "L'indirizzo della user story non è riconosciuto: serve un work item di Azure DevOps o una issue di GitHub (https://…).",
-    "extraStoryInvalid": "L'indirizzo della user story aggiuntiva non è riconosciuto ({url}): serve un work item di Azure DevOps o una issue di GitHub (https://…)."
+    "extraStoryInvalid": "L'indirizzo della user story aggiuntiva non è riconosciuto ({url}): serve un work item di Azure DevOps o una issue di GitHub (https://…).",
+    "criteriaNeedsStory": "La fase \"{name}\" ricava i criteri di accettazione dalla user story: collegala nelle impostazioni del workflow (User story)."
   },
   "insights": {
     "corrections": {

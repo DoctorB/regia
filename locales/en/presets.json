@@ -77,6 +77,13 @@
       "phaseLabel": "PR points",
       "role": "Pull request reader: collects the review comments to apply, without changing the code.",
       "instructions": "Read the given pull request and turn the review comments that are still open into points to implement, one per comment, with the original severity."
+    },
+    "criteri-accettazione": {
+      "label": "Acceptance criteria",
+      "hint": "Reads the linked user story, proposes the acceptance criteria, compares them with those already there and points out missing specifications, in an HTML page ready to copy.",
+      "phaseLabel": "Acceptance criteria",
+      "role": "Functional analyst: derives clear, testable acceptance criteria from the user story, without changing the code.",
+      "instructions": "Derive the acceptance criteria of the linked user story, compare them with those already there and point out the specifications missing to settle them. Look at the code only to understand the current behaviour and the constraints the user story takes for granted. If the goal asks for the Gherkin format, write the criteria as Given/When/Then."
     }
   }
 }

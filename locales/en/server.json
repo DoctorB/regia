@@ -314,7 +314,8 @@
       "images": "## Images\nThe [immagine n] placeholders in the text match these files. Open them with Read only when needed (for example a mockup to compare with the screen): every image costs tokens."
     },
     "pr": "# Pull request to read\n{url}\n\nRead the pull request and all its comments, without changing files and without replying on the PR.\n- GitHub: details and general comments with `gh pr view <url> --comments`; the discussions on code lines, with their state, with GraphQL (the REST API does not tell whether a discussion is resolved):\n  `gh api graphql -F owner=<owner> -F name=<repo> -F number=<number> -f query='query($owner:String!,$name:String!,$number:Int!){repository(owner:$owner,name:$name){pullRequest(number:$number){reviewThreads(first:100){nodes{id isResolved isOutdated path line comments(first:20){nodes{author{login} body}}}}}}}'`\n- Azure DevOps: `az repos pr show --id <number>` and the threads with `az devops invoke --area git --resource pullRequestThreads --route-parameters project=<project> repositoryId=<repo> pullRequestId=<number>`; consider only threads with status active or pending.\n- Otherwise open the address with WebFetch.\nIf the required tool is not installed or you are not authenticated, stop with outcome \"bloccato\" and explain what is needed.\n\nHow to choose the points:\n1. Leave out resolved discussions (isResolved), those outdated by later commits (isOutdated) and messages without a change request.\n2. A comment listing several findings (for example the summary of a review bot) becomes one point per finding.\n3. For each remaining finding verify on the project's current code (current branch, including uncommitted changes) that the problem is still there: do not trust the comment's description or the replies, open the cited files and search with Grep for the names involved (keys, functions, resource files) across the whole project. If it is already fixed, do not put it in the points: add it to the \"sistemati\" (already fixed) key of the outcome block, one item per finding (severity, file, problem and why it is fixed).\n4. Do not drop open findings based on your own judgement (for example WARNINGs not introduced by the PR): the approver decides.\n\nEach point is an object {\"testo\": \"file and line, problem, fix to make, comment author, and at the end Verified: what you checked in the code to confirm the problem is still there\", \"gravita\": \"BLOCKER\" | \"CRITICAL\" | \"MAJOR\" | \"MINOR\" | \"WARNING\" | \"INFO\" | \"NIT\", \"priorita\": \"alta\" | \"bassa\"} (\"testo\" is the text, \"gravita\" the severity, \"priorita\" the priority). Use the severity stated in the comment; if missing, infer it (bugs and explicitly requested changes: MAJOR; optional suggestions: MINOR or NIT). Regia orders the points by severity, from BLOCKER down. Merge duplicate comments.\nCheck with git that the current branch is the PR branch: if it is not, say so in the summary, without switching branch. In the summary give the PR title, author and branch, how many open points you found per severity and how many are already fixed.\n\nThe linked user stories (above) are the reference: the fixes must respect their specification and acceptance criteria (all of them, if more than one). If the fix asked by a comment contradicts them, keep the point, start the text with \"Conflicts with the US:\", explain why and add \"contrastoUs\": true to the object, so the approver can decide.\n\nReplies on the PR: for each finding already fixed and each point conflicting with the US prepare a reply to publish under the original comment, in the \"risposte\" (replies) key of the outcome block: [{\"motivo\": \"sistemato\" | \"contrasto\", \"riferimento\": \"severity and file:line\", \"thread\": \"id of the discussion of the comment you reply to (id field of reviewThreads)\", \"testo\": \"the reply\"}] (\"motivo\" is the reason: already fixed or conflicting; \"riferimento\" the reference). The text is short, polite and in the language of the comment you reply to: for \"sistemato\" say where and how it is fixed (file and, if you know it, the commit); for \"contrasto\" quote the user story acceptance criterion the change would contradict. The reply is published only under that comment: if the finding comes from a general comment (not in a code discussion), leave \"thread\" empty and Regia will not publish it. Do not publish anything yourself: Regia publishes a reply only if the approver confirms it.",
-    "prFromGoal": "(the PR URL given in the workflow goal)"
+    "prFromGoal": "(the PR URL given in the workflow goal)",
+    "protocolCriteria": "- You are in a phase that derives the acceptance criteria of the linked user story: add to the block the key \"criteri\" with {\"proposti\": [...], \"esistenti\": [...], \"note\": [...]}.\n- \"proposti\": the complete list of criteria the user story should have, at most 40, each {\"id\": \"AC1\", \"testo\": \"...\", \"stato\": \"...\", \"origine\": \"...\", \"acUs\": \"...\", \"nota\": \"...\"}. The text is a testable sentence in the form \"When <situation or action>, then <observable result>\", in plain language with no implementation details, one behaviour per criterion. Cover the main path, the error cases and the edge cases the user story implies. \"stato\": \"coperto\" if a criterion of the user story already says the same (quote it in \"acUs\"), \"diverso\" if one exists but says something else or is incomplete (quote it in \"acUs\" and explain the difference in \"nota\"), \"nuovo\" if the user story lacks it, \"da_confermare\" if it depends on a specification the user story does not give: write the criterion with the most reasonable assumption and state it in \"nota\". \"origine\": the point of the description (or the behaviour of the code) the criterion comes from.\n- \"esistenti\": every criterion already written in the user story, with its text, and \"valutazione\": \"ok\", \"vago\" (vague), \"non_verificabile\" (not testable), \"in_contrasto\" (conflicts with the description, other criteria or the code) or \"non_coperto\" (not supported by the description), with a short \"nota\" when it is not \"ok\". If the user story has none, an empty list.\n- \"note\": the specifications missing from the user story to settle the criteria (rules, messages, limits, permissions, error cases, platforms…), each {\"argomento\": \"topic\", \"domanda\": \"precise question to ask whoever wrote the user story\", \"criteri\": [\"AC4\"]}. Do not invent specifications: one question too many is better.\n- Read the code only as much as needed to understand the current behaviour and the constraints the user story takes for granted; do not modify files. Write the criteria in the language of the user story. Missing specifications do not make the task fail: use \"ok\"; \"bloccato\" only if the user story is missing or empty."
   },
   "mock": {
     "decisions": {
@@ -363,6 +364,21 @@
       "fixed": "[MAJOR] src/api.ts:30 — unhandled timeout: already fixed, the call now uses withTimeout (Reviewer A).",
       "replyFixed": "Thanks for the report: it is already fixed, the call in src/api.ts now uses withTimeout.",
       "replyConflict": "This change would contradict a user story acceptance criterion (AC8): we are leaving it as it is."
+    },
+    "criteria": {
+      "ac1": "When the user saves the form with all required fields filled in, then the data is saved and a confirmation message appears.",
+      "origin1": "Description, first paragraph",
+      "storyAc1": "The user can save the form.",
+      "ac2": "When a required field is empty, then saving does not start and the field is highlighted with a message saying what is missing.",
+      "origin2": "Description: \"the required fields are name and email\"",
+      "ac3": "When saving fails because of a server error, then the entered data stays in the form and a message invites the user to try again.",
+      "storyAc2": "Handle errors.",
+      "note3": "The user story criterion does not say what the user sees or what happens to the entered data.",
+      "ac4": "When the user leaves the page with unsaved changes, then they are asked to confirm.",
+      "note4": "Assumption: the description does not say what happens when leaving without saving.",
+      "vague": "It does not say which errors or what the user should see.",
+      "gapTopic": "Leaving with unsaved changes",
+      "gapQuestion": "If the user leaves the page with unsaved changes, should they be warned, should a draft be saved, or are the changes lost?"
     }
   },
   "api": {
@@ -408,7 +424,8 @@
     "scrcpyInstallFailed": "scrcpy installation failed: {error}",
     "prStoryUnreadable": "The linked user story cannot be read, and it is required when fixing the points of a PR: {error}",
     "prReplyNotFound": "Reply not found.",
-    "prReplyAlreadyPublished": "This reply has already been published."
+    "prReplyAlreadyPublished": "This reply has already been published.",
+    "criteriaStoryUnreadable": "The linked user story cannot be read, and the acceptance criteria are derived from it: {error}"
   },
   "nodeenv": {
     "source": {
@@ -495,6 +512,59 @@
       "notFound": "Item not found: check the address.",
       "network": "Service not reachable: {detail}",
       "gh": "The gh CLI did not answer: {detail}"
+    }
+  },
+  "criteria": {
+    "title": "Acceptance criteria",
+    "fileName": "acceptance-criteria",
+    "proposed": "Proposed criteria",
+    "comparison": "Comparison with the user story criteria",
+    "gaps": "Missing specifications",
+    "gapsHint": "The description is not enough to settle these points: ask whoever wrote the user story. The related criteria are written with the most reasonable assumption and marked as to be confirmed.",
+    "copyFormatted": "Copy (formatted)",
+    "copyMarkdown": "Copy as text",
+    "copyQuestions": "Copy the questions",
+    "copyHint": "\"Copy (formatted)\" keeps list and bold text when you paste into the Acceptance Criteria field of Azure DevOps; \"Copy as text\" gives Markdown for GitHub issues. Criteria to be confirmed stay marked.",
+    "copied": "Copied",
+    "noneProposed": "No criteria proposed.",
+    "storyHasNone": "The user story has no acceptance criteria: you can paste the proposed ones.",
+    "noComparison": "The user story has criteria, but the phase did not assess them.",
+    "origin": "Source:",
+    "storyAc": "In the user story:",
+    "note": "Note:",
+    "related": "Related criteria:",
+    "footer": "Generated by Regia. Read the criteria again before copying them into the user story.",
+    "status": {
+      "nuovo": "New",
+      "coperto": "Already in the US",
+      "diverso": "Differs from the US",
+      "da_confermare": "To be confirmed"
+    },
+    "verdict": {
+      "ok": "Clear",
+      "vago": "Vague",
+      "non_verificabile": "Not testable",
+      "in_contrasto": "Conflicting",
+      "non_coperto": "Not supported by the description"
+    },
+    "count": {
+      "proposed": {
+        "one": "1 criterion",
+        "other": "{count} criteria"
+      },
+      "pending": {
+        "one": "1 to be confirmed",
+        "other": "{count} to be confirmed"
+      },
+      "gaps": {
+        "one": "1 missing specification",
+        "other": "{count} missing specifications"
+      }
+    },
+    "text": {
+      "proposed": "Proposed acceptance criteria:",
+      "storyIssues": "User story criteria to review:",
+      "gaps": "Specifications missing from the user story:"
     }
   }
 }

@@ -77,6 +77,13 @@
       "phaseLabel": "Punti della PR",
       "role": "Lettore di pull request: raccoglie i commenti di revisione da applicare, senza modificare il codice.",
       "instructions": "Leggi la pull request indicata e trasforma i commenti di revisione ancora aperti in punti da implementare, uno per commento, con la gravità originale."
+    },
+    "criteri-accettazione": {
+      "label": "Criteri di accettazione",
+      "hint": "Legge la user story collegata, propone gli acceptance criteria, li confronta con quelli già presenti e segnala le specifiche mancanti, in una pagina HTML da copiare.",
+      "phaseLabel": "Criteri di accettazione",
+      "role": "Analista funzionale: ricava dalla user story criteri di accettazione chiari e verificabili, senza modificare il codice.",
+      "instructions": "Ricava i criteri di accettazione della user story collegata, confrontali con quelli già presenti e segnala le specifiche che mancano per fissarli. Guarda il codice solo per capire il comportamento attuale e i vincoli che la user story dà per scontati. Se l'obiettivo chiede il formato Gherkin, scrivi i criteri come Given/When/Then."
     }
   }
 }
